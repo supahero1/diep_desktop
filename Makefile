@@ -85,8 +85,8 @@ SHARED_LIB_FLAGS += -Wl,--out-implib,bin/libshared.lib
 endif
 
 
-SHARED_FILES := alloc base debug event file io rand \
-	threads hash
+SHARED_FILES := alloc base debug event file threads rand \
+	bit_buffer hash
 CLIENT_FILES := tex/base tex/font ui/base ui/container \
 	ui/checkbox color dds main volk window settings base64
 SERVER_FILES := main quadtree sort
@@ -98,6 +98,8 @@ SERVER_FILES := $(SERVER_FILES:%=src/server/%.c) $(SHARED_FILES)
 
 TEX_DIRS := $(wildcard tex/img/[0-9]*/)
 TEX_FILES := $(TEX_DIRS:tex/img/%/=tex/dds/%.dds)
+
+SRC_TEX_DIRS := src/client/tex include/DiepDesktop/client/tex
 
 
 SHARED_CALL := LD_LIBRARY_PATH=bin:$$LD_LIBRARY_PATH
@@ -145,7 +147,7 @@ all:
 	You can't mix various build types, if you change it you gotta \`make clean\` first\n"
 
 
-bin tex/font tex/var tex/img tex/dds_raw tex/dds_bc1 tex/dds:
+bin tex/font tex/var tex/img tex/dds_raw tex/dds_bc1 tex/dds $(SRC_TEX_DIRS):
 	mkdir -p $@
 
 .PHONY: clean
@@ -174,12 +176,12 @@ bin/tex_gen: tex/tex_gen.c | bin/libshared.a
 
 
 .PHONY: font_build
-font_build: bin/font_gen | tex/font
+font_build: bin/font_gen | tex/font $(SRC_TEX_DIRS)
 	$(RM) -r tex/font/*
 	$(SHARED_CALL) WRITE_IMG=1 ./bin/font_gen
 
 .PHONY: font_gen
-font_gen: bin/font_gen | tex/font
+font_gen: bin/font_gen | tex/font $(SRC_TEX_DIRS)
 	$(SHARED_CALL) ./bin/font_gen
 
 .PHONY: font_clean
@@ -214,7 +216,7 @@ tex_build: bin/sort | tex/img
 	$(SHARED_CALL) ./bin/sort
 
 .PHONY: tex_gen
-tex_gen: bin/tex_gen | tex/img
+tex_gen: bin/tex_gen | tex/img $(SRC_TEX_DIRS)
 	$(SHARED_CALL) ./bin/tex_gen
 	TEX_NUM=$$(grep -oP '#define TEXTURES_NUM \K\d+' include/DiepDesktop/client/tex/base.h); \
 	sed -i "s/inTex\[[0-9]\{1,\}\];/inTex[$$TEX_NUM];/g" shaders/frag.glsl

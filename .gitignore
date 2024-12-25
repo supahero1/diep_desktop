@@ -1,5 +1,5 @@
 bin/
-DiepDesktop/
+/DiepDesktop/
 include/DiepDesktop/client/tex/
 src/client/tex/
 tex/font/

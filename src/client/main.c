@@ -1,11 +1,12 @@
 // #include <DiepDesktop/socket.h>
 
-#include <DiepDesktop/shared/io.h>
 #include <DiepDesktop/shared/base.h>
 #include <DiepDesktop/shared/rand.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/client/window.h>
 #include <DiepDesktop/shared/threads.h>
+#include <DiepDesktop/shared/bit_buffer.h>
+
 #include <DiepDesktop/client/ui/base.h>
 #include <DiepDesktop/client/tex/base.h>
 #include <DiepDesktop/client/ui/checkbox.h>
@@ -120,7 +121,7 @@ ShortestAngleDifference(
 
 Static void
 OnPacket(
-	GamePacket* Packet,
+	BitBuffer* Buffer,
 	ServerOpCode OpCode
 	)
 {
@@ -146,19 +147,19 @@ OnPacket(
 			CompletedTime += NewState->Duration;
 		}
 
-		OldState->Duration = ReadBits(Packet, FIELD_SIZE_TICK_DURATION) * 10000;
+		OldState->Duration = BitBufferGetBits(Buffer, FIELD_SIZE_TICK_DURATION) * 10000;
 		NewState->Duration = OldState->Duration;
 
 		COPY_OVER(FoV);
-		NEW_VALUE(FoV, ReadFixedPoint(Packet, FIXED_POINT(FOV)));
+		NEW_VALUE(FoV, BitBufferGetFixedPoint(Buffer, FIXED_POINT(FOV)));
 
 		COPY_OVER(CameraX);
-		NEW_VALUE(CameraX, ReadSignedFixedPoint(Packet, FIXED_POINT(POS)));
+		NEW_VALUE(CameraX, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(POS)));
 
 		COPY_OVER(CameraY);
-		NEW_VALUE(CameraY, ReadSignedFixedPoint(Packet, FIXED_POINT(POS)));
+		NEW_VALUE(CameraY, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(POS)));
 
-		uint16_t Count = ReadBits(Packet, GAME_CONST_MAX_ENTITIES__BITS);
+		uint16_t Count = BitBufferGetBits(Buffer, GAME_CONST_MAX_ENTITIES__BITS);
 
 		GameEntity* NewEntities = malloc(sizeof(*NewEntities) * Count);
 		AssertNotNull(NewEntities);
@@ -168,20 +169,20 @@ OnPacket(
 
 		for(uint16_t i = 0; i < Count; ++i)
 		{
-			uint8_t OldSet = ReadBits(Packet, 1);
-			uint8_t NewSet = ReadBits(Packet, 1);
+			uint8_t OldSet = BitBufferGetBits(Buffer, 1);
+			uint8_t NewSet = BitBufferGetBits(Buffer, 1);
 
 			if(!OldSet)
 			{
 				/* Creation */
 
-				NewEntity->Type = ReadBits(Packet, ENTITY_TYPE__BITS);
-				NewEntity->Subtype = ReadBits(Packet, TypeToSubtypeBits[NewEntity->Type]);
+				NewEntity->Type = BitBufferGetBits(Buffer, ENTITY_TYPE__BITS);
+				NewEntity->Subtype = BitBufferGetBits(Buffer, TypeToSubtypeBits[NewEntity->Type]);
 
-				NEW_ENTITY_VALUE(X, ReadSignedFixedPoint(Packet, FIXED_POINT(SCREEN_POS)));
+				NEW_ENTITY_VALUE(X, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
 				SHIFT_OVER(X);
 
-				NEW_ENTITY_VALUE(Y, ReadSignedFixedPoint(Packet, FIXED_POINT(SCREEN_POS)));
+				NEW_ENTITY_VALUE(Y, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
 				SHIFT_OVER(Y);
 
 
@@ -190,7 +191,7 @@ OnPacket(
 
 				case ENTITY_TYPE_TANK:
 				{
-					NEW_ENTITY_VALUE(R, ReadFixedPoint(Packet, FIXED_POINT(RADIUS)));
+					NEW_ENTITY_VALUE(R, BitBufferGetFixedPoint(Buffer, FIXED_POINT(RADIUS)));
 					SHIFT_OVER(R);
 
 					NewEntity->MaxHP = 1000;
@@ -226,9 +227,9 @@ OnPacket(
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					uintptr_t WroteHP = ReadBits(Packet, 1);
+					uintptr_t WroteHP = BitBufferGetBits(Buffer, 1);
 
-					if(ReadBits(Packet, 1))
+					if(BitBufferGetBits(Buffer, 1))
 					{
 						NEW_ENTITY_VALUE(Damageness, 0.1666f);
 					}
@@ -241,7 +242,7 @@ OnPacket(
 
 					if(WroteHP)
 					{
-						NEW_ENTITY_VALUE(HP, ReadBits(Packet, NewEntity->HPBits));
+						NEW_ENTITY_VALUE(HP, BitBufferGetBits(Buffer, NewEntity->HPBits));
 						NEW_ENTITY_VALUE(OpacityHP, 1.0f);
 					}
 					else
@@ -285,8 +286,8 @@ OnPacket(
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					NEW_ENTITY_VALUE(X, ReadSignedFixedPoint(Packet, FIXED_POINT(SCREEN_POS)));
-					NEW_ENTITY_VALUE(Y, ReadSignedFixedPoint(Packet, FIXED_POINT(SCREEN_POS)));
+					NEW_ENTITY_VALUE(X, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
+					NEW_ENTITY_VALUE(Y, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
 
 					break;
 				}
@@ -302,9 +303,9 @@ OnPacket(
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					uintptr_t WroteHP = ReadBits(Packet, 1);
+					uintptr_t WroteHP = BitBufferGetBits(Buffer, 1);
 
-					if(ReadBits(Packet, 1))
+					if(BitBufferGetBits(Buffer, 1))
 					{
 						NEW_ENTITY_VALUE(Damageness, MIN(0.5f, NewEntity->Damageness[OLD] + 0.1666f));
 					}
@@ -315,7 +316,7 @@ OnPacket(
 
 					if(WroteHP)
 					{
-						NEW_ENTITY_VALUE(HP, ReadBits(Packet, NewEntity->HPBits));
+						NEW_ENTITY_VALUE(HP, BitBufferGetBits(Buffer, NewEntity->HPBits));
 					}
 
 					break;
@@ -367,7 +368,7 @@ OnPacket(
 			}
 		}
 
-		AssertEQ(GetConsumed(Packet), Packet->Length);
+		AssertEQ(BitBufferGetConsumed(Buffer), Buffer->Length);
 
 		free(NewState->Entities);
 		NewState->Entities = NewEntities;
@@ -404,35 +405,35 @@ SocketOnData(
 	uint32_t Length
 	)
 {
-	GamePacket Packet = {0};
-	Packet.Buffer = Data;
-	Packet.At = Packet.Buffer;
-	Packet.Length = Length;
+	BitBuffer Buffer = {0};
+	Buffer.Buffer = Data;
+	Buffer.At = Buffer.Buffer;
+	Buffer.Length = Length;
 
-	if(AvailableBits(&Packet) < SERVER_OPCODE__BITS)
+	if(BitBufferGetAvailableBits(&Buffer) < SERVER_OPCODE__BITS)
 	{
 		return 0;
 	}
 
-	ServerOpCode OpCode = ReadBits(&Packet, SERVER_OPCODE__BITS);
+	ServerOpCode OpCode = BitBufferGetBits(&Buffer, SERVER_OPCODE__BITS);
 
 	switch(OpCode)
 	{
 
 	case SERVER_OPCODE_UPDATE:
 	{
-		if(AvailableBits(&Packet) < GAME_CONST_SERVER_PACKET_SIZE__BITS)
+		if(BitBufferGetAvailableBits(&Buffer) < GAME_CONST_SERVER_PACKET_SIZE__BITS)
 		{
 			return 0;
 		}
 
-		uintptr_t Size = ReadBits(&Packet, GAME_CONST_SERVER_PACKET_SIZE__BITS);
+		uintptr_t Size = BitBufferGetBits(&Buffer, GAME_CONST_SERVER_PACKET_SIZE__BITS);
 
 		if(Size <= Length)
 		{
-			Packet.Length = Size;
+			Buffer.Length = Size;
 
-			OnPacket(&Packet, OpCode);
+			OnPacket(&Buffer, OpCode);
 
 			return Size;
 		}

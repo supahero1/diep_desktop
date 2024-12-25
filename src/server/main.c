@@ -423,12 +423,12 @@ ClientClose(
 
 Static void
 ClientSend(
-	const GamePacket* Packet
+	const BitBuffer* Buffer
 	)
 {
-	ssize_t Bytes = send(Client->FD, Packet->Buffer, Packet->Length, MSG_NOSIGNAL);
+	ssize_t Bytes = send(Client->FD, Buffer->Buffer, Buffer->Length, MSG_NOSIGNAL);
 
-	if(Bytes != Packet->Length)
+	if(Bytes != Buffer->Length)
 	{
 		ClientClose();
 	}
@@ -440,24 +440,24 @@ ClientRead(
 	void
 	)
 {
-	GamePacket Packet = {0};
-	Packet.Buffer = Client->Buffer;
-	Packet.At = Packet.Buffer;
-	Packet.Length = Client->BufferUsed;
+	BitBuffer Buffer = {0};
+	Buffer.Buffer = Client->Buffer;
+	Buffer.At = Buffer.Buffer;
+	Buffer.Length = Client->BufferUsed;
 
-	if(Packet.Length < TO_BYTES(CLIENT_OPCODE__BITS))
+	if(Buffer.Length < TO_BYTES(CLIENT_OPCODE__BITS))
 	{
 		return 0;
 	}
 
-	uintptr_t OpCode = ReadBits(&Packet, CLIENT_OPCODE__BITS);
+	uintptr_t OpCode = BitBufferGetBits(&Buffer, CLIENT_OPCODE__BITS);
 
 	switch(OpCode)
 	{
 
 	case CLIENT_OPCODE_INPUT:
 	{
-		if(Packet.Length < TO_BYTES(
+		if(Buffer.Length < TO_BYTES(
 			CLIENT_OPCODE__BITS +
 			FIELD_SIZE_MOUSE_X +
 			FIELD_SIZE_MOUSE_Y +
@@ -466,21 +466,21 @@ ClientRead(
 			break;
 		}
 
-		uintptr_t MouseX = ReadBits(&Packet, FIELD_SIZE_MOUSE_X);
+		uintptr_t MouseX = BitBufferGetBits(&Buffer, FIELD_SIZE_MOUSE_X);
 		if(MouseX > 1920)
 		{
 			ClientClose();
 			break;
 		}
 
-		uintptr_t MouseY = ReadBits(&Packet, FIELD_SIZE_MOUSE_Y);
+		uintptr_t MouseY = BitBufferGetBits(&Buffer, FIELD_SIZE_MOUSE_Y);
 		if(MouseY > 1080)
 		{
 			ClientClose();
 			break;
 		}
 
-		uintptr_t Keys = ReadBits(&Packet, KEY_BUTTON__BITS);
+		uintptr_t Keys = BitBufferGetBits(&Buffer, KEY_BUTTON__BITS);
 
 		float Vertical = 0;
 		float Horizontal = 0;
@@ -516,7 +516,7 @@ ClientRead(
 		Client->Vertical = Vertical * GAME_CONST_MAX_MOVEMENT_SPEED;
 		Client->Horizontal = Horizontal * GAME_CONST_MAX_MOVEMENT_SPEED;
 
-		return GetConsumed(&Packet);
+		return BitBufferGetConsumed(&Buffer);
 	}
 
 	default:
@@ -595,25 +595,25 @@ GameUpdate(
 		Client->CameraX = QTEntity->X;
 		Client->CameraY = QTEntity->Y;
 
-		GamePacket Packet = {0};
-		Packet.Length = GAME_CONST_SERVER_PACKET_SIZE;
-		Packet.Buffer = calloc(Packet.Length, sizeof(uint8_t));
-		AssertNotNull(Packet.Buffer);
-		Packet.At = Packet.Buffer;
+		BitBuffer Buffer = {0};
+		Buffer.Length = GAME_CONST_SERVER_PACKET_SIZE;
+		Buffer.Buffer = calloc(Buffer.Length, sizeof(uint8_t));
+		AssertNotNull(Buffer.Buffer);
+		Buffer.At = Buffer.Buffer;
 
-		WriteBits(&Packet, SERVER_OPCODE_UPDATE, SERVER_OPCODE__BITS);
+		BitBufferSetBits(&Buffer, SERVER_OPCODE_UPDATE, SERVER_OPCODE__BITS);
 
-		PacketContext PacketLength = SaveContext(&Packet);
-		SkipBits(&Packet, GAME_CONST_SERVER_PACKET_SIZE__BITS);
+		BitBufferContext PacketLength = BitBufferSave(&Buffer);
+		BitBufferSkipBits(&Buffer, GAME_CONST_SERVER_PACKET_SIZE__BITS);
 
-		WriteBits(&Packet, (CurrentTickAt - LastTickAt) / 10000, FIELD_SIZE_TICK_DURATION);
+		BitBufferSetBits(&Buffer, (CurrentTickAt - LastTickAt) / 10000, FIELD_SIZE_TICK_DURATION);
 
-		WriteFixedPoint(&Packet, Client->FoV, FIXED_POINT(FOV));
-		WriteSignedFixedPoint(&Packet, Client->CameraX, FIXED_POINT(POS));
-		WriteSignedFixedPoint(&Packet, Client->CameraY, FIXED_POINT(POS));
+		BitBufferSetFixedPoint(&Buffer, Client->FoV, FIXED_POINT(FOV));
+		BitBufferSetSignedFixedPoint(&Buffer, Client->CameraX, FIXED_POINT(POS));
+		BitBufferSetSignedFixedPoint(&Buffer, Client->CameraY, FIXED_POINT(POS));
 
-		PacketContext EntitiesCount = SaveContext(&Packet);
-		SkipBits(&Packet, GAME_CONST_MAX_ENTITIES__BITS);
+		BitBufferContext EntitiesCount = BitBufferSave(&Buffer);
+		BitBufferSkipBits(&Buffer, GAME_CONST_MAX_ENTITIES__BITS);
 
 		EntityBits = calloc(TO_BYTES(GAME_CONST_MAX_ENTITIES), sizeof(uint8_t));
 		AssertNotNull(EntityBits);
@@ -656,8 +656,8 @@ GameUpdate(
 			uint8_t OldSet = !!(Client->EntityBits[*EntityInView >> 3] & (1 << (*EntityInView & 7)));
 			uint8_t NewSet = !!(        EntityBits[*EntityInView >> 3] & (1 << (*EntityInView & 7)));
 
-			WriteBits(&Packet, OldSet, 1);
-			WriteBits(&Packet, NewSet, 1);
+			BitBufferSetBits(&Buffer, OldSet, 1);
+			BitBufferSetBits(&Buffer, NewSet, 1);
 
 			QUADTREE_ENTITY* QTEntity = Quadtree.Entities + *EntityInView;
 			GameEntity* Entity = Entities + *EntityInView;
@@ -668,11 +668,11 @@ GameUpdate(
 
 				AssertEQ(!!NewSet, 1);
 
-				WriteBits(&Packet, Entity->Type, ENTITY_TYPE__BITS);
-				WriteBits(&Packet, Entity->Subtype, TypeToSubtypeBits[Entity->Type]);
+				BitBufferSetBits(&Buffer, Entity->Type, ENTITY_TYPE__BITS);
+				BitBufferSetBits(&Buffer, Entity->Subtype, TypeToSubtypeBits[Entity->Type]);
 
-				WriteSignedFixedPoint(&Packet, (QTEntity->X - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
-				WriteSignedFixedPoint(&Packet, (QTEntity->Y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
+				BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->X - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
+				BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->Y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
 
 
 				switch(Entity->Type)
@@ -680,7 +680,7 @@ GameUpdate(
 
 				case ENTITY_TYPE_TANK:
 				{
-					WriteFixedPoint(&Packet, QTEntity->R, FIXED_POINT(RADIUS));
+					BitBufferSetFixedPoint(&Buffer, QTEntity->R, FIXED_POINT(RADIUS));
 
 					break;
 				}
@@ -702,13 +702,13 @@ GameUpdate(
 				case ENTITY_TYPE_SHAPE:
 				{
 					int WriteHP = Entity->HP != Entity->MaxHP;
-					WriteBits(&Packet, WriteHP, 1);
+					BitBufferSetBits(&Buffer, WriteHP, 1);
 
-					WriteBits(&Packet, Entity->TookDamage, 1);
+					BitBufferSetBits(&Buffer, Entity->TookDamage, 1);
 
 					if(WriteHP)
 					{
-						WriteBits(&Packet, Entity->HP, ShapeHPBits[Entity->Subtype]);
+						BitBufferSetBits(&Buffer, Entity->HP, ShapeHPBits[Entity->Subtype]);
 					}
 
 					break;
@@ -728,11 +728,11 @@ GameUpdate(
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					WriteSignedFixedPoint(&Packet, (QTEntity->X - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
-					WriteSignedFixedPoint(&Packet, (QTEntity->Y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
+					BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->X - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
+					BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->Y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
 
-					WriteBits(&Packet, Entity->UpdateHP, 1);
-					WriteBits(&Packet, Entity->TookDamage, 1);
+					BitBufferSetBits(&Buffer, Entity->UpdateHP, 1);
+					BitBufferSetBits(&Buffer, Entity->TookDamage, 1);
 
 					break;
 				}
@@ -750,7 +750,7 @@ GameUpdate(
 				{
 					if(Entity->UpdateHP)
 					{
-						WriteBits(&Packet, Entity->HP, ShapeHPBits[Entity->Subtype]);
+						BitBufferSetBits(&Buffer, Entity->HP, ShapeHPBits[Entity->Subtype]);
 					}
 
 					break;
@@ -771,16 +771,16 @@ GameUpdate(
 		free(Client->EntityBits);
 		Client->EntityBits = EntityBits;
 
-		Packet.Length = GetConsumed(&Packet);
+		Buffer.Length = BitBufferGetConsumed(&Buffer);
 
-		RestoreContext(&Packet, &EntitiesCount);
-		WriteBits(&Packet, EntitiesInViewCount, GAME_CONST_MAX_ENTITIES__BITS);
+		BitBufferRestore(&Buffer, &EntitiesCount);
+		BitBufferSetBits(&Buffer, EntitiesInViewCount, GAME_CONST_MAX_ENTITIES__BITS);
 
-		RestoreContext(&Packet, &PacketLength);
-		WriteBits(&Packet, Packet.Length, GAME_CONST_SERVER_PACKET_SIZE__BITS);
+		BitBufferRestore(&Buffer, &PacketLength);
+		BitBufferSetBits(&Buffer, Buffer.Length, GAME_CONST_SERVER_PACKET_SIZE__BITS);
 
-		ClientSend(&Packet);
-		free(Packet.Buffer);
+		ClientSend(&Buffer);
+		free(Buffer.Buffer);
 	}
 }
 
