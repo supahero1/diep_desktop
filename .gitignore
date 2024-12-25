@@ -1,0 +1,10 @@
+bin/
+DiepDesktop/
+include/DiepDesktop/client/tex/
+src/client/tex/
+tex/font/
+tex/var/
+tex/img/
+tex/dds_raw/
+tex/dds_bc1/
+tex/dds/

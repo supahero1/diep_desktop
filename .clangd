@@ -1,0 +1,2 @@
+CompileFlags:
+  Add: [-Wall, -xc, -std=c23, -D_GNU_SOURCE, "-IC:\\msys64\\mingw64\\include", "-IC:\\Program Files\\KTX-Software\\include", "-IC:\\msys64\\mingw64\\include\\freetype2", -I/usr/include/freetype2]
