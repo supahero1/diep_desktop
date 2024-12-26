@@ -15,9 +15,10 @@ UIContainerBubbleDown(
 
 	while(Child)
 	{
+		/* Child might be free'd during the bubble */
+		UIElement* Next = Child->Next;
 		Child->VirtualTable->BubbleDown(Child, Callback, Data);
-		Callback(Child, Data);
-		Child = Child->Next;
+		Child = Next;
 	}
 
 	Callback(Element, Data);

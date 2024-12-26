@@ -21,6 +21,12 @@ extern "C" {
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_std.h>
 
+#ifndef NDEBUG
+	#include <stdlib.h>
+
+	#include <valgrind/valgrind.h>
+#endif
+
 #include <assert.h>
 #include <string.h>
 
@@ -1713,6 +1719,18 @@ AllocAllocUH(
 		return NULL;
 	}
 
+#ifndef NDEBUG
+	if(RUNNING_ON_VALGRIND)
+	{
+		if(Zero)
+		{
+			return calloc(1, Size);
+		}
+
+		return malloc(Size);
+	}
+#endif
+
 	AllocHandleInternal* HandleInternal = (void*) Handle;
 
 	return HandleInternal->AllocFunc(HandleInternal, Size, Zero);
@@ -1749,11 +1767,92 @@ AllocFreeUH(
 		return;
 	}
 
+#ifndef NDEBUG
+	if(RUNNING_ON_VALGRIND)
+	{
+		free((void*) Ptr);
+		return;
+	}
+#endif
+
 	AllocHandleInternal* HandleInternal = (void*) Handle;
 
 	HandleInternal->FreeFunc(HandleInternal,
 		GetBasePtr(HandleInternal, Ptr), (void*) Ptr, Size);
 }
+
+
+#ifndef NDEBUG
+	#define ALLOC_REALLOC_CHECK_VALGRIND()					\
+	do														\
+	{														\
+		if(RUNNING_ON_VALGRIND)								\
+		{													\
+			void* NewPtr = realloc((void*) Ptr, NewSize);	\
+			if(!NewPtr)										\
+			{												\
+				return NULL;								\
+			}												\
+															\
+			if(NewSize > OldSize && Zero)					\
+			{												\
+				(void) memset((uint8_t*) NewPtr				\
+					+ OldSize, 0, NewSize - OldSize);		\
+			}												\
+															\
+			return NewPtr;									\
+		}													\
+	}														\
+	while(0)
+#else
+	#define ALLOC_REALLOC_CHECK_VALGRIND()
+#endif
+
+#define ALLOC_REALLOC(AllocFunc, FreeFunc)						\
+do																\
+{																\
+	if(!NewSize)												\
+	{															\
+		FreeFunc (OldHandle, Ptr, OldSize);						\
+		return NULL;											\
+	}															\
+																\
+	if(!Ptr)													\
+	{															\
+		return AllocFunc (NewHandle, NewSize, Zero);			\
+	}															\
+																\
+	ALLOC_REALLOC_CHECK_VALGRIND();								\
+																\
+	if(OldHandle == NewHandle)									\
+	{															\
+		if(AllocHandleIsVirtual((void*) OldHandle))				\
+		{														\
+			return AllocReallocVirtual(Ptr, OldSize, NewSize);	\
+		}														\
+																\
+		if(NewSize > OldSize && Zero)							\
+		{														\
+			(void) memset((uint8_t*) Ptr						\
+				+ OldSize, 0, NewSize - OldSize);				\
+		}														\
+																\
+		return (void*) Ptr;										\
+	}															\
+																\
+	void* NewPtr = AllocFunc (NewHandle, NewSize, Zero);		\
+	if(!NewPtr)													\
+	{															\
+		return NULL;											\
+	}															\
+																\
+	(void) memcpy(NewPtr, Ptr, ALLOC_MIN(OldSize, NewSize));	\
+																\
+	FreeFunc (OldHandle, Ptr, OldSize);							\
+																\
+	return NewPtr;												\
+}																\
+while(0)
 
 
 void*
@@ -1766,43 +1865,7 @@ AllocReallocH(
 	int Zero
 	)
 {
-	if(!NewSize)
-	{
-		AllocFreeH(OldHandle, Ptr, OldSize);
-		return NULL;
-	}
-
-	if(!Ptr)
-	{
-		return AllocAllocH(NewHandle, NewSize, Zero);
-	}
-
-	if(OldHandle == NewHandle)
-	{
-		if(AllocHandleIsVirtual((void*) OldHandle))
-		{
-			return AllocReallocVirtual(Ptr, OldSize, NewSize);
-		}
-
-		if(NewSize > OldSize && Zero)
-		{
-			(void) memset((uint8_t*) Ptr + OldSize, 0, NewSize - OldSize);
-		}
-
-		return (void*) Ptr;
-	}
-
-	void* NewPtr = AllocAllocH(NewHandle, NewSize, Zero);
-	if(!NewPtr)
-	{
-		return NULL;
-	}
-
-	(void) memcpy(NewPtr, Ptr, ALLOC_MIN(OldSize, NewSize));
-
-	AllocFreeH(OldHandle, Ptr, OldSize);
-
-	return NewPtr;
+	ALLOC_REALLOC(AllocAllocH, AllocFreeH);
 }
 
 
@@ -1816,43 +1879,7 @@ AllocReallocUH(
 	int Zero
 	)
 {
-	if(!NewSize)
-	{
-		AllocFreeUH(OldHandle, Ptr, OldSize);
-		return NULL;
-	}
-
-	if(!Ptr)
-	{
-		return AllocAllocUH(NewHandle, NewSize, Zero);
-	}
-
-	if(OldHandle == NewHandle)
-	{
-		if(AllocHandleIsVirtual((void*) OldHandle))
-		{
-			return AllocReallocVirtual(Ptr, OldSize, NewSize);
-		}
-
-		if(NewSize > OldSize && Zero)
-		{
-			(void) memset((uint8_t*) Ptr + OldSize, 0, NewSize - OldSize);
-		}
-
-		return (void*) Ptr;
-	}
-
-	void* NewPtr = AllocAllocUH(NewHandle, NewSize, Zero);
-	if(!NewPtr)
-	{
-		return NULL;
-	}
-
-	(void) memcpy(NewPtr, Ptr, ALLOC_MIN(OldSize, NewSize));
-
-	AllocFreeUH(OldHandle, Ptr, OldSize);
-
-	return NewPtr;
+	ALLOC_REALLOC(AllocAllocUH, AllocFreeUH);
 }
 
 

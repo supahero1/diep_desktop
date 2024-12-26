@@ -63,6 +63,8 @@ EventUnlisten(
 
 			return;
 		}
+
+		Node = Node->Next;
 	}
 
 	AssertUnreachable();

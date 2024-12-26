@@ -2151,7 +2151,7 @@ main(
 
 	WindowFree();
 
-	// UIFree();
+	UIFree();
 
 	return 0;
 }

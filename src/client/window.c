@@ -24,6 +24,7 @@
 #define VULKAN_MAX_IMAGES 8
 
 
+Static SDL_PropertiesID WindowProps;
 Static SDL_Window* Window;
 Static SDL_Cursor* Cursors[kWINDOW_CURSOR];
 Static WindowCursor CurrentCursor = WINDOW_CURSOR_DEFAULT;
@@ -954,7 +955,7 @@ VulkanInitSDL(
 	bool Status = SDL_InitSubSystem(SDL_INIT_VIDEO);
 	HardenedAssertTrue(Status);
 
-	SDL_PropertiesID WindowProps = SDL_CreateProperties();
+	WindowProps = SDL_CreateProperties();
 	AssertNEQ(WindowProps, 0);
 
 	Status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
@@ -1013,8 +1014,9 @@ VulkanDestroySDL(
 		SDL_DestroyCursor(*Cursor);
 	}
 	while(++Cursor != CursorEnd);
-
+// TODO when resize, clamp mouse pos and get rid of valgrind logs
 	SDL_DestroyWindow(Window);
+	SDL_DestroyProperties(WindowProps);
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
 	SDL_Quit();
 }

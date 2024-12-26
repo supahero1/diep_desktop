@@ -1,0 +1,165 @@
+{
+	dlopen leak
+	Memcheck:Leak
+	...
+	src:*dlopen.c
+	...
+}
+
+{
+	dlopen addr
+	Memcheck:Addr8
+	...
+	src:*dlopen.c
+	...
+}
+
+{
+	dl-open leak
+	Memcheck:Leak
+	...
+	src:*dl-open.c
+	...
+}
+
+{
+	dl-open addr
+	Memcheck:Addr8
+	...
+	src:*dl-open.c
+	...
+}
+
+{
+	dlinit leak
+	Memcheck:Leak
+	...
+	src:*dlinit.c
+	...
+}
+
+{
+	dlinit addr
+	Memcheck:Addr8
+	...
+	src:*dlinit.c
+	...
+}
+
+{
+	dl-init leak
+	Memcheck:Leak
+	...
+	src:*dl-init.c
+	...
+}
+
+{
+	dl-init addr
+	Memcheck:Addr8
+	...
+	src:*dl-init.c
+	...
+}
+
+{
+	dlclose leak
+	Memcheck:Leak
+	...
+	src:*dlclose.c
+	...
+}
+
+{
+	dlclose addr
+	Memcheck:Addr8
+	...
+	src:*dlclose.c
+	...
+}
+
+{
+	dl-close leak
+	Memcheck:Leak
+	...
+	src:*dl-close.c
+	...
+}
+
+{
+	dl-close addr
+	Memcheck:Addr8
+	...
+	src:*dl-close.c
+	...
+}
+
+{
+	SDL
+	Memcheck:Leak
+	...
+	obj:*libSDL3.so*
+	...
+}
+
+{
+	X11
+	Memcheck:Leak
+	...
+	obj:*libX11.so*
+	...
+}
+
+{
+	Malloc indirect garbage
+	Memcheck:Leak
+	match-leak-kinds: indirect
+	fun:malloc
+	obj:*
+	...
+}
+
+{
+	Malloc definite garbage
+	Memcheck:Leak
+	match-leak-kinds: definite
+	fun:malloc
+	obj:*
+	...
+}
+
+{
+	Calloc indirect garbage
+	Memcheck:Leak
+	match-leak-kinds: indirect
+	fun:calloc
+	obj:*
+	...
+}
+
+{
+	Calloc definite garbage
+	Memcheck:Leak
+	match-leak-kinds: definite
+	fun:calloc
+	obj:*
+	...
+}
+
+{
+	Realloc indirect garbage
+	Memcheck:Leak
+	match-leak-kinds: indirect
+	fun:realloc
+	obj:*
+	...
+}
+
+{
+	Realloc definite garbage
+	Memcheck:Leak
+	match-leak-kinds: definite
+	fun:realloc
+	obj:*
+	...
+}

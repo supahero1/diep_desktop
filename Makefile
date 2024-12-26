@@ -20,7 +20,8 @@ ifeq ($(OS),Windows_NT)
 CC := clang
 BASE_FLAGS += -fsanitize=address,undefined
 else
-VALGRIND_CALL := valgrind --leak-check=full --show-leak-kinds=all --log-file="log.txt"
+VALGRIND_CALL := valgrind --leak-check=full --show-leak-kinds=all \
+	--suppressions=../val_sup.txt --log-file="log.txt"
 endif
 endif
 
