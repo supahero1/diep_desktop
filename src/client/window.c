@@ -80,6 +80,7 @@ Static VkFence vkFence;
 Static VkExtent2D vkExtent;
 Static uint32_t vkMinImageCount;
 Static VkSurfaceTransformFlagBitsKHR vkTransform;
+Static VkPresentModeKHR vkPresentMode;
 
 
 Static VkSwapchainKHR vkSwapchain;
@@ -829,8 +830,8 @@ WindowOnEvent(
 		Pair EventMousePosition =
 		(Pair)
 		{
-			.X = MIN(MAX(Button.x - HalfWidth , -HalfWidth ), HalfWidth ),
-			.Y = MIN(MAX(Button.y - HalfHeight, -HalfHeight), HalfHeight)
+			.X = CLAMP_SYM(Button.x - HalfWidth , HalfWidth ),
+			.Y = CLAMP_SYM(Button.y - HalfHeight, HalfHeight)
 		};
 
 		AssertLT(fabsf(EventMousePosition.X - MousePosition.X), 0.01f);
@@ -859,8 +860,8 @@ WindowOnEvent(
 		Pair EventMousePosition =
 		(Pair)
 		{
-			.X = MIN(MAX(Button.x - HalfWidth , -HalfWidth ), HalfWidth ),
-			.Y = MIN(MAX(Button.y - HalfHeight, -HalfHeight), HalfHeight)
+			.X = CLAMP_SYM(Button.x - HalfWidth , HalfWidth ),
+			.Y = CLAMP_SYM(Button.y - HalfHeight, HalfHeight)
 		};
 
 		AssertLT(fabsf(EventMousePosition.X - MousePosition.X), 0.01f);
@@ -894,8 +895,8 @@ WindowOnEvent(
 		MousePosition =
 		(Pair)
 		{
-			.X = MIN(MAX(Motion.x - HalfWidth , -HalfWidth ), HalfWidth ),
-			.Y = MIN(MAX(Motion.y - HalfHeight, -HalfHeight), HalfHeight)
+			.X = CLAMP_SYM(Motion.x - HalfWidth , HalfWidth ),
+			.Y = CLAMP_SYM(Motion.y - HalfHeight, HalfHeight)
 		};
 
 		EventData.NewPosition = MousePosition;
@@ -1014,7 +1015,7 @@ VulkanDestroySDL(
 		SDL_DestroyCursor(*Cursor);
 	}
 	while(++Cursor != CursorEnd);
-// TODO when resize, clamp mouse pos and get rid of valgrind logs
+
 	SDL_DestroyWindow(Window);
 	SDL_DestroyProperties(WindowProps);
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
@@ -1227,6 +1228,7 @@ VulkanGetDeviceQueues(
 {
 	uint32_t QueueCount;
 	vkGetPhysicalDeviceQueueFamilyProperties(Device, &QueueCount, NULL);
+
 	if(QueueCount == 0)
 	{
 		HardenedLogLocation();
@@ -1242,7 +1244,12 @@ VulkanGetDeviceQueues(
 	{
 		VkBool32 Present;
 		VkResult Result = vkGetPhysicalDeviceSurfaceSupportKHR(Device, i, vkSurface, &Present);
-		HardenedAssertEQ(Result, VK_SUCCESS);
+
+		if(Result != VK_SUCCESS)
+		{
+			HardenedLogLocation();
+			return false;
+		}
 
 		if(Present && (Queue->queueFlags & VK_QUEUE_GRAPHICS_BIT))
 		{
@@ -1358,7 +1365,9 @@ VulkanGetExtent(
 
 	while(1)
 	{
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysicalDevice, vkSurface, &vkSurfaceCapabilities);
+		VkResult Result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+			vkPhysicalDevice, vkSurface, &vkSurfaceCapabilities);
+		HardenedAssertEQ(Result, VK_SUCCESS);
 
 		Width = vkSurfaceCapabilities.currentExtent.width;
 		Height = vkSurfaceCapabilities.currentExtent.height;
@@ -1378,14 +1387,17 @@ VulkanGetExtent(
 		MutexUnlock(&Mtx);
 	}
 
-	Width = MAX(
-		MIN(Width, vkSurfaceCapabilities.maxImageExtent.width),
+	Width = CLAMP(
+		Width,
+		vkSurfaceCapabilities.maxImageExtent.width,
 		vkSurfaceCapabilities.minImageExtent.width
-	);
-	Height = MAX(
-		MIN(Height, vkSurfaceCapabilities.maxImageExtent.height),
+		);
+
+	Height = CLAMP(
+		Height,
+		vkSurfaceCapabilities.maxImageExtent.height,
 		vkSurfaceCapabilities.minImageExtent.height
-	);
+		);
 
 	vkExtent =
 	(VkExtent2D)
@@ -1405,7 +1417,15 @@ VulkanGetDeviceSwapchain(
 	)
 {
 	uint32_t FormatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(Device, vkSurface, &FormatCount, NULL);
+	VkResult Result = vkGetPhysicalDeviceSurfaceFormatsKHR(
+		Device, vkSurface, &FormatCount, NULL);
+
+	if(Result != VK_SUCCESS)
+	{
+		HardenedLogLocation();
+		return false;
+	}
+
 	if(FormatCount == 0)
 	{
 		HardenedLogLocation();
@@ -1413,7 +1433,14 @@ VulkanGetDeviceSwapchain(
 	}
 
 	VkSurfaceFormatKHR Formats[FormatCount];
-	vkGetPhysicalDeviceSurfaceFormatsKHR(Device, vkSurface, &FormatCount, Formats);
+	Result = vkGetPhysicalDeviceSurfaceFormatsKHR(
+		Device, vkSurface, &FormatCount, Formats);
+
+	if(Result != VK_SUCCESS)
+	{
+		HardenedLogLocation();
+		return false;
+	}
 
 	VkSurfaceFormatKHR* Format = Formats;
 	VkSurfaceFormatKHR* FormatEnd = Format + ARRAYLEN(Formats);
@@ -1673,6 +1700,35 @@ VulkanInitDevice(
 		vkSurfaceCapabilities.minImageCount
 	);
 	vkTransform = vkSurfaceCapabilities.currentTransform;
+
+
+	uint32_t PresentModeCount;
+	Result = vkGetPhysicalDeviceSurfacePresentModesKHR(
+		vkPhysicalDevice, vkSurface, &PresentModeCount, NULL);
+	HardenedAssertEQ(Result, VK_SUCCESS);
+	HardenedAssertNEQ(PresentModeCount, 0);
+
+	VkPresentModeKHR PresentModes[PresentModeCount];
+	Result = vkGetPhysicalDeviceSurfacePresentModesKHR(
+		vkPhysicalDevice, vkSurface, &PresentModeCount, PresentModes);
+	HardenedAssertEQ(Result, VK_SUCCESS);
+
+	VkPresentModeKHR* PresentMode = PresentModes;
+	VkPresentModeKHR* PresentModeEnd = PresentModes + PresentModeCount;
+
+	while(1)
+	{
+		if(*PresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+		{
+			vkPresentMode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+			break;
+		}
+
+		if(++PresentMode == PresentModeEnd)
+		{
+			vkPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+		}
+	}
 }
 
 
@@ -2648,7 +2704,9 @@ VulkanInitFrames(
 	)
 {
 	uint32_t ImageCount;
-	vkGetSwapchainImagesKHR(vkDevice, vkSwapchain, &ImageCount, NULL);
+	VkResult Result = vkGetSwapchainImagesKHR(vkDevice, vkSwapchain, &ImageCount, NULL);
+	HardenedAssertEQ(Result, VK_SUCCESS);
+
 	if(vkImageCount == 0)
 	{
 		AssertNEQ(ImageCount, 0);
@@ -2661,7 +2719,8 @@ VulkanInitFrames(
 	}
 
 	VkImage Images[vkImageCount];
-	vkGetSwapchainImagesKHR(vkDevice, vkSwapchain, &vkImageCount, Images);
+	Result = vkGetSwapchainImagesKHR(vkDevice, vkSwapchain, &vkImageCount, Images);
+	HardenedAssertEQ(Result, VK_SUCCESS);
 
 
 	VkFrame* Frame = vkFrames;
@@ -2765,7 +2824,7 @@ VulkanCreateSwapchain(
 	SwapchainInfo.pQueueFamilyIndices = NULL;
 	SwapchainInfo.preTransform = vkTransform;
 	SwapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	SwapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	SwapchainInfo.presentMode = vkPresentMode;
 	SwapchainInfo.clipped = VK_TRUE;
 	SwapchainInfo.oldSwapchain = OldSwapchain;
 

@@ -15,12 +15,13 @@ uint64_t LastDrawAt;
 
 Static UIElement* RootElement;
 
-UIElement* ElementUnderMouse;
-UIElement* ClickableUnderMouse;
-UIElement* ScrollableUnderMouse;
-UIElement* SelectedElement;
-UIElement* SelectedSelectableElement;
-bool SameElement;
+Pair UIMouse;
+UIElement* UIElementUnderMouse;
+UIElement* UIClickableUnderMouse;
+UIElement* UIScrollableUnderMouse;
+UIElement* UISelectedElement;
+UIElement* UISelectedSelectableElement;
+bool UISameElement;
 
 
 Static void
@@ -262,13 +263,11 @@ UIDrawElement(
 			MouseClip = ContentPostClip;
 		}
 
-		Pair Mouse = WindowGetMousePosition();
-
 		if(
-			Mouse.X >= MouseClip.MinX &&
-			Mouse.Y >= MouseClip.MinY &&
-			Mouse.X <= MouseClip.MaxX &&
-			Mouse.Y <= MouseClip.MaxY
+			UIMouse.X >= MouseClip.MinX &&
+			UIMouse.Y >= MouseClip.MinY &&
+			UIMouse.X <= MouseClip.MaxX &&
+			UIMouse.Y <= MouseClip.MaxY
 			)
 		{
 			bool OldHovered = Element->Hovered;
@@ -288,16 +287,16 @@ UIDrawElement(
 
 			if(Element->Hovered)
 			{
-				ElementUnderMouse = Element;
+				UIElementUnderMouse = Element;
 
 				if(Element->Clickable && !Element->ClickPassthrough)
 				{
-					ClickableUnderMouse = Element;
+					UIClickableUnderMouse = Element;
 				}
 
 				if(Element->Scrollable && !Element->ScrollPassthrough)
 				{
-					ScrollableUnderMouse = Element;
+					UIScrollableUnderMouse = Element;
 				}
 			}
 			else
@@ -364,9 +363,18 @@ UIDrawCallback(
 
 	Depth = DRAW_DEPTH_LEAP;
 
-	ElementUnderMouse = NULL;
-	ClickableUnderMouse = NULL;
-	ScrollableUnderMouse = NULL;
+	Pair Mouse = WindowGetMousePosition();
+
+	UIMouse =
+	(Pair)
+	{
+		.X = CLAMP_SYM(Mouse.X, Root->Extent.W),
+		.Y = CLAMP_SYM(Mouse.Y, Root->Extent.H)
+	};
+
+	UIElementUnderMouse = NULL;
+	UIClickableUnderMouse = NULL;
+	UIScrollableUnderMouse = NULL;
 
 	UIDrawElement(
 		Root,
@@ -379,13 +387,13 @@ UIDrawCallback(
 		NULL
 		);
 
-	AssertNotNull(ElementUnderMouse);
+	AssertNotNull(UIElementUnderMouse);
 
-	if(ElementUnderMouse->Selectable)
+	if(UIElementUnderMouse->Selectable)
 	{
 		WindowSetCursor(WINDOW_CURSOR_TYPING);
 	}
-	else if(ElementUnderMouse->Clickable)
+	else if(UIElementUnderMouse->Clickable)
 	{
 		WindowSetCursor(WINDOW_CURSOR_POINTING);
 	}
@@ -407,11 +415,11 @@ UIMouseDownCallback(
 		return;
 	}
 
-	SelectedElement = ClickableUnderMouse;
+	UISelectedElement = UIClickableUnderMouse;
 
-	if(SelectedElement)
+	if(UISelectedElement)
 	{
-		SelectedElement->Held = true;
+		UISelectedElement->Held = true;
 
 		UIMouseDownData EventData =
 		(UIMouseDownData)
@@ -421,7 +429,7 @@ UIMouseDownCallback(
 			.Clicks = Data->Clicks
 		};
 
-		EventNotify(&SelectedElement->MouseDownTarget, &EventData);
+		EventNotify(&UISelectedElement->MouseDownTarget, &EventData);
 	}
 }
 
@@ -437,9 +445,9 @@ UIMouseUpCallback(
 		return;
 	}
 
-	if(SelectedElement)
+	if(UISelectedElement)
 	{
-		SameElement = ClickableUnderMouse == SelectedElement;
+		UISameElement = UIClickableUnderMouse == UISelectedElement;
 
 		UIMouseUpData EventData =
 		(UIMouseUpData)
@@ -448,9 +456,9 @@ UIMouseUpCallback(
 			.Position = Data->Position
 		};
 
-		EventNotify(&SelectedElement->MouseUpTarget, &EventData);
+		EventNotify(&UISelectedElement->MouseUpTarget, &EventData);
 
-		SelectedElement = NULL;
+		UISelectedElement = NULL;
 	}
 }
 
@@ -676,15 +684,13 @@ UIMouseOverElement(
 	 * during drawing). Due to that, the first if statement here is optimized.
 	 */
 
-	Pair Mouse = WindowGetMousePosition();
-
 	{ /* Bound check */
 		float Diameter = Element->BorderRadius * 2.0f;
 		float MinX = Element->EndExtent.X - Element->Extent.W - Diameter;
 		float MinY = Element->EndExtent.Y - Element->Extent.H - Diameter;
 		float MaxX = Element->EndExtent.X + Element->Extent.W + Diameter;
 		float MaxY = Element->EndExtent.Y + Element->Extent.H + Diameter;
-		AssertFalse((Mouse.X < MinX || Mouse.Y < MinY || Mouse.X > MaxX || Mouse.Y > MaxY));
+		AssertFalse((UIMouse.X < MinX || UIMouse.Y < MinY || UIMouse.X > MaxX || UIMouse.Y > MaxY));
 	}
 
 	float MinX = Element->EndExtent.X - Element->Extent.W;
@@ -694,8 +700,8 @@ UIMouseOverElement(
 
 	if(
 		Element->BorderRadius == 0.0f ||
-		(Mouse.X >= MinX && Mouse.X <= MaxX) ||
-		(Mouse.Y >= MinY && Mouse.Y <= MaxY)
+		(UIMouse.X >= MinX && UIMouse.X <= MaxX) ||
+		(UIMouse.Y >= MinY && UIMouse.Y <= MaxY)
 		)
 	{
 		return true;
@@ -703,8 +709,8 @@ UIMouseOverElement(
 
 	/* At this point, only need to check corners. */
 
-	float DiffX = Mouse.X;
-	if(Mouse.X < MinX)
+	float DiffX = UIMouse.X;
+	if(UIMouse.X < MinX)
 	{
 		DiffX -= MinX;
 	}
@@ -713,8 +719,8 @@ UIMouseOverElement(
 		DiffX -= MaxX;
 	}
 
-	float DiffY = Mouse.Y;
-	if(Mouse.Y < MinY)
+	float DiffY = UIMouse.Y;
+	if(UIMouse.Y < MinY)
 	{
 		DiffY -= MinY;
 	}

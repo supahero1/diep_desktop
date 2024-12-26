@@ -32,6 +32,9 @@ Name##__BITS = GET_BITS(SHIFT( Name##__COUNT ))
     _a > _b ? _a : _b;          \
 })
 
+#define CLAMP(a, min, max) MIN(MAX((a), (min)), (max))
+#define CLAMP_SYM(a, min_max) CLAMP((a), -(min_max), (min_max))
+
 #define UINT_TO_FLOAT(a)	\
 ({							\
 	union					\

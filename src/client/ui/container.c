@@ -277,13 +277,13 @@ UIContainerPreClip(
 
 		if(Container->Axis == UI_AXIS_VERTICAL)
 		{
-			float ClampedGoalOffsetY = MIN(MAX(Container->GoalOffsetY, Parent->Extent.H - Element->Extent.H), 0);
+			float ClampedGoalOffsetY = CLAMP(Container->GoalOffsetY, Parent->Extent.H - Element->Extent.H, 0);
 			Container->GoalOffsetY = glm_lerpc(Container->GoalOffsetY, ClampedGoalOffsetY, 0.5f * DeltaTime);
 			Container->OffsetY     = glm_lerpc(Container->OffsetY, Container->GoalOffsetY, 0.2f * DeltaTime);
 		}
 		else
 		{
-			float ClampedGoalOffsetX = MIN(MAX(Container->GoalOffsetX, Parent->Extent.W - Element->Extent.W), 0);
+			float ClampedGoalOffsetX = CLAMP(Container->GoalOffsetX, Parent->Extent.W - Element->Extent.W, 0);
 			Container->GoalOffsetX = glm_lerpc(Container->GoalOffsetX, ClampedGoalOffsetX, 0.5f * DeltaTime);
 			Container->OffsetX     = glm_lerpc(Container->OffsetX, Container->GoalOffsetX, 0.2f * DeltaTime);
 		}

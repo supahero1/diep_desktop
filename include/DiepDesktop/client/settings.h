@@ -4,6 +4,12 @@
 #include <DiepDesktop/shared/event.h>
 
 
+typedef enum Setting : uint32_t
+{
+	kSETTING
+}
+Setting;
+
 typedef enum SettingType : uint8_t
 {
 	SETTING_TYPE_INTEGER,
@@ -24,7 +30,7 @@ typedef union SettingValue
 	int64_t Enum;
 	ARGB Color;
 }
-SettingValue;
+SettingValue; // merge with constraint below
 
 typedef union SettingConstraint
 {

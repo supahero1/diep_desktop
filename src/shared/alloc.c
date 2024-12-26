@@ -21,7 +21,9 @@ extern "C" {
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_std.h>
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && (VALGRIND || __has_include(<valgrind/valgrind.h>))
+	#define ALLOC_VALGRIND
+
 	#include <stdlib.h>
 
 	#include <valgrind/valgrind.h>
@@ -1236,7 +1238,7 @@ AllocFreeVirtualFunc(
 }
 
 
-Static bool
+Static int
 AllocHandleIsVirtual(
 	_in_ AllocHandleInternal* Handle
 	)
@@ -1719,7 +1721,7 @@ AllocAllocUH(
 		return NULL;
 	}
 
-#ifndef NDEBUG
+#ifdef ALLOC_VALGRIND
 	if(RUNNING_ON_VALGRIND)
 	{
 		if(Zero)
@@ -1767,7 +1769,7 @@ AllocFreeUH(
 		return;
 	}
 
-#ifndef NDEBUG
+#ifdef ALLOC_VALGRIND
 	if(RUNNING_ON_VALGRIND)
 	{
 		free((void*) Ptr);
@@ -1782,7 +1784,7 @@ AllocFreeUH(
 }
 
 
-#ifndef NDEBUG
+#ifdef ALLOC_VALGRIND
 	#define ALLOC_REALLOC_CHECK_VALGRIND()					\
 	do														\
 	{														\

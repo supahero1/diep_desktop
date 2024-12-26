@@ -146,7 +146,7 @@ UICheckboxMouseUpCallback(
 	UIMouseUpData* Data
 	)
 {
-	if(!SameElement)
+	if(!UISameElement)
 	{
 		return;
 	}

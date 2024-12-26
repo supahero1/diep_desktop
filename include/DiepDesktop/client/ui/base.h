@@ -499,12 +499,13 @@ typedef struct UIElementInfo
 UIElementInfo;
 
 
-extern UIElement* ElementUnderMouse;
-extern UIElement* ClickableUnderMouse;
-extern UIElement* ScrollableUnderMouse;
-extern UIElement* SelectedElement;
-extern UIElement* SelectedSelectableElement;
-extern bool SameElement;
+extern Pair UIMouse;
+extern UIElement* UIElementUnderMouse;
+extern UIElement* UIClickableUnderMouse;
+extern UIElement* UIScrollableUnderMouse;
+extern UIElement* UISelectedElement;
+extern UIElement* UISelectedSelectableElement;
+extern bool UISameElement;
 
 
 extern void
