@@ -105,7 +105,7 @@ typedef void
 typedef struct ThreadData
 {
 	ThreadFunc Func;
-	void* Data;
+	void* Arg;
 }
 ThreadData;
 

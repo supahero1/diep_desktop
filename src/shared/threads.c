@@ -184,7 +184,7 @@ ThreadFuncInternal(
 
 	MutexUnlock(&Internal->Mtx);
 
-	Data.Func(Data.Data);
+	Data.Func(Data.Arg);
 
 	return NULL;
 }
@@ -728,7 +728,7 @@ ThreadPoolTryWorkCommon(
 		ThreadPoolUnlock(Pool);
 	}
 
-	Data.Func(Data.Data);
+	Data.Func(Data.Arg);
 }
 
 

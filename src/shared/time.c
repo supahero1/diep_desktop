@@ -174,12 +174,16 @@ TimeGetLatest(
 
 
 #define TimeOfTimeout(Index)				\
-	Timers->Timeouts[Index].Time
+(											\
+	Timers->Timeouts[Index].Time			\
+	)
 
 #define TimeOfInterval(Index)				\
+(											\
 	Timers->Intervals[Index].BaseTime		\
 		+ Timers->Intervals[Index].Interval	\
-		* Timers->Intervals[Index].Count
+		* Timers->Intervals[Index].Count	\
+	)
 
 
 Static void
@@ -192,12 +196,12 @@ TimeSetLatest(
 
 	if(Timers->TimeoutsUsed > 1)
 	{
-		Latest = MIN(Latest, TimeOfTimeout(1));
+		Latest = MIN(Latest, TimeOfTimeout(1) & (~1));
 	}
 
 	if(Timers->IntervalsUsed > 1)
 	{
-		Latest = MIN(Latest, TimeOfInterval(1));
+		Latest = MIN(Latest, TimeOfInterval(1) | 1);
 	}
 
 	if(Latest == UINT64_MAX)
@@ -613,7 +617,7 @@ TimeInit(
 	(ThreadData)
 	{
 		.Func = TimeThreadFunc,
-		.Data = Timers
+		.Arg = Timers
 	};
 
 	ThreadInit(&Timers->Thread, Data);

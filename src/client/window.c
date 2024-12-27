@@ -3299,7 +3299,7 @@ WindowRun(
 	(ThreadData)
 	{
 		.Func = VulkanThreadFN,
-		.Data = NULL
+		.Arg = NULL
 	};
 
 	ThreadInit(&vkThread, Data);

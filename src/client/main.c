@@ -1,10 +1,12 @@
 // #include <DiepDesktop/socket.h>
 
 #include <DiepDesktop/shared/base.h>
+#include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/rand.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/client/window.h>
 #include <DiepDesktop/shared/threads.h>
+#include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/shared/bit_buffer.h>
 
 #include <DiepDesktop/client/ui/base.h>
