@@ -1,53 +1,11 @@
 #pragma once
 
 #include <stdint.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 
-#ifdef _WIN32
-	#include <windows.h>
-
-	typedef HANDLE ThreadID;
-	typedef CRITICAL_SECTION Mutex;
-	typedef CONDITION_VARIABLE CondVar;
-#else
-	#include <pthread.h>
-
-	typedef pthread_t ThreadID;
-	typedef pthread_mutex_t Mutex;
-	typedef pthread_cond_t CondVar;
-#endif
-
-
-typedef void
-(*ThreadType)(
-	void* Arg
-	);
-
-
-extern void
-ThreadInit(
-	ThreadID* Thread,
-	ThreadType Func,
-	void* Arg
-	);
-
-
-extern void
-ThreadWait(
-	ThreadID Thread
-	);
-
-
-extern void
-ThreadQuit(
-	void
-	);
-
-
-extern void
-ThreadDestroy(
-	ThreadID Thread
-	);
+typedef pthread_mutex_t Mutex;
 
 
 extern void
@@ -74,6 +32,9 @@ MutexUnlock(
 	);
 
 
+typedef pthread_cond_t CondVar;
+
+
 extern void
 CondVarInit(
 	CondVar* Var
@@ -96,4 +57,262 @@ CondVarWait(
 extern void
 CondVarWake(
 	CondVar* Var
+	);
+
+
+typedef sem_t Semaphore;
+
+
+extern void
+SemaphoreInit(
+	Semaphore* Sem,
+	uint32_t Value
+	);
+
+
+extern void
+SemaphoreDestroy(
+	Semaphore* Sem
+	);
+
+
+extern void
+SemaphoreWait(
+	Semaphore* Sem
+	);
+
+
+extern void
+SemaphoreTimedWait(
+	Semaphore* Sem,
+	uint64_t Nanoseconds
+	);
+
+
+extern void
+SemaphorePost(
+	Semaphore* Sem
+	);
+
+
+typedef pthread_t ThreadT;
+
+typedef void
+(*ThreadFunc)(
+	void* Data
+	);
+
+typedef struct ThreadData
+{
+	ThreadFunc Func;
+	void* Data;
+}
+ThreadData;
+
+
+extern void
+ThreadInit(
+	ThreadT* Thread,
+	ThreadData Data
+	);
+
+
+extern void
+ThreadDestroy(
+	ThreadT* Thread
+	);
+
+
+extern void
+ThreadCancelOn(
+	void
+	);
+
+
+extern void
+ThreadCancelOff(
+	void
+	);
+
+
+extern void
+ThreadAsyncOn(
+	void
+	);
+
+
+extern void
+ThreadAsyncOff(
+	void
+	);
+
+
+extern void
+ThreadDetach(
+	ThreadT Thread
+	);
+
+
+extern void
+ThreadJoin(
+	ThreadT Thread
+	);
+
+
+extern void
+ThreadCancelSync(
+	ThreadT Thread
+	);
+
+
+extern void
+ThreadCancelAsync(
+	ThreadT Thread
+	);
+
+
+extern void
+ThreadExit(
+	void
+	);
+
+
+extern void
+ThreadSleep(
+	uint64_t Nanoseconds
+	);
+
+
+typedef struct ThreadsT
+{
+	ThreadT* Threads;
+	uint32_t Used;
+	uint32_t Size;
+}
+ThreadsT;
+
+
+extern void
+ThreadsInit(
+	ThreadsT* Threads
+	);
+
+
+extern void
+ThreadsDestroy(
+	ThreadsT* Threads
+	);
+
+
+extern void
+ThreadsAdd(
+	ThreadsT* Threads,
+	ThreadData Data,
+	uint32_t Count
+	);
+
+
+extern void
+ThreadsCancelSync(
+	ThreadsT* Threads,
+	uint32_t Count
+	);
+
+
+extern void
+ThreadsCancelAsync(
+	ThreadsT* Threads,
+	uint32_t Count
+	);
+
+
+extern void
+ThreadsShutdownSync(
+	ThreadsT* Threads
+	);
+
+
+extern void
+ThreadsShutdownAsync(
+	ThreadsT* Threads
+	);
+
+
+typedef struct ThreadPoolT
+{
+	Semaphore Sem;
+	Mutex Mtx;
+
+	ThreadData* Queue;
+	uint32_t Used;
+	uint32_t Size;
+}
+ThreadPoolT;
+
+
+extern void
+ThreadPoolFunc(
+	void* Data
+	);
+
+
+extern void
+ThreadPoolInit(
+	ThreadPoolT* Pool
+	);
+
+
+extern void
+ThreadPoolDestroy(
+	ThreadPoolT* Pool
+	);
+
+
+extern void
+ThreadPoolLock(
+	ThreadPoolT* Pool
+	);
+
+
+extern void
+ThreadPoolUnlock(
+	ThreadPoolT* Pool
+	);
+
+
+extern void
+ThreadPoolAddU(
+	ThreadPoolT* Pool,
+	ThreadData Data
+	);
+
+
+extern void
+ThreadPoolAdd(
+	ThreadPoolT* Pool,
+	ThreadData Data
+	);
+
+
+extern void
+ThreadPoolTryWorkU(
+	ThreadPoolT* Pool
+	);
+
+
+extern void
+ThreadPoolTryWork(
+	ThreadPoolT* Pool
+	);
+
+
+extern void
+ThreadPoolWorkU(
+	ThreadPoolT* Pool
+	);
+
+
+extern void
+ThreadPoolWork(
+	ThreadPoolT* Pool
 	);

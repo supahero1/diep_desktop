@@ -87,7 +87,7 @@ endif
 
 
 SHARED_FILES := alloc base debug event file threads rand \
-	bit_buffer hash
+	bit_buffer hash time
 CLIENT_FILES := tex/base tex/font ui/base ui/container \
 	ui/checkbox color dds main volk window settings base64
 SERVER_FILES := main quadtree sort

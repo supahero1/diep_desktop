@@ -98,25 +98,25 @@ VkFrame;
 Static VkFrame vkFrames[VULKAN_MAX_IMAGES];
 
 
-typedef enum Semaphore
+typedef enum VkBarrierSemaphore
 {
-	SEMAPHORE_IMAGE_AVAILABLE,
-	SEMAPHORE_RENDER_FINISHED,
-	kSEMAPHORE
+	BARRIER_SEMAPHORE_IMAGE_AVAILABLE,
+	BARRIER_SEMAPHORE_RENDER_FINISHED,
+	kBARRIER_SEMAPHORE
 }
-Semaphore;
+VkBarrierSemaphore;
 
-typedef enum Fence
+typedef enum VkBarrierFence
 {
-	FENCE_IN_FLIGHT,
-	kFENCE
+	BARRIER_FENCE_IN_FLIGHT,
+	kBARRIER_FENCE
 }
-Fence;
+VkBarrierFence;
 
 typedef struct VkBarrier
 {
-	VkSemaphore Semaphores[kSEMAPHORE];
-	VkFence Fences[kFENCE];
+	VkSemaphore Semaphores[kBARRIER_SEMAPHORE];
+	VkFence Fences[kBARRIER_FENCE];
 }
 VkBarrier;
 
@@ -221,7 +221,7 @@ Static VkDescriptorPool vkDescriptorPool;
 Static VkDescriptorSet vkDescriptorSet;
 
 
-Static ThreadID vkThread;
+Static ThreadT vkThread;
 Static _Atomic uint8_t vkShouldRun;
 Static Mutex Mtx;
 Static CondVar Cond;
@@ -3155,12 +3155,12 @@ VulkanDraw(
 	void
 	)
 {
-	VkResult Result = vkWaitForFences(vkDevice, 1, vkBarrier->Fences + FENCE_IN_FLIGHT, VK_TRUE, UINT64_MAX);
+	VkResult Result = vkWaitForFences(vkDevice, 1, vkBarrier->Fences + BARRIER_FENCE_IN_FLIGHT, VK_TRUE, UINT64_MAX);
 	HardenedAssertEQ(Result, VK_SUCCESS);
 
 	uint32_t ImageIndex;
 	Result = vkAcquireNextImageKHR(vkDevice, vkSwapchain, UINT64_MAX,
-		vkBarrier->Semaphores[SEMAPHORE_IMAGE_AVAILABLE], VK_NULL_HANDLE, &ImageIndex);
+		vkBarrier->Semaphores[BARRIER_SEMAPHORE_IMAGE_AVAILABLE], VK_NULL_HANDLE, &ImageIndex);
 	if(Result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		VulkanRecreateSwapchain();
@@ -3170,7 +3170,7 @@ VulkanDraw(
 
 	VkFrame* Frame = vkFrames + ImageIndex;
 
-	Result = vkResetFences(vkDevice, 1, vkBarrier->Fences + FENCE_IN_FLIGHT);
+	Result = vkResetFences(vkDevice, 1, vkBarrier->Fences + BARRIER_FENCE_IN_FLIGHT);
 	HardenedAssertEQ(Result, VK_SUCCESS);
 
 
@@ -3201,21 +3201,21 @@ VulkanDraw(
 	SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	SubmitInfo.pNext = NULL;
 	SubmitInfo.waitSemaphoreCount = 1;
-	SubmitInfo.pWaitSemaphores = vkBarrier->Semaphores + SEMAPHORE_IMAGE_AVAILABLE;
+	SubmitInfo.pWaitSemaphores = vkBarrier->Semaphores + BARRIER_SEMAPHORE_IMAGE_AVAILABLE;
 	SubmitInfo.pWaitDstStageMask = WaitStages;
 	SubmitInfo.commandBufferCount = 1;
 	SubmitInfo.pCommandBuffers = &Frame->CommandBuffer;
 	SubmitInfo.signalSemaphoreCount = 1;
-	SubmitInfo.pSignalSemaphores = vkBarrier->Semaphores + SEMAPHORE_RENDER_FINISHED;
+	SubmitInfo.pSignalSemaphores = vkBarrier->Semaphores + BARRIER_SEMAPHORE_RENDER_FINISHED;
 
-	Result = vkQueueSubmit(vkQueue, 1, &SubmitInfo, vkBarrier->Fences[FENCE_IN_FLIGHT]);
+	Result = vkQueueSubmit(vkQueue, 1, &SubmitInfo, vkBarrier->Fences[BARRIER_FENCE_IN_FLIGHT]);
 	HardenedAssertEQ(Result, VK_SUCCESS);
 
 	VkPresentInfoKHR PresentInfo = {0};
 	PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	PresentInfo.pNext = NULL;
 	PresentInfo.waitSemaphoreCount = 1;
-	PresentInfo.pWaitSemaphores = vkBarrier->Semaphores + SEMAPHORE_RENDER_FINISHED;
+	PresentInfo.pWaitSemaphores = vkBarrier->Semaphores + BARRIER_SEMAPHORE_RENDER_FINISHED;
 	PresentInfo.swapchainCount = 1;
 	PresentInfo.pSwapchains = &vkSwapchain;
 	PresentInfo.pImageIndices = &ImageIndex;
@@ -3293,9 +3293,16 @@ WindowRun(
 {
 	signal(SIGINT, WindowInterrupt);
 
-	atomic_store_explicit(&vkShouldRun, 1, memory_order_relaxed);
+	atomic_init(&vkShouldRun, 1);
 
-	ThreadInit(&vkThread, VulkanThreadFN, NULL);
+	ThreadData Data =
+	(ThreadData)
+	{
+		.Func = VulkanThreadFN,
+		.Data = NULL
+	};
+
+	ThreadInit(&vkThread, Data);
 
 	while(1)
 	{
@@ -3319,7 +3326,8 @@ WindowFree(
 	void
 	)
 {
-	ThreadWait(vkThread);
+	ThreadJoin(vkThread);
+	ThreadDestroy(&vkThread);
 
 	vkDeviceWaitIdle(vkDevice);
 
