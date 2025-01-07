@@ -6,5 +6,5 @@
 extern void
 QuickSort(
 	uint16_t* Array,
-	int32_t Length
+	int32_t len
 	);

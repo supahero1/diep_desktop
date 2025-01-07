@@ -5,15 +5,15 @@
 
 typedef struct QuadtreeNode
 {
-	int32_t Count;
+	int32_t count;
 
 	union
 	{
-		uint32_t Next;
+		uint32_t next;
 
 		struct
 		{
-			uint32_t Head;
+			uint32_t head;
 			uint32_t PositionFlags;
 		};
 
@@ -25,7 +25,7 @@ QuadtreeNode;
 
 typedef struct QuadtreeNodeEntity
 {
-	uint32_t Next;
+	uint32_t next;
 	uint32_t Entity;
 }
 QuadtreeNodeEntity;
@@ -36,13 +36,13 @@ QuadtreeNodeEntity;
 
 	typedef struct QuadtreeEntityDataT
 	{
-		QuadtreeRectExtent RectExtent;
+		QuadtreeRectExtent rect_extent_t;
 	}
 	QuadtreeEntityDataT;
 
 
 	#define QuadtreeEntityData QuadtreeEntityDataT
-	#define QuadtreeGetEntityDataRectExtent(Entity) (Entity).RectExtent
+	#define QuadtreeGetEntityDataRectExtent(Entity) (Entity).rect_extent_t
 #endif
 
 
@@ -50,8 +50,8 @@ typedef struct QuadtreeEntity
 {
 	union
 	{
-		QuadtreeEntityData Data;
-		uint32_t Next;
+		QuadtreeEntityData data;
+		uint32_t next;
 	};
 
 	uint32_t QueryTick;
@@ -61,7 +61,7 @@ QuadtreeEntity;
 
 
 #define QuadtreeGetEntityRectExtent(Entity)	\
-QuadtreeGetEntityDataRectExtent((Entity)->Data)
+QuadtreeGetEntityDataRectExtent((Entity)->data)
 
 
 typedef struct QuadtreeNodeInfo
@@ -74,7 +74,7 @@ QuadtreeNodeInfo;
 
 typedef struct QuadtreeHTEntry
 {
-	uint32_t Next;
+	uint32_t next;
 	uint32_t Idx[2];
 }
 QuadtreeHTEntry;
@@ -98,7 +98,7 @@ QuadtreeNodeRemoval;
 
 typedef struct QuadtreeInsertion
 {
-	QuadtreeEntityData Data;
+	QuadtreeEntityData data;
 }
 QuadtreeInsertion;
 
@@ -114,7 +114,7 @@ typedef enum QuadtreeStatus
 {
 	QUADTREE_STATUS_CHANGED,
 	QUADTREE_STATUS_NOT_CHANGED,
-	kQUADTREE_STATUS
+	QUADTREE_STATUS__COUNT
 }
 QuadtreeStatus;
 
@@ -133,7 +133,7 @@ typedef void
 typedef void
 (*QuadtreeNodeQueryT)(
 	Quadtree* QT,
-	const QuadtreeNodeInfo* Info
+	const QuadtreeNodeInfo* info
 	);
 
 
@@ -192,8 +192,8 @@ struct Quadtree
 	uint32_t QueryTick;
 	uint8_t UpdateTick;
 
-	QuadtreeRectExtent RectExtent;
-	QuadtreeHalfExtent HalfExtent;
+	QuadtreeRectExtent rect_extent_t;
+	QuadtreeHalfExtent half_extent_t;
 
 	QuadtreePosition MinSize;
 };
@@ -214,7 +214,7 @@ QuadtreeFree(
 extern void
 QuadtreeInsert(
 	Quadtree* QT,
-	const QuadtreeEntityData* Data
+	const QuadtreeEntityData* data
 	);
 
 

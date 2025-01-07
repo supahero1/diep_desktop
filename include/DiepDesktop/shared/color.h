@@ -16,40 +16,61 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <DiepDesktop/shared/extent.h>
 
 
-typedef struct file
+typedef struct color_hsv
 {
-	uint64_t len;
-	uint8_t* data;
+	float h;
+	float s;
+	float v;
 }
-file_t;
+color_hsv_t;
 
 
-extern bool
-file_write(
-	const char* path,
-	file_t file
+typedef struct color_argb
+{
+	uint8_t b;
+	uint8_t g;
+	uint8_t r;
+	uint8_t a;
+}
+color_argb_t;
+
+
+extern color_hsv_t
+color_argb_to_hsv(
+	color_argb_t argb
 	);
 
 
-extern bool
-file_read_cap(
-	const char* path,
-	file_t* file,
-	uint64_t cap
+extern color_argb_t
+color_hsv_to_argb(
+	color_hsv_t hsv
 	);
 
 
-extern bool
-file_read(
-	const char* path,
-	file_t* file
+extern pair_t
+color_hsv_to_pos(
+	color_hsv_t hsv
 	);
 
 
-extern void
-file_free(
-	file_t file
+extern color_hsv_t
+color_pos_to_hsv(
+	pair_t pos
+	);
+
+
+extern uint8_t
+color_a_mul_a(
+	uint8_t a_1,
+	uint8_t a_2
+	);
+
+
+extern color_argb_t
+color_argb_mul_a(
+	color_argb_t argb,
+	uint8_t a
 	);

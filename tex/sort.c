@@ -1,37 +1,50 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/debug.h>
 
 #include <png.h>
-#include <stdio.h>
 #include <dirent.h>
-#include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
 
-static uint32_t
-SizeofPNG(
-	const char* Filename
+private uint32_t
+sort_sizeof_png(
+	const char* path
 	)
 {
-	FILE* File = fopen(Filename, "rb");
-	AssertNotNull(File);
+	FILE* file = fopen(path, "rb");
+	assert_not_null(file);
 
-	png_structp PNG = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-	AssertNotNull(PNG);
+	png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	assert_not_null(png);
 
-	png_infop Info = png_create_info_struct(PNG);
-	AssertNotNull(Info);
+	png_infop info = png_create_info_struct(png);
+	assert_not_null(info);
 
-	png_init_io(PNG, File);
-	png_read_info(PNG, Info);
+	png_init_io(png, file);
+	png_read_info(png, info);
 
-	uint32_t Size = png_get_image_width(PNG, Info);
+	uint32_t size = png_get_image_width(png, info);
 
-	png_destroy_read_struct(&PNG, &Info, NULL);
-	fclose(File);
+	png_destroy_read_struct(&png, &info, NULL);
+	fclose(file);
 
-	return Size;
+	return size;
 }
 
 
@@ -40,45 +53,46 @@ main(
 	void
 	)
 {
-	struct dirent* Entry;
-	DIR* Directory = opendir("tex/img");
-	AssertNotNull(Directory);
+	struct dirent* entry;
+	DIR* dir = opendir("tex/img");
+	assert_not_null(dir);
 
-	char OldPath[256];
-	char DirPath[256];
-	char NewPath[256];
-	int Sizes[16] = {0};
+	char old_path[256];
+	char dir_path[256];
+	char new_path[256];
+	int sizes[16] = {0};
 
-	while((Entry = readdir(Directory)) != NULL)
+	while((entry = readdir(dir)) != NULL)
 	{
-		if(!strstr(Entry->d_name, ".png"))
+		if(!strstr(entry->d_name, ".png"))
 		{
 			continue;
 		}
 
-		sprintf(OldPath, "tex/img/%s", Entry->d_name);
+		sprintf(old_path, "tex/img/%s", entry->d_name);
 
-		uint32_t Size = SizeofPNG(OldPath);
+		uint32_t size = sort_sizeof_png(old_path);
+		assert_gt(size, 0);
 
-		uint32_t SizePO2 = __builtin_ctz(Size);
-		if(Sizes[SizePO2] == 0)
+		uint32_t size_log = __builtin_ctz(size);
+		if(sizes[size_log] == 0)
 		{
-			Sizes[SizePO2] = 1;
+			sizes[size_log] = 1;
 
-			sprintf(DirPath, "tex/img/%u", Size);
+			sprintf(dir_path, "tex/img/%u", size);
 #ifdef _WIN32
-			int Status = mkdir(DirPath);
+			int status = mkdir(dir_path);
 #else
-			int Status = mkdir(DirPath, 0755);
+			int status = mkdir(dir_path, 0755);
 #endif
-			AssertEQ(Status, 0);
+			assert_eq(status, 0);
 		}
 
-		sprintf(NewPath, "tex/img/%u/%s", Size, Entry->d_name);
-		rename(OldPath, NewPath);
+		sprintf(new_path, "tex/img/%u/%s", size, entry->d_name);
+		rename(old_path, new_path);
 	}
 
-	closedir(Directory);
+	closedir(dir);
 
 	return 0;
 }

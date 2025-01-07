@@ -19,7 +19,7 @@
 typedef struct GameClient
 {
 	int FD;
-	uint32_t Next;
+	uint32_t next;
 
 	uint64_t ConnectionIdle;
 	uint64_t ActionIdle;
@@ -38,7 +38,7 @@ typedef struct GameClient
 
 	uint32_t BodyIndex;
 
-	uint8_t Buffer[GAME_CONST_CLIENT_PACKET_SIZE];
+	uint8_t buffer[GAME_CONST_CLIENT_PACKET_SIZE];
 	uint32_t BufferUsed;
 
 	uint8_t Valid:1;
@@ -50,24 +50,24 @@ typedef struct GameClient
 GameClient;
 
 
-Static GameClient Clients[GAME_CONST_MAX_PLAYERS];
-Static uint32_t ClientsUsed = 0;
-Static uint32_t FreeClient = -1;
+private GameClient Clients[GAME_CONST_MAX_PLAYERS];
+private uint32_t ClientsUsed = 0;
+private uint32_t FreeClient = -1;
 
-Static uint8_t* EntityBits;
-Static uint16_t* EntitiesInView;
-Static uint16_t EntitiesInViewCount;
+private uint8_t* EntityBits;
+private uint16_t* EntitiesInView;
+private uint16_t EntitiesInViewCount;
 
-Static GameClient* Client = NULL;
-Static uint64_t CurrentTick = 0;
-Static uint64_t LastTickAt;
-Static uint64_t CurrentTickAt;
+private GameClient* Client = NULL;
+private uint64_t CurrentTick = 0;
+private uint64_t LastTickAt;
+private uint64_t CurrentTickAt;
 
-Static QUADTREE Quadtree = {0};
+private QUADTREE Quadtree = {0};
 
 typedef struct GameEntity
 {
-	EntityType Type;
+	EntityType type;
 	uint32_t Subtype;
 
 	float VX;
@@ -95,25 +95,25 @@ typedef struct GameEntity
 }
 GameEntity;
 
-Static GameEntity* Entities = NULL;
+private GameEntity* Entities = NULL;
 
 
-Static GameEntity*
+private GameEntity*
 GetEntity(
 	const QUADTREE_ENTITY* Entity
 	)
 {
-	uint32_t Index = QuadtreeInsert(&Quadtree, Entity);
-	AssertEQ(Quadtree.EntitiesSize, GAME_CONST_MAX_ENTITIES);
+	uint32_t idx = QuadtreeInsert(&Quadtree, Entity);
+	assert_eq(Quadtree.EntitiesSize, GAME_CONST_MAX_ENTITIES);
 
-	GameEntity* Ret = Entities + Index;
+	GameEntity* Ret = Entities + idx;
 	*Ret = (GameEntity){ 0 };
 
 	return Ret;
 }
 
 
-Static void
+private void
 RetEntity(
 	const GameEntity* Entity
 	)
@@ -122,7 +122,7 @@ RetEntity(
 }
 
 
-Static GameClient*
+private GameClient*
 GetClient(
 	void
 	)
@@ -132,7 +132,7 @@ GetClient(
 	if(FreeClient != -1)
 	{
 		Ret += FreeClient;
-		FreeClient = Ret->Next;
+		FreeClient = Ret->next;
 	}
 	else
 	{
@@ -146,64 +146,64 @@ GetClient(
 }
 
 
-Static void
+private void
 RetClient(
 	void
 	)
 {
-	Client->Next = FreeClient;
+	Client->next = FreeClient;
 	Client->Valid = 0;
 	FreeClient = Client - Clients;
 }
 
 
-Static float
+private float
 LerpF(
-	float Old,
+	float old,
 	float New,
 	float By
 	)
 {
-	return Old + (New - Old) * By;
+	return old + (New - old) * By;
 }
 
 
-Static void
+private void
 GetSpawnCoords(
 	QUADTREE_ENTITY* QTEntity
 	)
 {
-	QTEntity->X = RandF() * (GAME_CONST_HALF_ARENA_SIZE * 2 - QTEntity->W) - GAME_CONST_HALF_ARENA_SIZE + QTEntity->W;
-	QTEntity->Y = RandF() * (GAME_CONST_HALF_ARENA_SIZE * 2 - QTEntity->H) - GAME_CONST_HALF_ARENA_SIZE + QTEntity->H;
+	QTEntity->x = rand_f32() * (GAME_CONST_HALF_ARENA_SIZE * 2 - QTEntity->w) - GAME_CONST_HALF_ARENA_SIZE + QTEntity->w;
+	QTEntity->y = rand_f32() * (GAME_CONST_HALF_ARENA_SIZE * 2 - QTEntity->h) - GAME_CONST_HALF_ARENA_SIZE + QTEntity->h;
 }
 
 
-Static void
+private void
 SpawnShape(
 	Shape Subtype
 	)
 {
 	QUADTREE_ENTITY QTEntity =
 	{
-		.W = ShapeHitbox[Subtype],
-		.H = ShapeHitbox[Subtype]
+		.w = ShapeHitbox[Subtype],
+		.h = ShapeHitbox[Subtype]
 	};
 
 	GetSpawnCoords(&QTEntity);
 
 	GameEntity* Entity = GetEntity(&QTEntity);
 
-	Entity->Type = ENTITY_TYPE_SHAPE;
+	Entity->type = ENTITY_TYPE_SHAPE;
 	Entity->Subtype = Subtype;
-	Entity->Angle = RandAngle();
-	Entity->AngleDir = RandBit() ? -1 : 1;
+	Entity->Angle = rand_angle();
+	Entity->AngleDir = rand_bool() ? -1 : 1;
 	Entity->MaxHP = ShapeMaxHP[Subtype];
-	Entity->HP = MIN(Entity->MaxHP, RandF() * Entity->MaxHP * 6);
+	Entity->HP = MACRO_MIN(Entity->MaxHP, rand_f32() * Entity->MaxHP * 6);
 	Entity->ConstrainToArena = 1;
 }
 
 
-Static int
+private int
 QuadtreeUpdateFN(
 	QUADTREE* Quadtree,
 	uint32_t EntityIdx
@@ -212,7 +212,7 @@ QuadtreeUpdateFN(
 	QUADTREE_ENTITY* QTEntity = Quadtree->Entities + EntityIdx;
 	GameEntity* Entity = Entities + EntityIdx;
 
-	switch(Entity->Type)
+	switch(Entity->type)
 	{
 
 	case ENTITY_TYPE_TANK:
@@ -233,27 +233,27 @@ QuadtreeUpdateFN(
 
 	}
 
-	QTEntity->X += Entity->ColVX;
-	QTEntity->Y += Entity->ColVY;
+	QTEntity->x += Entity->ColVX;
+	QTEntity->y += Entity->ColVY;
 
 	Entity->ColVX = LerpF(Entity->ColVX, 0, 0.095f);
 	Entity->ColVY = LerpF(Entity->ColVY, 0, 0.095f);
 
-	QTEntity->X += Entity->VX;
-	QTEntity->Y += Entity->VY;
+	QTEntity->x += Entity->VX;
+	QTEntity->y += Entity->VY;
 
 	if(Entity->ConstrainToArena)
 	{
 		float Limit = GAME_CONST_HALF_ARENA_SIZE + GAME_CONST_BORDER_PADDING;
 
-		if(QTEntity->X - QTEntity->W < -Limit)
+		if(QTEntity->x - QTEntity->w < -Limit)
 		{
-			QTEntity->X = -Limit + QTEntity->W;
+			QTEntity->x = -Limit + QTEntity->w;
 			Entity->ResetNX = 1;
 		}
-		else if(QTEntity->X + QTEntity->W > Limit)
+		else if(QTEntity->x + QTEntity->w > Limit)
 		{
-			QTEntity->X = Limit - QTEntity->W;
+			QTEntity->x = Limit - QTEntity->w;
 			Entity->ResetPX = 1;
 		}
 		else
@@ -262,14 +262,14 @@ QuadtreeUpdateFN(
 			Entity->ResetNX = 0;
 		}
 
-		if(QTEntity->Y - QTEntity->H < -Limit)
+		if(QTEntity->y - QTEntity->h < -Limit)
 		{
-			QTEntity->Y = -Limit + QTEntity->H;
+			QTEntity->y = -Limit + QTEntity->h;
 			Entity->ResetNY = 1;
 		}
-		else if(QTEntity->Y + QTEntity->H > Limit)
+		else if(QTEntity->y + QTEntity->h > Limit)
 		{
-			QTEntity->Y = Limit - QTEntity->H;
+			QTEntity->y = Limit - QTEntity->h;
 			Entity->ResetPY = 1;
 		}
 		else
@@ -284,7 +284,7 @@ QuadtreeUpdateFN(
 
 	if(Entity->HP != Entity->MaxHP && CurrentTick - Entity->DamagedAt >= 200)
 	{
-		Entity->HP = MIN(Entity->MaxHP, Entity->HP + 1);
+		Entity->HP = MACRO_MIN(Entity->MaxHP, Entity->HP + 1);
 		Entity->UpdateHP = 1;
 	}
 
@@ -292,7 +292,7 @@ QuadtreeUpdateFN(
 }
 
 
-Static int
+private int
 QuadtreeIsCollidingFN(
 	const QUADTREE* Quadtree,
 	uint32_t EntityIdxA,
@@ -302,15 +302,15 @@ QuadtreeIsCollidingFN(
 	QUADTREE_ENTITY* QTEntityA = Quadtree->Entities + EntityIdxA;
 	QUADTREE_ENTITY* QTEntityB = Quadtree->Entities + EntityIdxB;
 
-	float DiffX = QTEntityA->X - QTEntityB->X;
-	float DiffY = QTEntityA->Y - QTEntityB->Y;
-	float SumR = QTEntityA->R + QTEntityB->R;
+	float DiffX = QTEntityA->x - QTEntityB->x;
+	float DiffY = QTEntityA->y - QTEntityB->y;
+	float SumR = QTEntityA->r + QTEntityB->r;
 
 	return DiffX * DiffX + DiffY * DiffY < SumR * SumR;
 }
 
 
-Static void
+private void
 QuadtreeCollideFN(
 	QUADTREE* Quadtree,
 	uint32_t EntityIdxA,
@@ -323,8 +323,8 @@ QuadtreeCollideFN(
 	QUADTREE_ENTITY* QTEntityB = Quadtree->Entities + EntityIdxB;
 	GameEntity* EntityB = Entities + EntityIdxB;
 
-	float DiffX = QTEntityA->X - QTEntityB->X;
-	float DiffY = QTEntityA->Y - QTEntityB->Y;
+	float DiffX = QTEntityA->x - QTEntityB->x;
+	float DiffY = QTEntityA->y - QTEntityB->y;
 
 	float Dist = sqrtf(DiffX * DiffX + DiffY * DiffY);
 
@@ -360,7 +360,7 @@ QuadtreeCollideFN(
 }
 
 
-Static void
+private void
 QuadtreeViewQueryFN(
 	QUADTREE* Quadtree,
 	uint32_t EntityIdx
@@ -371,7 +371,7 @@ QuadtreeViewQueryFN(
 }
 
 
-Static void
+private void
 ClientChangeFoV(
 	float FoV
 	)
@@ -382,7 +382,7 @@ ClientChangeFoV(
 }
 
 
-Static void
+private void
 ClientCreate(
 	void
 	)
@@ -395,10 +395,10 @@ ClientCreate(
 	GameEntity* Body = GetEntity(&(
 		(QUADTREE_ENTITY)
 		{
-			.X = 0,
-			.Y = 0,
-			.W = 70,
-			.H = 70
+			.x = 0,
+			.y = 0,
+			.w = 70,
+			.h = 70
 		}
 	));
 	Body->ConstrainToArena = 1;
@@ -407,12 +407,12 @@ ClientCreate(
 
 	Client->BodyIndex = Body - Entities;
 
-	Client->EntityBits = calloc(TO_BYTES(GAME_CONST_MAX_ENTITIES), sizeof(uint8_t));
-	AssertNotNull(Client->EntityBits);
+	Client->EntityBits = calloc(MACRO_TO_BYTES(GAME_CONST_MAX_ENTITIES), sizeof(uint8_t));
+	assert_not_null(Client->EntityBits);
 }
 
 
-Static void
+private void
 ClientClose(
 	void
 	)
@@ -421,86 +421,86 @@ ClientClose(
 }
 
 
-Static void
+private void
 ClientSend(
-	const BitBuffer* Buffer
+	const bit_buffer_t* buffer
 	)
 {
-	ssize_t Bytes = send(Client->FD, Buffer->Buffer, Buffer->Length, MSG_NOSIGNAL);
+	ssize_t bytes = send(Client->FD, buffer->buffer, buffer->len, MSG_NOSIGNAL);
 
-	if(Bytes != Buffer->Length)
+	if(bytes != buffer->len)
 	{
 		ClientClose();
 	}
 }
 
 
-Static uint32_t
+private uint32_t
 ClientRead(
 	void
 	)
 {
-	BitBuffer Buffer = {0};
-	Buffer.Buffer = Client->Buffer;
-	Buffer.At = Buffer.Buffer;
-	Buffer.Length = Client->BufferUsed;
+	bit_buffer_t buffer = {0};
+	buffer.buffer = Client->buffer;
+	buffer.at = buffer.buffer;
+	buffer.len = Client->BufferUsed;
 
-	if(Buffer.Length < TO_BYTES(CLIENT_OPCODE__BITS))
+	if(buffer.len < MACRO_TO_BYTES(CLIENT_OPCODE__BITS))
 	{
 		return 0;
 	}
 
-	uintptr_t OpCode = BitBufferGetBits(&Buffer, CLIENT_OPCODE__BITS);
+	uintptr_t OpCode = bit_buffer_get_bits(&buffer, CLIENT_OPCODE__BITS);
 
 	switch(OpCode)
 	{
 
 	case CLIENT_OPCODE_INPUT:
 	{
-		if(Buffer.Length < TO_BYTES(
+		if(buffer.len < MACRO_TO_BYTES(
 			CLIENT_OPCODE__BITS +
 			FIELD_SIZE_MOUSE_X +
 			FIELD_SIZE_MOUSE_Y +
-			KEY_BUTTON__BITS))
+			WINDOW_KEY_BUTTON__BITS))
 		{
 			break;
 		}
 
-		uintptr_t MouseX = BitBufferGetBits(&Buffer, FIELD_SIZE_MOUSE_X);
+		uintptr_t MouseX = bit_buffer_get_bits(&buffer, FIELD_SIZE_MOUSE_X);
 		if(MouseX > 1920)
 		{
 			ClientClose();
 			break;
 		}
 
-		uintptr_t MouseY = BitBufferGetBits(&Buffer, FIELD_SIZE_MOUSE_Y);
+		uintptr_t MouseY = bit_buffer_get_bits(&buffer, FIELD_SIZE_MOUSE_Y);
 		if(MouseY > 1080)
 		{
 			ClientClose();
 			break;
 		}
 
-		uintptr_t Keys = BitBufferGetBits(&Buffer, KEY_BUTTON__BITS);
+		uintptr_t Keys = bit_buffer_get_bits(&buffer, WINDOW_KEY_BUTTON__BITS);
 
 		float Vertical = 0;
 		float Horizontal = 0;
 
-		if(Keys & SHIFT(KEY_BUTTON_W))
+		if(Keys & SHIFT(WINDOW_KEY_BUTTON_W))
 		{
 			--Vertical;
 		}
 
-		if(Keys & SHIFT(KEY_BUTTON_A))
+		if(Keys & SHIFT(WINDOW_KEY_BUTTON_A))
 		{
 			--Horizontal;
 		}
 
-		if(Keys & SHIFT(KEY_BUTTON_S))
+		if(Keys & SHIFT(WINDOW_KEY_BUTTON_S))
 		{
 			++Vertical;
 		}
 
-		if(Keys & SHIFT(KEY_BUTTON_D))
+		if(Keys & SHIFT(WINDOW_KEY_BUTTON_D))
 		{
 			++Horizontal;
 		}
@@ -516,7 +516,7 @@ ClientRead(
 		Client->Vertical = Vertical * GAME_CONST_MAX_MOVEMENT_SPEED;
 		Client->Horizontal = Horizontal * GAME_CONST_MAX_MOVEMENT_SPEED;
 
-		return BitBufferGetConsumed(&Buffer);
+		return BitBufferConsumed(&buffer);
 	}
 
 	default:
@@ -532,7 +532,7 @@ ClientRead(
 }
 
 
-Static void
+private void
 ClientDestroy(
 	void
 	)
@@ -542,7 +542,7 @@ ClientDestroy(
 }
 
 
-Static void
+private void
 GameUpdate(
 	void
 	)
@@ -573,8 +573,8 @@ GameUpdate(
 			Client->MovementVY = 0;
 		}
 
-		QTEntity->X += Client->MovementVX;
-		QTEntity->Y += Client->MovementVY;
+		QTEntity->x += Client->MovementVX;
+		QTEntity->y += Client->MovementVY;
 	}
 
 	QuadtreeUpdate(&Quadtree);
@@ -592,38 +592,38 @@ GameUpdate(
 
 		QUADTREE_ENTITY* QTEntity = Quadtree.Entities + Client->BodyIndex;
 
-		Client->CameraX = QTEntity->X;
-		Client->CameraY = QTEntity->Y;
+		Client->CameraX = QTEntity->x;
+		Client->CameraY = QTEntity->y;
 
-		BitBuffer Buffer = {0};
-		Buffer.Length = GAME_CONST_SERVER_PACKET_SIZE;
-		Buffer.Buffer = calloc(Buffer.Length, sizeof(uint8_t));
-		AssertNotNull(Buffer.Buffer);
-		Buffer.At = Buffer.Buffer;
+		bit_buffer_t buffer = {0};
+		buffer.len = GAME_CONST_SERVER_PACKET_SIZE;
+		buffer.buffer = calloc(buffer.len, sizeof(uint8_t));
+		assert_not_null(buffer.buffer);
+		buffer.at = buffer.buffer;
 
-		BitBufferSetBits(&Buffer, SERVER_OPCODE_UPDATE, SERVER_OPCODE__BITS);
+		bit_buffer_set_bits(&buffer, SERVER_OPCODE_UPDATE, SERVER_OPCODE__BITS);
 
-		BitBufferContext PacketLength = BitBufferSave(&Buffer);
-		BitBufferSkipBits(&Buffer, GAME_CONST_SERVER_PACKET_SIZE__BITS);
+		bit_buffer_ctx_t PacketLength = bit_buffer_save(&buffer);
+		bit_buffer_skip_bits(&buffer, GAME_CONST_SERVER_PACKET_SIZE__BITS);
 
-		BitBufferSetBits(&Buffer, (CurrentTickAt - LastTickAt) / 10000, FIELD_SIZE_TICK_DURATION);
+		bit_buffer_set_bits(&buffer, (CurrentTickAt - LastTickAt) / 10000, FIELD_SIZE_TICK_DURATION);
 
-		BitBufferSetFixedPoint(&Buffer, Client->FoV, FIXED_POINT(FOV));
-		BitBufferSetSignedFixedPoint(&Buffer, Client->CameraX, FIXED_POINT(POS));
-		BitBufferSetSignedFixedPoint(&Buffer, Client->CameraY, FIXED_POINT(POS));
+		bit_buffer_set_fixed_point(&buffer, Client->FoV, FIXED_POINT(FOV));
+		bit_buffer_set_signed_fixed_point(&buffer, Client->CameraX, FIXED_POINT(POS));
+		bit_buffer_set_signed_fixed_point(&buffer, Client->CameraY, FIXED_POINT(POS));
 
-		BitBufferContext EntitiesCount = BitBufferSave(&Buffer);
-		BitBufferSkipBits(&Buffer, GAME_CONST_MAX_ENTITIES__BITS);
+		bit_buffer_ctx_t EntitiesCount = bit_buffer_save(&buffer);
+		bit_buffer_skip_bits(&buffer, GAME_CONST_MAX_ENTITIES__BITS);
 
-		EntityBits = calloc(TO_BYTES(GAME_CONST_MAX_ENTITIES), sizeof(uint8_t));
-		AssertNotNull(EntityBits);
+		EntityBits = calloc(MACRO_TO_BYTES(GAME_CONST_MAX_ENTITIES), sizeof(uint8_t));
+		assert_not_null(EntityBits);
 
 		EntitiesInViewCount = 0;
 
 		QuadtreeQuery(&Quadtree, Client->CameraX, Client->CameraY, Client->CameraW, Client->CameraH);
 
 		uint16_t* NewEntitiesInView = malloc(sizeof(*NewEntitiesInView) * EntitiesInViewCount);
-		AssertNotNull(NewEntitiesInView);
+		assert_not_null(NewEntitiesInView);
 
 		(void) memcpy(NewEntitiesInView, EntitiesInView, sizeof(*EntitiesInView) * EntitiesInViewCount);
 
@@ -656,8 +656,8 @@ GameUpdate(
 			uint8_t OldSet = !!(Client->EntityBits[*EntityInView >> 3] & (1 << (*EntityInView & 7)));
 			uint8_t NewSet = !!(        EntityBits[*EntityInView >> 3] & (1 << (*EntityInView & 7)));
 
-			BitBufferSetBits(&Buffer, OldSet, 1);
-			BitBufferSetBits(&Buffer, NewSet, 1);
+			bit_buffer_set_bits(&buffer, OldSet, 1);
+			bit_buffer_set_bits(&buffer, NewSet, 1);
 
 			QUADTREE_ENTITY* QTEntity = Quadtree.Entities + *EntityInView;
 			GameEntity* Entity = Entities + *EntityInView;
@@ -666,21 +666,21 @@ GameUpdate(
 			{
 				/* Creation */
 
-				AssertEQ(!!NewSet, 1);
+				assert_eq(!!NewSet, 1);
 
-				BitBufferSetBits(&Buffer, Entity->Type, ENTITY_TYPE__BITS);
-				BitBufferSetBits(&Buffer, Entity->Subtype, TypeToSubtypeBits[Entity->Type]);
+				bit_buffer_set_bits(&buffer, Entity->type, ENTITY_TYPE__BITS);
+				bit_buffer_set_bits(&buffer, Entity->Subtype, TypeToSubtypeBits[Entity->type]);
 
-				BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->X - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
-				BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->Y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
+				bit_buffer_set_signed_fixed_point(&buffer, (QTEntity->x - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
+				bit_buffer_set_signed_fixed_point(&buffer, (QTEntity->y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
 
 
-				switch(Entity->Type)
+				switch(Entity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
 				{
-					BitBufferSetFixedPoint(&Buffer, QTEntity->R, FIXED_POINT(RADIUS));
+					bit_buffer_set_fixed_point(&buffer, QTEntity->r, FIXED_POINT(RADIUS));
 
 					break;
 				}
@@ -695,20 +695,20 @@ GameUpdate(
 				}
 
 
-				switch(Entity->Type)
+				switch(Entity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
 					int WriteHP = Entity->HP != Entity->MaxHP;
-					BitBufferSetBits(&Buffer, WriteHP, 1);
+					bit_buffer_set_bits(&buffer, WriteHP, 1);
 
-					BitBufferSetBits(&Buffer, Entity->TookDamage, 1);
+					bit_buffer_set_bits(&buffer, Entity->TookDamage, 1);
 
 					if(WriteHP)
 					{
-						BitBufferSetBits(&Buffer, Entity->HP, ShapeHPBits[Entity->Subtype]);
+						bit_buffer_set_bits(&buffer, Entity->HP, ShapeHPBits[Entity->Subtype]);
 					}
 
 					break;
@@ -722,17 +722,17 @@ GameUpdate(
 			{
 				/* Update */
 
-				switch(Entity->Type)
+				switch(Entity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->X - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
-					BitBufferSetSignedFixedPoint(&Buffer, (QTEntity->Y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
+					bit_buffer_set_signed_fixed_point(&buffer, (QTEntity->x - Client->CameraX) * Client->FoV, FIXED_POINT(SCREEN_POS));
+					bit_buffer_set_signed_fixed_point(&buffer, (QTEntity->y - Client->CameraY) * Client->FoV, FIXED_POINT(SCREEN_POS));
 
-					BitBufferSetBits(&Buffer, Entity->UpdateHP, 1);
-					BitBufferSetBits(&Buffer, Entity->TookDamage, 1);
+					bit_buffer_set_bits(&buffer, Entity->UpdateHP, 1);
+					bit_buffer_set_bits(&buffer, Entity->TookDamage, 1);
 
 					break;
 				}
@@ -742,7 +742,7 @@ GameUpdate(
 				}
 
 
-				switch(Entity->Type)
+				switch(Entity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
@@ -750,7 +750,7 @@ GameUpdate(
 				{
 					if(Entity->UpdateHP)
 					{
-						BitBufferSetBits(&Buffer, Entity->HP, ShapeHPBits[Entity->Subtype]);
+						bit_buffer_set_bits(&buffer, Entity->HP, ShapeHPBits[Entity->Subtype]);
 					}
 
 					break;
@@ -771,16 +771,16 @@ GameUpdate(
 		free(Client->EntityBits);
 		Client->EntityBits = EntityBits;
 
-		Buffer.Length = BitBufferGetConsumed(&Buffer);
+		buffer.len = BitBufferConsumed(&buffer);
 
-		BitBufferRestore(&Buffer, &EntitiesCount);
-		BitBufferSetBits(&Buffer, EntitiesInViewCount, GAME_CONST_MAX_ENTITIES__BITS);
+		bit_buffer_restore(&buffer, &EntitiesCount);
+		bit_buffer_set_bits(&buffer, EntitiesInViewCount, GAME_CONST_MAX_ENTITIES__BITS);
 
-		BitBufferRestore(&Buffer, &PacketLength);
-		BitBufferSetBits(&Buffer, Buffer.Length, GAME_CONST_SERVER_PACKET_SIZE__BITS);
+		bit_buffer_restore(&buffer, &PacketLength);
+		bit_buffer_set_bits(&buffer, buffer.len, GAME_CONST_SERVER_PACKET_SIZE__BITS);
 
-		ClientSend(&Buffer);
-		free(Buffer.Buffer);
+		ClientSend(&buffer);
+		free(buffer.buffer);
 	}
 }
 
@@ -794,12 +794,12 @@ main(
 	int Error;
 
 	Entities = calloc(GAME_CONST_MAX_ENTITIES, sizeof(*Entities));
-	AssertNotNull(Entities);
+	assert_not_null(Entities);
 
-	Quadtree.X = 0;
-	Quadtree.Y = 0;
-	Quadtree.W = GAME_CONST_HALF_ARENA_SIZE + GAME_CONST_HALF_ARENA_CLEAR_ZONE;
-	Quadtree.H = GAME_CONST_HALF_ARENA_SIZE + GAME_CONST_HALF_ARENA_CLEAR_ZONE;
+	Quadtree.x = 0;
+	Quadtree.y = 0;
+	Quadtree.w = GAME_CONST_HALF_ARENA_SIZE + GAME_CONST_HALF_ARENA_CLEAR_ZONE;
+	Quadtree.h = GAME_CONST_HALF_ARENA_SIZE + GAME_CONST_HALF_ARENA_CLEAR_ZONE;
 	Quadtree.MinSize = GAME_CONST_MIN_QUADTREE_NODE_SIZE;
 	Quadtree.Update = QuadtreeUpdateFN;
 	Quadtree.IsColliding = QuadtreeIsCollidingFN;
@@ -808,7 +808,7 @@ main(
 	QuadtreeInit(&Quadtree);
 
 	Entities = calloc(Quadtree.EntitiesSize, sizeof(*Entities));
-	AssertNotNull(Entities);
+	assert_not_null(Entities);
 
 	for(int i = 0; i < 600; ++i)
 	{
@@ -826,15 +826,15 @@ main(
 	}
 
 	EntitiesInView = malloc(sizeof(*EntitiesInView) * GAME_CONST_MAX_ENTITIES);
-	AssertNotNull(EntitiesInView);
+	assert_not_null(EntitiesInView);
 
 	int EpollFD = epoll_create1(0);
-	AssertNEQ(EpollFD, -1);
+	assert_neq(EpollFD, -1);
 
 	struct epoll_event Events[GAME_CONST_MAX_PLAYERS];
 
 	int ServerFD = socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK, 0);
-	AssertNEQ(ServerFD, -1);
+	assert_neq(ServerFD, -1);
 
 	struct sockaddr_in6 Addr = {0};
 	Addr.sin6_family = AF_INET6;
@@ -843,20 +843,20 @@ main(
 
 	int ReceiveBufferSize = GAME_CONST_SERVER_RECV_SIZE;
 	Error = setsockopt(ServerFD, SOL_SOCKET, SO_RCVBUF, &ReceiveBufferSize, sizeof(ReceiveBufferSize));
-	AssertNEQ(Error, -1);
+	assert_neq(Error, -1);
 
 	int True = 1;
 	Error = setsockopt(ServerFD, SOL_SOCKET, SO_REUSEADDR, &True, sizeof(True));
-	AssertNEQ(Error, -1);
+	assert_neq(Error, -1);
 
 	Error = setsockopt(ServerFD, SOL_SOCKET, SO_REUSEPORT, &True, sizeof(True));
-	AssertNEQ(Error, -1);
+	assert_neq(Error, -1);
 
 	Error = bind(ServerFD, (struct sockaddr*) &Addr, sizeof(Addr));
-	AssertNEQ(Error, -1);
+	assert_neq(Error, -1);
 
 	Error = listen(ServerFD, 64);
-	AssertNEQ(Error, -1);
+	assert_neq(Error, -1);
 
 	struct timespec Wait;
 	(void) clock_gettime(CLOCK_REALTIME, &Wait);
@@ -867,21 +867,21 @@ main(
 	{
 		++CurrentTick;
 
-		struct timespec Time = {0};
-		clock_gettime(CLOCK_REALTIME, &Time);
-		CurrentTickAt = Time.tv_nsec + Time.tv_sec * 1000000000;
+		struct timespec time = {0};
+		clock_gettime(CLOCK_REALTIME, &time);
+		CurrentTickAt = time.tv_nsec + time.tv_sec * 1000000000;
 
-		int Count = epoll_wait(EpollFD, Events, GAME_CONST_MAX_PLAYERS, 0);
+		int count = epoll_wait(EpollFD, Events, GAME_CONST_MAX_PLAYERS, 0);
 
 		struct epoll_event* Event = Events;
-		struct epoll_event* EventEnd = Event + Count;
+		struct epoll_event* EventEnd = Event + count;
 
 		for(; Event != EventEnd; ++Event)
 		{
-			uint32_t Flags = Event->events;
+			uint32_t flags = Event->events;
 			Client = Event->data.ptr;
 
-			if(Flags & (EPOLLHUP | EPOLLERR | EPOLLRDHUP))
+			if(flags & (EPOLLHUP | EPOLLERR | EPOLLRDHUP))
 			{
 				ClientDestroy();
 
@@ -891,14 +891,14 @@ main(
 				continue;
 			}
 
-			if(Flags & EPOLLIN)
+			if(flags & EPOLLIN)
 			{
-				ssize_t Bytes = read(Client->FD, Client->Buffer +
-					Client->BufferUsed, ARRAYLEN(Client->Buffer) - Client->BufferUsed);
+				ssize_t bytes = read(Client->FD, Client->buffer +
+					Client->BufferUsed, MACRO_ARRAY_LEN(Client->buffer) - Client->BufferUsed);
 
-				if(Bytes >= 0)
+				if(bytes >= 0)
 				{
-					Client->BufferUsed += Bytes;
+					Client->BufferUsed += bytes;
 
 					while(Client->BufferUsed)
 					{
@@ -911,7 +911,7 @@ main(
 
 						Client->BufferUsed -= Read;
 
-						(void) memmove(Client->Buffer, Client->Buffer + Read, Client->BufferUsed);
+						(void) memmove(Client->buffer, Client->buffer + Read, Client->BufferUsed);
 					}
 				}
 			}
@@ -925,10 +925,10 @@ main(
 
 			if(SocketFD == -1)
 			{
-				AssertNEQ(errno, ENOMEM);
-				AssertNEQ(errno, ENFILE);
-				AssertNEQ(errno, EMFILE);
-				AssertNEQ(errno, EINVAL);
+				assert_neq(errno, ENOMEM);
+				assert_neq(errno, ENFILE);
+				assert_neq(errno, EMFILE);
+				assert_neq(errno, EINVAL);
 
 				if(errno == EAGAIN)
 				{
@@ -968,7 +968,7 @@ main(
 		}
 
 		Error = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &Wait, NULL);
-		AssertNEQ(Error, -1);
+		assert_neq(Error, -1);
 	}
 
 	return 0;

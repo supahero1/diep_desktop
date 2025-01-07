@@ -1,3 +1,19 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/hash.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
@@ -5,166 +21,301 @@
 #include <string.h>
 
 
-Static uint32_t
-FNV_1a(
-	const char* Key
+private uint32_t
+hash_table_hash(
+	const char* key,
+	uint32_t* len
 	)
 {
-	uint32_t Hash = 0x811c9dc5;
+	const char* key_start = key;
+	uint32_t hash = 0x811c9dc5;
 
-	while(*Key)
+	while(*key)
 	{
-		Hash ^= *(Key++);
-		Hash *= 0x01000193;
+		hash ^= *(key++);
+		hash *= 0x01000193;
 	}
 
-	return Hash;
+	*len = key - key_start;
+	return hash;
 }
 
 
 void
-HashInit(
-	HashTable* Table,
-	uint32_t BucketCount
+hash_table_init(
+	hash_table_t* table,
+	uint32_t bucket_count
 	)
 {
-	Table->BucketCount = BucketCount;
-	AssertNEQ(Table->BucketCount, 0);
+	table->bucket_count = bucket_count;
+	assert_neq(table->bucket_count, 0);
 
-	Table->EntriesUsed = 1;
-	Table->EntriesSize = 0;
-	Table->FreeEntry = 0;
+	table->entries_used = 1;
+	table->entries_size = 0;
+	table->free_entry = 0;
 
-	Table->Buckets = AllocCalloc(sizeof(uint32_t) * Table->BucketCount);
-	AssertNotNull(Table->Buckets);
+	table->buckets = alloc_calloc(sizeof(uint32_t) * table->bucket_count);
+	assert_not_null(table->buckets);
 
-	Table->Entries = NULL;
+	table->entries = NULL;
 }
 
 
 void
-HashFree(
-	HashTable* Table
+hash_table_free(
+	hash_table_t* table
 	)
 {
-	AllocFree(sizeof(uint32_t) * Table->BucketCount, Table->Buckets);
-	AllocFree(sizeof(HashEntry) * Table->EntriesSize, Table->Entries);
-}
-
-
-Static uint32_t
-HashGetEntry(
-	HashTable* Table
-	)
-{
-	if(Table->FreeEntry)
-	{
-		uint32_t Entry = Table->FreeEntry;
-		Table->FreeEntry = Table->Entries[Entry].Next;
-		return Entry;
-	}
-
-	if(Table->EntriesUsed >= Table->EntriesSize)
-	{
-		uint32_t NewSize = (Table->EntriesUsed << 1) | 1;
-		HashEntry* NewEntries = AllocRemalloc(
-			sizeof(HashEntry) * Table->EntriesSize,
-			Table->Entries,
-			sizeof(HashEntry) * NewSize
-			);
-		AssertNotNull(NewEntries);
-
-		Table->Entries = NewEntries;
-		Table->EntriesSize = NewSize;
-	}
-
-	return Table->EntriesUsed++;
-}
-
-
-Static void
-HashRetEntry(
-	HashTable* Table,
-	uint32_t Entry
-	)
-{
-	Table->Entries[Entry].Next = Table->FreeEntry;
-	Table->FreeEntry = Entry;
+	alloc_free(sizeof(uint32_t) * table->bucket_count, table->buckets);
+	alloc_free(sizeof(hash_table_entry_t) * table->entries_size, table->entries);
 }
 
 
 void
-HashSet(
-	HashTable* Table,
-	const char* Key,
-	void* Value
+hash_table_clear(
+	hash_table_t* table
 	)
 {
-	uint32_t Hash = FNV_1a(Key) % Table->BucketCount;
+	(void) memset(table->buckets, 0, sizeof(uint32_t) * table->bucket_count);
 
-	uint32_t* Next = &Table->Buckets[Hash];
-	for(uint32_t Entry = *Next; Entry; Entry = Table->Entries[Entry].Next)
+	alloc_free(sizeof(hash_table_entry_t) * table->entries_size, table->entries);
+
+	table->entries = NULL;
+	table->entries_used = 1;
+	table->entries_size = 0;
+	table->free_entry = 0;
+}
+
+
+void
+hash_table_for_each(
+	hash_table_t* table,
+	hash_table_for_each_fn_t fn,
+	void* data
+	)
+{
+	uint32_t* bucket = table->buckets;
+	uint32_t* bucket_end = bucket + table->bucket_count;
+
+	for(; bucket < bucket_end; ++bucket)
 	{
-		if(strcasecmp(Key, Table->Entries[Entry].Key) == 0)
+		uint32_t entry_idx = *bucket;
+		for(hash_table_entry_t* entry = &table->entries[entry_idx]; entry_idx; entry = &table->entries[entry_idx])
 		{
-			Table->Entries[Entry].Value = Value;
-			return;
+			fn(entry->key, entry->len, entry->value, data);
+			entry_idx = entry->next;
+		}
+	}
+}
+
+
+private uint32_t
+hash_table_get_entry(
+	hash_table_t* table
+	)
+{
+	if(table->free_entry)
+	{
+		uint32_t entry = table->free_entry;
+		table->free_entry = table->entries[entry].next;
+		return entry;
+	}
+
+	if(table->entries_used >= table->entries_size)
+	{
+		uint32_t new_size = (table->entries_used << 1) | 1;
+		table->entries = alloc_remalloc(
+			sizeof(hash_table_entry_t) * table->entries_size,
+			table->entries,
+			sizeof(hash_table_entry_t) * new_size
+			);
+		assert_not_null(table->entries);
+
+		table->entries_size = new_size;
+	}
+
+	return table->entries_used++;
+}
+
+
+private void
+hash_table_ret_entry(
+	hash_table_t* table,
+	uint32_t entry
+	)
+{
+	table->entries[entry].next = table->free_entry;
+	table->free_entry = entry;
+}
+
+
+bool
+hash_table_has(
+	hash_table_t* table,
+	const char* key
+	)
+{
+	uint32_t len;
+	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+
+	uint32_t entry_idx = table->buckets[hash];
+	for(hash_table_entry_t* entry = &table->entries[entry_idx]; entry_idx; entry = &table->entries[entry_idx])
+	{
+		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		{
+			return true;
 		}
 
-		Next = &Table->Entries[Entry].Next;
+		entry_idx = entry->next;
 	}
 
-	uint32_t Entry = HashGetEntry(Table);
-	Table->Entries[Entry] =
-	(HashEntry)
+	return false;
+}
+
+
+bool
+hash_table_add(
+	hash_table_t* table,
+	const char* key,
+	void* value
+	)
+{
+	uint32_t len;
+	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+
+	uint32_t* next = &table->buckets[hash];
+	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
 	{
-		.Key = Key,
-		.Value = Value,
-		.Next = 0
+		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		{
+			return false;
+		}
+
+		next = &entry->next;
+	}
+
+	uint32_t entry = hash_table_get_entry(table);
+	table->entries[entry] =
+	(hash_table_entry_t)
+	{
+		.key = key,
+		.value = value,
+		.next = 0
 	};
 
-	*Next = Entry;
+	*next = entry;
+	return true;
+}
+
+
+bool
+hash_table_set(
+	hash_table_t* table,
+	const char* key,
+	void* value
+	)
+{
+	uint32_t len;
+	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+
+	uint32_t* next = &table->buckets[hash];
+	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
+	{
+		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		{
+			entry->value = value;
+			return true;
+		}
+
+		next = &entry->next;
+	}
+
+	uint32_t entry = hash_table_get_entry(table);
+	table->entries[entry] =
+	(hash_table_entry_t)
+	{
+		.key = key,
+		.value = value,
+		.next = 0
+	};
+
+	*next = entry;
+	return false;
+}
+
+
+bool
+hash_table_modify(
+	hash_table_t* table,
+	const char* key,
+	void* value
+	)
+{
+	uint32_t len;
+	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+
+	uint32_t* next = &table->buckets[hash];
+	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
+	{
+		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		{
+			entry->value = value;
+			return true;
+		}
+
+		next = &entry->next;
+	}
+
+	return false;
 }
 
 
 void*
-HashGet(
-	HashTable* Table,
-	const char* Key
+hash_table_get(
+	hash_table_t* table,
+	const char* key
 	)
 {
-	uint32_t Hash = FNV_1a(Key) % Table->BucketCount;
+	uint32_t len;
+	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
-	for(uint32_t Entry = Table->Buckets[Hash]; Entry; Entry = Table->Entries[Entry].Next)
+	uint32_t entry_idx = table->buckets[hash];
+	for(hash_table_entry_t* entry = &table->entries[entry_idx]; entry_idx; entry = &table->entries[entry_idx])
 	{
-		if(strcasecmp(Key, Table->Entries[Entry].Key) == 0)
+		if(len == entry->len && strcasecmp(key, entry->key) == 0)
 		{
-			return Table->Entries[Entry].Value;
+			return entry->value;
 		}
+
+		entry_idx = entry->next;
 	}
 
 	return NULL;
 }
 
 
-void
-HashRemove(
-	HashTable* Table,
-	const char* Key
+bool
+hash_table_del(
+	hash_table_t* table,
+	const char* key
 	)
 {
-	uint32_t Hash = FNV_1a(Key) % Table->BucketCount;
+	uint32_t len;
+	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
-	uint32_t* Next = &Table->Buckets[Hash];
-	for(uint32_t Entry = *Next; Entry; Entry = Table->Entries[Entry].Next)
+	uint32_t* next = &table->buckets[hash];
+	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
 	{
-		if(strcasecmp(Key, Table->Entries[Entry].Key) == 0)
+		if(len == entry->len && strcasecmp(key, entry->key) == 0)
 		{
-			*Next = Table->Entries[Entry].Next;
-			HashRetEntry(Table, Entry);
-			break;
+			uint32_t next_idx = *next;
+			*next = table->entries[next_idx].next;
+			hash_table_ret_entry(table, next_idx);
+			return true;
 		}
 
-		Next = &Table->Entries[Entry].Next;
+		next = &table->entries[*next].next;
 	}
+
+	return false;
 }

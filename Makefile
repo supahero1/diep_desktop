@@ -1,3 +1,17 @@
+#   Copyright 2024-2025 Franciszek Balcerak
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 CC ?= gcc
 RM := rm -f
 CP := cp
@@ -21,7 +35,7 @@ CC := clang
 BASE_FLAGS += -fsanitize=address,undefined
 else
 VALGRIND_CALL := valgrind --leak-check=full --show-leak-kinds=all \
-	--suppressions=../val_sup.txt --log-file="log.txt"
+	--suppressions=../val_sup.txt --log-file="val_log.txt"
 endif
 endif
 
@@ -87,9 +101,10 @@ endif
 
 
 SHARED_FILES := alloc base debug event file threads rand \
-	bit_buffer hash time
-CLIENT_FILES := tex/base tex/font ui/base ui/container \
-	ui/checkbox color dds main volk window settings base64
+	bit_buffer hash time settings base64 color sync
+CLIENT_FILES := tex/base font/base font/filter window/base \
+	window/dds window/volk window/vulkan ui/base ui/container \
+	ui/checkbox main
 SERVER_FILES := main quadtree sort
 
 SHARED_FILES := $(SHARED_FILES:%=src/shared/%.c)
@@ -101,6 +116,7 @@ TEX_DIRS := $(wildcard tex/img/[0-9]*/)
 TEX_FILES := $(TEX_DIRS:tex/img/%/=tex/dds/%.dds)
 
 SRC_TEX_DIRS := src/client/tex include/DiepDesktop/client/tex
+SRC_FONT_DIRS := src/client/font include/DiepDesktop/client/font
 
 
 SHARED_CALL := LD_LIBRARY_PATH=bin:$$LD_LIBRARY_PATH
@@ -111,7 +127,7 @@ all:
 	@printf "Specify one (or more) of the following:\n\
 	\n\
 	font_build  generates font textures and sources\n\
-	font_gen    generates font sources from textures\n\
+	font_gen    generates only font sources (fast, for dev)\n\
 	font_clean  removes font textures\n\
 	font_wipe   above + sources\n\
 	\n\
@@ -148,7 +164,7 @@ all:
 	You can't mix various build types, if you change it you gotta \`make clean\` first\n"
 
 
-bin tex/font tex/var tex/img tex/dds_raw tex/dds_bc1 tex/dds $(SRC_TEX_DIRS):
+bin tex/font tex/var tex/img tex/dds_raw tex/dds_bc1 tex/dds $(SRC_TEX_DIRS) $(SRC_FONT_DIRS):
 	mkdir -p $@
 
 .PHONY: clean
@@ -175,14 +191,17 @@ bin/sort: tex/sort.c | bin/libshared.a
 bin/tex_gen: tex/tex_gen.c | bin/libshared.a
 	$(CC) $(BASE_FLAGS) $(TEX_FLAGS) -o $@ $^ $(BASE_LD_FLAGS) $(TEX_LD_FLAGS)
 
+bin/var_gen: tex/var_gen.c | bin/libshared.a
+	$(CC) $(BASE_FLAGS) $(TEX_FLAGS) -o $@ $^ $(BASE_LD_FLAGS) $(TEX_LD_FLAGS)
+
 
 .PHONY: font_build
-font_build: bin/font_gen | tex/font $(SRC_TEX_DIRS)
+font_build: bin/font_gen | tex/font $(SRC_FONT_DIRS)
 	$(RM) -r tex/font/*
 	$(SHARED_CALL) WRITE_IMG=1 ./bin/font_gen
 
 .PHONY: font_gen
-font_gen: bin/font_gen | tex/font $(SRC_TEX_DIRS)
+font_gen: bin/font_gen | $(SRC_FONT_DIRS)
 	$(SHARED_CALL) ./bin/font_gen
 
 .PHONY: font_clean
@@ -195,13 +214,9 @@ font_wipe: font_clean
 
 
 .PHONY: var_build
-var_build: | tex/var
+var_build: bin/var_gen | tex/var
 	$(RM) -r tex/var/*
-	python3 tex/bg_gen.py; \
-	python3 tex/cs_gen.py; \
-	python3 tex/hue_gen.py; \
-	python3 tex/rect_gen.py; \
-	python3 tex/text_cursor_gen.py
+	$(SHARED_CALL) ./bin/var_gen
 
 .PHONY: var_clean
 var_clean:

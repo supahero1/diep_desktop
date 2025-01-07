@@ -1,8 +1,24 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #pragma once
 
 #include <DiepDesktop/shared/base.h>
 #include <DiepDesktop/shared/event.h>
-#include <DiepDesktop/client/color.h>
+#include <DiepDesktop/shared/color.h>
 #include <DiepDesktop/client/window.h>
 
 
@@ -57,24 +73,24 @@ UITextOffset;
 
 typedef struct UITextGlyph
 {
-	float Top;
-	float Left;
+	float top;
+	float left;
 	float Stride;
-	float Size;
-	TexInfo Texture;
+	float size;
+	TexInfo tex;
 }
 UITextGlyph;
 
 typedef struct UITextLine
 {
-	float X;
-	float Y;
-	float Width;
+	float x;
+	float y;
+	float width;
 
 	uint32_t Idx;
 
 	uint32_t Separator;
-	uint32_t Length;
+	uint32_t len;
 	UITextGlyph Glyphs[];
 }
 UITextLine;
@@ -112,25 +128,25 @@ typedef struct UIContainer
 	float GoalOffsetY;
 
 	float OffsetX;
-	float OffsetY;
+	float offset_y;
 
 	float OffsetMin;
 	float OffsetMax;
 
-	ARGB WhiteColor;
-	ARGB BlackColor;
-	TexInfo Texture;
+	color_argb_t white_color;
+	color_argb_t black_color;
+	TexInfo tex;
 
-	UIElement* Head;
-	UIElement* Tail;
+	UIElement* head;
+	UIElement* tail;
 }
 UIContainer;
 
 typedef struct UIText
 {
 	uint32_t* Codepoints;
-	uint32_t Length;
-	uint32_t MaxLength;
+	uint32_t len;
+	uint32_t max_len;
 	float MaxWidth;
 
 	float FontSize;
@@ -140,18 +156,18 @@ typedef struct UIText
 	bool Editable;
 	bool AllowNewline;
 
-	ARGB Stroke;
-	ARGB InverseStroke;
-	ARGB Fill;
-	ARGB InverseFill;
-	ARGB Background;
+	color_argb_t Stroke;
+	color_argb_t InverseStroke;
+	color_argb_t Fill;
+	color_argb_t InverseFill;
+	color_argb_t Background;
 
 	uint32_t LineCount;
 	UITextLine** Lines;
 
 	uint32_t CurrentMod;
 	uint32_t ModCount;
-	UITextMod* Mods;
+	UITextMod* mods;
 
 	UITextFilter Filter;
 }
@@ -161,22 +177,22 @@ typedef struct UICheckbox
 {
 	uint32_t Checked;
 
-	ARGB CheckYes;
-	ARGB CheckNo;
-	ARGB Background;
+	color_argb_t CheckYes;
+	color_argb_t CheckNo;
+	color_argb_t Background;
 }
 UICheckbox;
 
 typedef struct UISlider
 {
-	UISliderType Type;
+	UISliderType type;
 	UIAxis Axis;
 
-	ARGB Color;
-	ARGB BgColor;
+	color_argb_t color;
+	color_argb_t BgColor;
 
 	float Sections;
-	float Value;
+	float value;
 }
 UISlider;
 
@@ -184,8 +200,8 @@ typedef struct UIScrollbar
 {
 	UIAxis Axis;
 
-	ARGB Color;
-	ARGB AltColor;
+	color_argb_t color;
+	color_argb_t AltColor;
 
 	float ViewMin;
 	float ViewMax;
@@ -200,9 +216,9 @@ UIScrollbar;
 
 typedef struct UIColorPicker
 {
-	XOY Position;
-	ARGB ColorRGB;
-	HSV ColorHSV;
+	color_xy_t pos;
+	color_argb_t ColorRGB;
+	color_hsv_t ColorHSV;
 }
 UIColorPicker;
 
@@ -213,82 +229,82 @@ typedef struct UITexture
 	float OX;
 	float OY;
 
-	ARGB WhiteColor;
-	ARGB BlackColor;
-	TexInfo Texture;
-	float Rotation;
+	color_argb_t white_color;
+	color_argb_t black_color;
+	TexInfo tex;
+	float angle;
 }
 UITexture;
 */
 
 typedef struct UIMouseDownData
 {
-	MouseButton Button;
-	Pair Position;
-	uint8_t Clicks;
+	window_button_t button;
+	pair_t pos;
+	uint8_t clicks;
 }
 UIMouseDownData;
 
 typedef struct UIMouseUpData
 {
-	MouseButton Button;
-	Pair Position;
+	window_button_t button;
+	pair_t pos;
 }
 UIMouseUpData;
 
 typedef struct UIMouseMoveData
 {
-	Pair OldPosition;
-	Pair NewPosition;
+	pair_t old_pos;
+	pair_t new_pos;
 }
 UIMouseMoveData;
 
 typedef struct UIMouseInData
 {
-	Pair Position;
+	pair_t pos;
 }
 UIMouseInData;
 
 typedef struct UIMouseOutData
 {
-	Pair Position;
+	pair_t pos;
 }
 UIMouseOutData;
 
 typedef struct UIMouseScrollData
 {
-	float OffsetY;
+	float offset_y;
 }
 UIMouseScrollData;
 
 typedef struct UIResizeData
 {
-	Pair OldSize;
-	Pair NewSize;
+	pair_t old_size;
+	pair_t new_size;
 }
 UIResizeData;
 
 typedef struct UIChangeData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UIChangeData;
 
 typedef struct UISubmitData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UISubmitData;
 
 typedef struct UIFreeData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UIFreeData;
 
 typedef struct UITextSelectAllData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UITextSelectAllData;
 
@@ -304,7 +320,7 @@ UITextMoveData;
 
 typedef struct UITextCopyData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UITextCopyData;
 
@@ -316,13 +332,13 @@ UITextPasteData;
 
 typedef struct UITextEscapeData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UITextEscapeData;
 
 typedef struct UITextEnterData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UITextEnterData;
 
@@ -336,13 +352,13 @@ UITextDeleteData;
 
 typedef struct UITextUndoData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UITextUndoData;
 
 typedef struct UITextRedoData
 {
-	uint8_t _Empty;
+	uint8_t _;
 }
 UITextRedoData;
 
@@ -351,21 +367,21 @@ typedef struct UIElement UIElement;
 typedef void
 (*UIBubbleCallback)(
 	UIElement* Element,
-	void* Data
+	void* data
 	);
 
 typedef void
 (*UIBubbleFn)(
 	UIElement* Element,
 	UIBubbleCallback Callback,
-	void* Data
+	void* data
 	);
 
 typedef void
 (*UIPropagateSizeFn)(
 	UIElement* Element,
 	UIElement* Child,
-	Pair Delta
+	pair_t delta
 	);
 
 typedef void
@@ -377,7 +393,7 @@ typedef void
 typedef void
 (*UIPostClipFn)(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	);
@@ -390,7 +406,7 @@ typedef bool
 typedef void
 (*UIDrawFn)(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	);
@@ -409,18 +425,18 @@ UIVirtualTable;
 
 struct UIElement
 {
-	HalfExtent Extent;
-	HalfExtent EndExtent;
-	HalfExtent Margin;
-	HalfExtent DrawMargin;
+	half_extent_t Extent;
+	half_extent_t EndExtent;
+	half_extent_t Margin;
+	half_extent_t DrawMargin;
 
 	float BorderRadius;
-	ARGB BorderColor;
+	color_argb_t BorderColor;
 	uint32_t Opacity;
 
 	UIAlign AlignX;
 	UIAlign AlignY;
-	UIPosition Position;
+	UIPosition pos;
 
 	UIElement* Relative;
 	UIAlign RelativeAlignX;
@@ -435,34 +451,34 @@ struct UIElement
 	bool ScrollPassthrough;
 	bool InteractiveBorder;
 	bool Inline;
-	bool Block;
+	bool block;
 	bool ClipToBorder;
 
 	UIElement* Parent;
-	UIElement* Prev;
-	UIElement* Next;
+	UIElement* prev;
+	UIElement* next;
 
-	EventTarget MouseDownTarget;
-	EventTarget MouseUpTarget;
-	EventTarget MouseMoveTarget;
-	EventTarget MouseInTarget;
-	EventTarget MouseOutTarget;
-	EventTarget MouseScrollTarget;
+	event_target_t MouseDownTarget;
+	event_target_t MouseUpTarget;
+	event_target_t MouseMoveTarget;
+	event_target_t MouseInTarget;
+	event_target_t MouseOutTarget;
+	event_target_t MouseScrollTarget;
 
-	EventTarget ResizeTarget;
-	EventTarget ChangeTarget;
-	EventTarget SubmitTarget;
-	EventTarget FreeTarget;
+	event_target_t ResizeTarget;
+	event_target_t change_target;
+	event_target_t SubmitTarget;
+	event_target_t FreeTarget;
 
-	EventTarget TextSelectAllTarget;
-	EventTarget TextMoveTarget;
-	EventTarget TextCopyTarget;
-	EventTarget TextPasteTarget;
-	EventTarget TextEscapeTarget;
-	EventTarget TextEnterTarget;
-	EventTarget TextDeleteTarget;
-	EventTarget TextUndoTarget;
-	EventTarget TextRedoTarget;
+	event_target_t TextSelectAllTarget;
+	event_target_t TextMoveTarget;
+	event_target_t TextCopyTarget;
+	event_target_t TextPasteTarget;
+	event_target_t TextEscapeTarget;
+	event_target_t TextEnterTarget;
+	event_target_t TextDeleteTarget;
+	event_target_t TextUndoTarget;
+	event_target_t TextRedoTarget;
 
 	UIVirtualTable* VirtualTable;
 	void* TypeData;
@@ -471,16 +487,16 @@ struct UIElement
 
 typedef struct UIElementInfo
 {
-	HalfExtent Extent;
-	HalfExtent Margin;
+	half_extent_t Extent;
+	half_extent_t Margin;
 
 	float BorderRadius;
-	ARGB BorderColor;
+	color_argb_t BorderColor;
 	uint32_t Opacity;
 
 	UIAlign AlignX;
 	UIAlign AlignY;
-	UIPosition Position;
+	UIPosition pos;
 
 	UIElement* Relative;
 	UIAlign RelativeAlignX;
@@ -493,13 +509,13 @@ typedef struct UIElementInfo
 	bool ScrollPassthrough;
 	bool InteractiveBorder;
 	bool Inline;
-	bool Block;
+	bool block;
 	bool ClipToBorder;
 }
 UIElementInfo;
 
 
-extern Pair UIMouse;
+extern pair_t UIMouse;
 extern UIElement* UIElementUnderMouse;
 extern UIElement* UIClickableUnderMouse;
 extern UIElement* UIScrollableUnderMouse;
@@ -522,7 +538,7 @@ UIGetRootElement(
 
 extern UIElement*
 UIAllocElement(
-	UIElementInfo Info
+	UIElementInfo info
 	);
 
 
@@ -535,7 +551,7 @@ UIFreeElement(
 extern void
 UIDrawElement(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	);
@@ -572,35 +588,35 @@ UIResizeElement(
 
 
 #define UIClipExplicit(_MinX, _MaxX, _MinY, _MaxY, Prefix)	\
-RectExtent Prefix##PostClip =								\
-(RectExtent)												\
+rect_extent_t Prefix##PostClip =								\
+(rect_extent_t)												\
 {															\
-	.MinX = MAX((_MinX), Clip.MinX),						\
-	.MinY = MAX((_MinY), Clip.MinY),						\
-	.MaxX = MIN((_MaxX), Clip.MaxX),						\
-	.MaxY = MIN((_MaxY), Clip.MaxY)							\
+	.min_x = MACRO_MAX((_MinX), Clip.min_x),						\
+	.min_y = MACRO_MAX((_MinY), Clip.min_y),						\
+	.max_x = MACRO_MIN((_MaxX), Clip.max_x),						\
+	.max_y = MACRO_MIN((_MaxY), Clip.max_y)							\
 };															\
 															\
 bool Prefix##ClipPass =										\
-	Prefix##PostClip.MinX < Prefix##PostClip.MaxX &&		\
-	Prefix##PostClip.MinY < Prefix##PostClip.MaxY
+	Prefix##PostClip.min_x < Prefix##PostClip.max_x &&		\
+	Prefix##PostClip.min_y < Prefix##PostClip.max_y
 
-#define UIClip(X, Y, W, H)	\
+#define UIClip(x, y, w, h)	\
 UIClipExplicit(				\
-	(X) - (W),				\
-	(X) + (W),				\
-	(Y) - (H),				\
-	(Y) + (H),				\
+	(x) - (w),				\
+	(x) + (w),				\
+	(y) - (h),				\
+	(y) + (h),				\
 	)
 
 #define UIAfterClip(Prefix)												\
-HalfExtent Prefix##DrawClip =											\
-(HalfExtent)															\
+half_extent_t Prefix##DrawClip =											\
+(half_extent_t)															\
 {																		\
-	.X = ( Prefix##PostClip .MinX + Prefix##PostClip .MaxX ) * 0.5f,	\
-	.Y = ( Prefix##PostClip .MinY + Prefix##PostClip .MaxY ) * 0.5f,	\
-	.W = Prefix##PostClip .MaxX - Prefix##PostClip .MinX,				\
-	.H = Prefix##PostClip .MaxY - Prefix##PostClip .MinY				\
+	.x = ( Prefix##PostClip .min_x + Prefix##PostClip .max_x ) * 0.5f,	\
+	.y = ( Prefix##PostClip .min_y + Prefix##PostClip .max_y ) * 0.5f,	\
+	.w = Prefix##PostClip .max_x - Prefix##PostClip .min_x,				\
+	.h = Prefix##PostClip .max_y - Prefix##PostClip .min_y				\
 }
 
 #define UIClipTextureExplicit(_X, _Y, _W, _H, SW, SH, OX, OY, ...)	\
@@ -614,27 +630,27 @@ HalfExtent Prefix##DrawClip =											\
 		VkVertexInstanceInput In =									\
 		(VkVertexInstanceInput)										\
 		{															\
-			.Position = { DrawClip.X, DrawClip.Y },					\
-			.Dimensions = { DrawClip.W, DrawClip.H },				\
-			.TexScale = { DrawClip.W / (_W), DrawClip.H / (_H) },	\
-			.TexOffset = {											\
-				(OX) + (DrawClip.X - (_X)) * 0.5f / (_W),			\
-				(OY) + (DrawClip.Y - (_Y)) * 0.5f / (_H)			\
+			.pos = { DrawClip.x, DrawClip.y },					\
+			.size = { DrawClip.w, DrawClip.h },				\
+			.tex_scale = { DrawClip.w / (_W), DrawClip.h / (_H) },	\
+			.tex_offset = {											\
+				(OX) + (DrawClip.x - (_X)) * 0.5f / (_W),			\
+				(OY) + (DrawClip.y - (_Y)) * 0.5f / (_H)			\
 			} __VA_OPT__(,)											\
 			__VA_ARGS__												\
 		};															\
 																	\
-		if(In.WhiteColor.A || In.BlackColor.A)						\
+		if(In.white_color.a || In.black_color.a)						\
 		{															\
-			WindowAddDrawData(&In);									\
+			window_add_draw_event_data(&In);									\
 		}															\
 	}																\
 																	\
 	ClipPass;														\
 })
 
-#define UIClipTexture(X, Y, W, H, ...)	\
-UIClipTextureExplicit((X), (Y), (W), (H), 1.0f, 1.0f, 0.5f, 0.5f __VA_OPT__(,) __VA_ARGS__)
+#define UIClipTexture(x, y, w, h, ...)	\
+UIClipTextureExplicit((x), (y), (w), (h), 1.0f, 1.0f, 0.5f, 0.5f __VA_OPT__(,) __VA_ARGS__)
 
 
 #define DRAW_DEPTH_LEAP (1.0f / (1U << 20U))
@@ -643,7 +659,7 @@ UIClipTextureExplicit((X), (Y), (W), (H), 1.0f, 1.0f, 0.5f, 0.5f __VA_OPT__(,) _
 #define DRAW_DEPTH_3_JIFFIE (DRAW_DEPTH_JIFFIE * 3.0f)
 
 
-extern float Depth;
+extern float depth;
 extern float DeltaTime;
 extern uint64_t LastDrawAt;
 
@@ -651,7 +667,7 @@ extern uint64_t LastDrawAt;
 extern void
 UIDrawBorder(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity
 	);
 
@@ -992,43 +1008,43 @@ typedef enum UIKey
 	UI_KEY_SOFTRIGHT,
 	UI_KEY_CALL,
 	UI_KEY_ENDCALL,
-	kUI_KEY
+	UI_KEY__COUNT
 }
 UIKey;
 
 
 extern void
 UIOnKeyDown(
-	UIKey Key
+	UIKey key
 	);
 
 
 extern void
 UIOnKeyUp(
-	UIKey Key
+	UIKey key
 	);
 
 
 extern void
 UIOnMouseDown(
-	UIMouseDownData* Data
+	UIMouseDownData* data
 	);
 
 
 extern void
 UIOnMouseUp(
-	UIMouseUpData* Data
+	UIMouseUpData* data
 	);
 
 
 extern void
 UIOnMouseMove(
-	UIMouseMoveData* Data
+	UIMouseMoveData* data
 	);
 
 
 extern void
 UIOnMouseScroll(
-	UIMouseScrollData* Data
+	UIMouseScrollData* data
 	);
 */

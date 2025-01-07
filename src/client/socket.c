@@ -1,3 +1,19 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include "../include/socket.h"
 #include "../include/debug.h"
 
@@ -15,7 +31,7 @@
 #endif
 
 
-Static void
+private void
 TcpSocketThreadFN(
 	void* _Socket
 	)
@@ -27,36 +43,36 @@ TcpSocketThreadFN(
 	inet_pton(AF_INET, Socket->Host, &Addr.sin_addr);
 	Addr.sin_port = htons(Socket->Port);
 
-	SocketID ID = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	AssertNEQ(ID, -1);
+	SocketID id = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	assert_neq(id, -1);
 
-	int Error = setsockopt(ID, SOL_SOCKET, SO_RCVBUF, (const char*) &Socket->BufferSize, 4);
-	AssertNEQ(Error, -1);
+	int Error = setsockopt(id, SOL_SOCKET, SO_RCVBUF, (const char*) &Socket->BufferSize, 4);
+	assert_neq(Error, -1);
 
-	Error = connect(ID, (struct sockaddr*) &Addr, sizeof(Addr));
+	Error = connect(id, (struct sockaddr*) &Addr, sizeof(Addr));
 
 	if(Error)
 	{
 		goto goto_close;
 	}
 
-	atomic_store_explicit(&Socket->ID, ID, memory_order_release);
+	atomic_store_explicit(&Socket->id, id, memory_order_release);
 	Socket->Open();
 
 	while(1)
 	{
-		int Bytes = recv(ID, (void*)(Socket->Buffer + Socket->BufferUsed), Socket->BufferSize - Socket->BufferUsed, 0);
+		int bytes = recv(id, (void*)(Socket->buffer + Socket->BufferUsed), Socket->BufferSize - Socket->BufferUsed, 0);
 
-		if(Bytes <= 0)
+		if(bytes <= 0)
 		{
 			goto goto_close;
 		}
 
-		Socket->BufferUsed += Bytes;
+		Socket->BufferUsed += bytes;
 
 		while(1)
 		{
-			uint32_t Read = Socket->Read(Socket->Buffer, Socket->BufferUsed);
+			uint32_t Read = Socket->Read(Socket->buffer, Socket->BufferUsed);
 
 			if(Read == 0)
 			{
@@ -70,16 +86,16 @@ TcpSocketThreadFN(
 				break;
 			}
 
-			(void) memmove(Socket->Buffer, Socket->Buffer + Read, Socket->BufferUsed);
+			(void) memmove(Socket->buffer, Socket->buffer + Read, Socket->BufferUsed);
 		}
 	}
 
 	goto_close:
 
 #ifdef _WIN32
-	closesocket(ID);
+	closesocket(id);
 #else
-	close(ID);
+	close(id);
 #endif
 	Socket->Close();
 	ThreadQuit();
@@ -95,14 +111,14 @@ SocketInit(
 
 	if(Socket->Secure)
 	{
-		AssertUnreachable();
+		assert_unreachable();
 	}
 
 	Socket->BufferUsed = 0;
-	Socket->Buffer = malloc(Socket->BufferSize);
-	AssertNotNull(Socket->Buffer);
+	Socket->buffer = malloc(Socket->BufferSize);
+	assert_not_null(Socket->buffer);
 
-	ThreadInit(&Socket->Thread, TcpSocketThreadFN, Socket);
+	thread_init(&Socket->thread, TcpSocketThreadFN, Socket);
 }
 
 
@@ -115,30 +131,30 @@ SocketFree(
 
 	if(Socket->Secure)
 	{
-		AssertUnreachable();
+		assert_unreachable();
 	}
 
-	ThreadDestroy(Socket->Thread);
+	thread_free(Socket->thread);
 
-	free(Socket->Buffer);
+	free(Socket->buffer);
 }
 
 
 void
 SocketSendData(
 	void* _Socket,
-	const void* Data,
-	uint32_t Length
+	const void* data,
+	uint32_t len
 	)
 {
 	TcpSocket* Socket = _Socket;
 
 	if(Socket->Secure)
 	{
-		AssertUnreachable();
+		assert_unreachable();
 	}
 
-	int ID = atomic_load_explicit(&Socket->ID, memory_order_acquire);
+	int id = atomic_load_explicit(&Socket->id, memory_order_acquire);
 
-	(void) send(ID, Data, Length, 0);
+	(void) send(id, data, len, 0);
 }

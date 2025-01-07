@@ -1,318 +1,255 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #pragma once
 
-#include <stdint.h>
-#include <pthread.h>
-#include <semaphore.h>
+#include <DiepDesktop/shared/sync.h>
 
 
-typedef pthread_mutex_t Mutex;
-
-
-extern void
-MutexInit(
-	Mutex* Mtx
-	);
-
-
-extern void
-MutexDestroy(
-	Mutex* Mtx
-	);
-
-
-extern void
-MutexLock(
-	Mutex* Mtx
-	);
-
-
-extern void
-MutexUnlock(
-	Mutex* Mtx
-	);
-
-
-typedef pthread_cond_t CondVar;
-
-
-extern void
-CondVarInit(
-	CondVar* Var
-	);
-
-
-extern void
-CondVarDestroy(
-	CondVar* Var
-	);
-
-
-extern void
-CondVarWait(
-	CondVar* Var,
-	Mutex* Mtx
-	);
-
-
-extern void
-CondVarWake(
-	CondVar* Var
-	);
-
-
-typedef sem_t Semaphore;
-
-
-extern void
-SemaphoreInit(
-	Semaphore* Sem,
-	uint32_t Value
-	);
-
-
-extern void
-SemaphoreDestroy(
-	Semaphore* Sem
-	);
-
-
-extern void
-SemaphoreWait(
-	Semaphore* Sem
-	);
-
-
-extern void
-SemaphoreTimedWait(
-	Semaphore* Sem,
-	uint64_t Nanoseconds
-	);
-
-
-extern void
-SemaphorePost(
-	Semaphore* Sem
-	);
-
-
-typedef pthread_t ThreadT;
+typedef pthread_t thread_t;
 
 typedef void
-(*ThreadFunc)(
-	void* Data
+(*thread_fn_t)(
+	void* data
 	);
 
-typedef struct ThreadData
+typedef struct thread_data
 {
-	ThreadFunc Func;
-	void* Arg;
+	thread_fn_t fn;
+	void* data;
 }
-ThreadData;
+thread_data_t;
 
 
 extern void
-ThreadInit(
-	ThreadT* Thread,
-	ThreadData Data
+thread_init(
+	thread_t* thread,
+	thread_data_t data
 	);
 
 
 extern void
-ThreadDestroy(
-	ThreadT* Thread
+thread_free(
+	thread_t* thread
 	);
 
 
 extern void
-ThreadCancelOn(
+thread_cancel_on(
 	void
 	);
 
 
 extern void
-ThreadCancelOff(
+thread_cancel_off(
 	void
 	);
 
 
 extern void
-ThreadAsyncOn(
+thread_async_on(
 	void
 	);
 
 
 extern void
-ThreadAsyncOff(
+thread_async_off(
 	void
 	);
 
 
 extern void
-ThreadDetach(
-	ThreadT Thread
+thread_detach(
+	thread_t thread
 	);
 
 
 extern void
-ThreadJoin(
-	ThreadT Thread
+thread_join(
+	thread_t thread
+	);
+
+
+thread_t
+thread_self(
+	void
+	);
+
+
+bool
+thread_equal(
+	thread_t a,
+	thread_t b
 	);
 
 
 extern void
-ThreadCancelSync(
-	ThreadT Thread
+thread_cancel_sync(
+	thread_t thread
 	);
 
 
 extern void
-ThreadCancelAsync(
-	ThreadT Thread
+thread_cancel_async(
+	thread_t thread
 	);
 
 
 extern void
-ThreadExit(
+thread_exit(
 	void
 	);
 
 
 extern void
-ThreadSleep(
-	uint64_t Nanoseconds
+thread_sleep(
+	uint64_t ns
 	);
 
 
-typedef struct ThreadsT
+typedef struct threads
 {
-	ThreadT* Threads;
-	uint32_t Used;
-	uint32_t Size;
+	thread_t* threads;
+	uint32_t used;
+	uint32_t size;
 }
-ThreadsT;
+threads_t;
 
 
 extern void
-ThreadsInit(
-	ThreadsT* Threads
+threads_init(
+	threads_t* threads
 	);
 
 
 extern void
-ThreadsDestroy(
-	ThreadsT* Threads
+threads_free(
+	threads_t* threads
 	);
 
 
 extern void
-ThreadsAdd(
-	ThreadsT* Threads,
-	ThreadData Data,
-	uint32_t Count
+threads_add(
+	threads_t* threads,
+	thread_data_t data,
+	uint32_t count
 	);
 
 
 extern void
-ThreadsCancelSync(
-	ThreadsT* Threads,
-	uint32_t Count
+threads_cancel_sync(
+	threads_t* threads,
+	uint32_t count
 	);
 
 
 extern void
-ThreadsCancelAsync(
-	ThreadsT* Threads,
-	uint32_t Count
+threads_cancel_async(
+	threads_t* threads,
+	uint32_t count
 	);
 
 
 extern void
-ThreadsShutdownSync(
-	ThreadsT* Threads
+threads_cancel_all_sync(
+	threads_t* threads
 	);
 
 
 extern void
-ThreadsShutdownAsync(
-	ThreadsT* Threads
+threads_cancel_all_async(
+	threads_t* threads
 	);
 
 
-typedef struct ThreadPoolT
+typedef struct thread_pool
 {
-	Semaphore Sem;
-	Mutex Mtx;
+	sync_sem_t sem;
+	sync_mtx_t mtx;
 
-	ThreadData* Queue;
-	uint32_t Used;
-	uint32_t Size;
+	thread_data_t* queue;
+	uint32_t used;
+	uint32_t size;
 }
-ThreadPoolT;
+thread_pool_t;
 
 
 extern void
-ThreadPoolFunc(
-	void* Data
+thread_pool_fn(
+	void* data
 	);
 
 
 extern void
-ThreadPoolInit(
-	ThreadPoolT* Pool
+thread_pool_init(
+	thread_pool_t* pool
 	);
 
 
 extern void
-ThreadPoolDestroy(
-	ThreadPoolT* Pool
+thread_pool_free(
+	thread_pool_t* pool
 	);
 
 
 extern void
-ThreadPoolLock(
-	ThreadPoolT* Pool
+thread_pool_lock(
+	thread_pool_t* pool
 	);
 
 
 extern void
-ThreadPoolUnlock(
-	ThreadPoolT* Pool
+thread_pool_unlock(
+	thread_pool_t* pool
 	);
 
 
 extern void
-ThreadPoolAddU(
-	ThreadPoolT* Pool,
-	ThreadData Data
+thread_pool_add_u(
+	thread_pool_t* pool,
+	thread_data_t data
 	);
 
 
 extern void
-ThreadPoolAdd(
-	ThreadPoolT* Pool,
-	ThreadData Data
+thread_pool_add(
+	thread_pool_t* pool,
+	thread_data_t data
 	);
 
 
 extern void
-ThreadPoolTryWorkU(
-	ThreadPoolT* Pool
+thread_pool_try_work_u(
+	thread_pool_t* pool
 	);
 
 
 extern void
-ThreadPoolTryWork(
-	ThreadPoolT* Pool
+thread_pool_try_work(
+	thread_pool_t* pool
 	);
 
 
 extern void
-ThreadPoolWorkU(
-	ThreadPoolT* Pool
+thread_pool_work_u(
+	thread_pool_t* pool
 	);
 
 
 extern void
-ThreadPoolWork(
-	ThreadPoolT* Pool
+thread_pool_work(
+	thread_pool_t* pool
 	);

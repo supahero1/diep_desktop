@@ -1,3 +1,23 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+#include <DiepDesktop/shared/file.h>
+#include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/alloc_ext.h>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <freetype/ftstroke.h>
@@ -5,29 +25,33 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 
-#include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-
-#define AVG_FONT_SIZE 400
-#define STROKE_THICKNESS 31
+#define FONT_AVG_SIZE 400
+#define FONT_STROKE_THICKNESS 31
 #define TEXT_FILE_SIZE (UINT32_C(1) << 24)
 
 
-typedef struct GlyphInfo
+typedef struct font_glyph_data
 {
-	int16_t Top;
-	int16_t Left;
-	uint32_t Codepoint;
+	int16_t top;
+	int16_t left;
+	uint32_t codepoint;
 }
-GlyphInfo;
+font_glyph_data_t;
 
 
-static uint32_t
-po2_ge(uint32_t value)
+private uint32_t
+font_get_next_power_of_2(
+	alloc_t value
+	)
 {
-	return 1 << (32 - __builtin_clz(value - 1));
+	assert_neq(value, 0);
+
+	if(value <= 2)
+	{
+		return value;
+	}
+
+	return UINT32_C(1) << (32 - __builtin_clz(value - 1));
 }
 
 
@@ -36,426 +60,487 @@ main(
 	void
 	)
 {
-	int WriteImg = getenv("WRITE_IMG") != NULL;
-	int FillBlank = getenv("FILL_BLANK") != NULL;
+	bool write_img = getenv("WRITE_IMG") != NULL;
+	bool fill_blank = getenv("FILL_BLANK") != NULL;
 
-	FT_Library FreeType;
-	int Status = FT_Init_FreeType(&FreeType);
-	AssertEQ(Status, 0);
+	FT_Library free_type;
+	int status = FT_Init_FreeType(&free_type);
+	assert_eq(status, 0);
 
-	FT_Face Face;
-	Status = FT_New_Face(FreeType, "tex/Ubuntu.ttf", 0, &Face);
-	AssertEQ(Status, 0);
+	FT_Face face;
+	status = FT_New_Face(free_type, "tex/Ubuntu.ttf", 0, &face);
+	assert_eq(status, 0);
 
-	FT_Set_Pixel_Sizes(Face, 0, AVG_FONT_SIZE);
+	FT_Set_Pixel_Sizes(face, 0, FONT_AVG_SIZE);
 
-	uint32_t MaxWidth = 0;
-	uint32_t MaxHeight = 0;
-	uint32_t MaxIndex = 0;
-	uint32_t MaxCodepoint = 0;
+	uint32_t max_width = 0;
+	uint32_t max_height = 0;
+	uint32_t max_idx = 0;
+	uint32_t max_codepoint = 0;
 
-	uint32_t TableSize = UINT32_C(1) << 24;
+	uint32_t table_size = UINT32_C(1) << 24;
 
-	GlyphInfo* GlyphData = AllocMalloc(sizeof(GlyphInfo) * TableSize);
-	AssertNotNull(GlyphData);
+	font_glyph_data_t* glyph_data = alloc_malloc(sizeof(font_glyph_data_t) * table_size);
+	assert_not_null(glyph_data);
 
-	GlyphInfo* CurrentGlyphData = GlyphData + 1;
+	font_glyph_data_t* cur_glyph_data = glyph_data + 1;
 
-	uint32_t* GlyphMap = AllocCalloc(sizeof(uint32_t) * TableSize);
-	AssertNotNull(GlyphMap);
+	uint32_t* glyph_map = alloc_calloc(sizeof(uint32_t) * table_size);
+	assert_not_null(glyph_map);
 
-	uint32_t* CodepointMap = AllocCalloc(sizeof(uint32_t) * TableSize);
-	AssertNotNull(CodepointMap);
+	uint32_t* codepoint_map = alloc_calloc(sizeof(uint32_t) * table_size);
+	assert_not_null(codepoint_map);
 
-	CodepointMap['\t'] = ' ';
-	CodepointMap['\n'] = '\n';
+	codepoint_map['\t'] = ' ';
+	codepoint_map['\n'] = '\n';
 
-	uint32_t GlyphIndex;
-	uint32_t Codepoint = FT_Get_First_Char(Face, &GlyphIndex);
+	uint32_t glyph_idx;
+	uint32_t codepoint = FT_Get_First_Char(face, &glyph_idx);
 
-	while(GlyphIndex)
+	while(glyph_idx)
 	{
-		printf("Codepoint %u GlyphIndex %u\n", Codepoint, GlyphIndex);
+		printf("codepoint %u glyph_idx %u\n", codepoint, glyph_idx);
 
-		if(Codepoint < ' ')
+		if(codepoint < ' ')
 		{
 			goto goto_skip;
 		}
 
-		CodepointMap[Codepoint] = Codepoint;
-		if(Codepoint > MaxCodepoint)
+		codepoint_map[codepoint] = codepoint;
+		if(codepoint > max_codepoint)
 		{
-			MaxCodepoint = Codepoint;
+			max_codepoint = codepoint;
 		}
 
-		Status = FT_Load_Char(Face, Codepoint, FT_LOAD_TARGET_MONO);
-		AssertEQ(Status, 0);
+		status = FT_Load_Char(face, codepoint, FT_LOAD_TARGET_MONO);
+		assert_eq(status, 0);
 
-		FT_Stroker Stroker;
-		Status = FT_Stroker_New(FreeType, &Stroker);
-		AssertEQ(Status, 0);
+		FT_Stroker stroker;
+		status = FT_Stroker_New(free_type, &stroker);
+		assert_eq(status, 0);
 
-		FT_Stroker_Set(Stroker, STROKE_THICKNESS * 64, FT_STROKER_LINECAP_ROUND, FT_STROKER_LINEJOIN_MITER_VARIABLE, 0);
+		FT_Stroker_Set(stroker, FONT_STROKE_THICKNESS * 64,
+			FT_STROKER_LINECAP_ROUND, FT_STROKER_LINEJOIN_MITER_VARIABLE, 0);
 
-		FT_Glyph Glyph;
-		Status = FT_Get_Glyph(Face->glyph, &Glyph);
-		AssertEQ(Status, 0);
+		FT_Glyph glyph;
+		status = FT_Get_Glyph(face->glyph, &glyph);
+		assert_eq(status, 0);
 
-		Status = FT_Glyph_StrokeBorder(&Glyph, Stroker, 0, 1);
-		AssertEQ(Status, 0);
+		status = FT_Glyph_StrokeBorder(&glyph, stroker, 0, 1);
+		assert_eq(status, 0);
 
-		Status = FT_Glyph_To_Bitmap(&Glyph, FT_RENDER_MODE_MONO, 0, 1);
-		AssertEQ(Status, 0);
+		status = FT_Glyph_To_Bitmap(&glyph, FT_RENDER_MODE_MONO, 0, 1);
+		assert_eq(status, 0);
 
-		FT_BitmapGlyph BitmapGlyph = (FT_BitmapGlyph) Glyph;
+		FT_BitmapGlyph bitmap_glyph = (FT_BitmapGlyph) glyph;
 
-		uint32_t BgWidth = BitmapGlyph->bitmap.width;
-		if(BgWidth > MaxWidth)
+		uint32_t bg_width = bitmap_glyph->bitmap.width;
+		if(bg_width > max_width)
 		{
-			printf("New MaxWidth %u (bg) for Codepoint %u\n", BgWidth, Codepoint);
-			MaxWidth = BgWidth;
+			printf("new max_width %u (bg)\n", bg_width);
+			max_width = bg_width;
 		}
 
-		uint32_t BgHeight = BitmapGlyph->bitmap.rows;
-		if(BgHeight > MaxHeight)
+		uint32_t bg_height = bitmap_glyph->bitmap.rows;
+		if(bg_height > max_height)
 		{
-			printf("New MaxHeight %u (bg) for Codepoint %u\n", BgHeight, Codepoint);
-			MaxHeight = BgHeight;
+			printf("new max_height %u (bg)\n", bg_height);
+			max_height = bg_height;
 		}
 
-		uint32_t BgTop = BitmapGlyph->top;
-		uint32_t BgLeft = BitmapGlyph->left;
-		uint32_t BgPitch = BitmapGlyph->bitmap.pitch << 3;
+		uint32_t bg_top = bitmap_glyph->top;
+		uint32_t bg_left = bitmap_glyph->left;
+		uint32_t bg_pitch = bitmap_glyph->bitmap.pitch << 3;
 
-		uint32_t BgSize = po2_ge(MAX(BgWidth, BgHeight));
-		if(BgSize <= 4)
+		uint32_t bg_size = font_get_next_power_of_2(MACRO_MAX(bg_width, bg_height));
+		if(bg_size <= 4)
 		{
-			BgSize = 4;
+			bg_size = 4;
 		}
 
-		GlyphMap[GlyphIndex] = CurrentGlyphData - GlyphData;
-		if(GlyphIndex > MaxIndex)
+		glyph_map[glyph_idx] = cur_glyph_data - glyph_data;
+		if(glyph_idx > max_idx)
 		{
-			MaxIndex = GlyphIndex;
+			max_idx = glyph_idx;
 		}
 
-		uint32_t ImageSize = BgSize * BgSize * 4;
-		uint8_t* BgImage = AllocCalloc(ImageSize);
-		AssertNotNull(BgImage);
+		uint32_t img_size = bg_size * bg_size * 4;
+		uint8_t* bg_img = alloc_calloc(img_size);
+		assert_not_null(bg_img);
 
-		for(uint32_t Y = 0; Y < BgHeight; ++Y)
+		for(uint32_t y = 0; y < bg_height; ++y)
 		{
-			for(uint32_t X = 0; X < BgWidth; ++X)
+			for(uint32_t x = 0; x < bg_width; ++x)
 			{
-				uint32_t OldIdx = Y * BgPitch + X;
-				uint32_t NewIdx = Y * BgSize + X;
-				uint32_t Byte = OldIdx >> 3;
-				uint32_t Bit = 7 - (OldIdx & 7);
+				uint32_t old_idx = y * bg_pitch + x;
+				uint32_t new_idx = y * bg_size + x;
+				uint32_t byte = old_idx >> 3;
+				uint32_t bit = 7 - (old_idx & 7);
 
-				uint32_t Pixel = (BitmapGlyph->bitmap.buffer[Byte] >> Bit) & 1;
-				if(Pixel)
+				uint32_t pixel = (bitmap_glyph->bitmap.buffer[byte] >> bit) & 1;
+				if(pixel)
 				{
-					BgImage[4 * NewIdx + 3] = 255;
+					bg_img[4 * new_idx + 3] = 255;
 				}
 			}
 		}
 
-		if(FillBlank)
+		if(fill_blank)
 		{
-			uint32_t MaxY = BgHeight;
-			uint32_t MaxX = BgWidth;
+			uint32_t max_y = bg_height;
+			uint32_t max_x = bg_width;
 
-			for(uint32_t Y = 0; Y < MaxY; ++Y)
+			for(uint32_t y = 0; y < max_y; ++y)
 			{
-				for(uint32_t X = 0; X < MaxX; ++X)
+				for(uint32_t x = 0; x < max_x; ++x)
 				{
-					uint8_t* Pixel = BgImage + 4 * (Y * BgSize + X) + 3;
+					uint8_t* pixel = bg_img + 4 * (y * bg_size + x) + 3;
 
-					if(*Pixel)
+					if(*pixel)
 					{
 						continue;
 					}
 
-					typedef struct ImgPos
+					typedef struct img_pos
 					{
-						uint16_t Y;
-						uint16_t X;
+						uint16_t y;
+						uint16_t x;
 					}
-					ImgPos;
+					img_pos;
 
-					ImgPos Stack[MaxX * MaxY];
-					ImgPos* Head = Stack;
+					img_pos stack[max_x * max_y];
+					img_pos* head = stack;
 
-					uint8_t Visited[MaxX * MaxY];
-					memset(Visited, 0, MaxX * MaxY);
+					uint8_t visited[max_x * max_y];
+					(void) memset(visited, 0, max_x * max_y);
 
-					*(Head++) = (ImgPos){ Y, X };
-					Visited[Y * MaxX + X] = 1;
+					*(head++) = (img_pos){ y, x };
+					visited[y * max_x + x] = 1;
 
-					int Enclosed = 1;
+					bool enclosed = true;
 
 					do
 					{
-						--Head;
+						--head;
 
-						uint16_t CurY = Head->Y;
-						uint16_t CurX = Head->X;
+						uint16_t cur_y = head->y;
+						uint16_t cur_x = head->x;
 
-						if(CurX)
+						if(cur_x)
 						{
-							uint8_t* Visit = Visited + CurY * MaxX + (CurX - 1);
+							uint8_t* visit = visited + cur_y * max_x + (cur_x - 1);
 
-							if(!*Visit && !BgImage[4 * (CurY * BgSize + (CurX - 1)) + 3])
+							if(!*visit && !bg_img[4 * (cur_y * bg_size + (cur_x - 1)) + 3])
 							{
-								*Visit = 1;
-								*(Head++) = (ImgPos){ CurY, CurX - 1 };
+								*visit = 1;
+								*(head++) = (img_pos){ cur_y, cur_x - 1 };
 							}
 						}
 						else
 						{
-							Enclosed = 0;
+							enclosed = false;
 							break;
 						}
 
-						if(CurX != MaxX - 1)
+						if(cur_x != max_x - 1)
 						{
-							uint8_t* Visit = Visited + CurY * MaxX + (CurX + 1);
+							uint8_t* visit = visited + cur_y * max_x + (cur_x + 1);
 
-							if(!*Visit && !BgImage[4 * (CurY * BgSize + (CurX + 1)) + 3])
+							if(!*visit && !bg_img[4 * (cur_y * bg_size + (cur_x + 1)) + 3])
 							{
-								*Visit = 1;
-								*(Head++) = (ImgPos){ CurY, CurX + 1 };
+								*visit = 1;
+								*(head++) = (img_pos){ cur_y, cur_x + 1 };
 							}
 						}
 						else
 						{
-							Enclosed = 0;
+							enclosed = false;
 							break;
 						}
 
-						if(CurY)
+						if(cur_y)
 						{
-							uint8_t* Visit = Visited + (CurY - 1) * MaxX + CurX;
+							uint8_t* visit = visited + (cur_y - 1) * max_x + cur_x;
 
-							if(!*Visit && !BgImage[4 * ((CurY - 1) * BgSize + CurX) + 3])
+							if(!*visit && !bg_img[4 * ((cur_y - 1) * bg_size + cur_x) + 3])
 							{
-								*Visit = 1;
-								*(Head++) = (ImgPos){ CurY - 1, CurX };
+								*visit = 1;
+								*(head++) = (img_pos){ cur_y - 1, cur_x };
 							}
 						}
 						else
 						{
-							Enclosed = 0;
+							enclosed = false;
 							break;
 						}
 
-						if(CurY != MaxY - 1)
+						if(cur_y != max_y - 1)
 						{
-							uint8_t* Visit = Visited + (CurY + 1) * MaxX + CurX;
+							uint8_t* visit = visited + (cur_y + 1) * max_x + cur_x;
 
-							if(!*Visit && !BgImage[4 * ((CurY + 1) * BgSize + CurX) + 3])
+							if(!*visit && !bg_img[4 * ((cur_y + 1) * bg_size + cur_x) + 3])
 							{
-								*Visit = 1;
-								*(Head++) = (ImgPos){ CurY + 1, CurX };
+								*visit = 1;
+								*(head++) = (img_pos){ cur_y + 1, cur_x };
 							}
 						}
 						else
 						{
-							Enclosed = 0;
+							enclosed = false;
 							break;
 						}
 					}
-					while(Head != Stack);
+					while(head != stack);
 
-					if(Enclosed)
+					if(enclosed)
 					{
-						*Pixel = 255;
+						*pixel = 255;
 					}
 				}
 			}
 		}
 
-		FT_Stroker_Done(Stroker);
-		FT_Done_Glyph(Glyph);
+		FT_Stroker_Done(stroker);
+		FT_Done_Glyph(glyph);
 
-		Status = FT_Get_Glyph(Face->glyph, &Glyph);
-		AssertEQ(Status, 0);
+		status = FT_Get_Glyph(face->glyph, &glyph);
+		assert_eq(status, 0);
 
-		Status = FT_Glyph_To_Bitmap(&Glyph, FT_RENDER_MODE_MONO, 0, 1);
-		AssertEQ(Status, 0);
+		status = FT_Glyph_To_Bitmap(&glyph, FT_RENDER_MODE_MONO, 0, 1);
+		assert_eq(status, 0);
 
-		BitmapGlyph = (FT_BitmapGlyph) Glyph;
+		bitmap_glyph = (FT_BitmapGlyph) glyph;
 
-		uint32_t Width = BitmapGlyph->bitmap.width;
-		if(Width > MaxWidth)
+		uint32_t width = bitmap_glyph->bitmap.width;
+		if(width > max_width)
 		{
-			printf("New MaxWidth %u for Codepoint %u\n", Width, Codepoint);
-			MaxWidth = Width;
+			printf("new max_width %u\n", width);
+			max_width = width;
 		}
 
-		uint32_t Height = BitmapGlyph->bitmap.rows;
-		if(Height > MaxHeight)
+		uint32_t height = bitmap_glyph->bitmap.rows;
+		if(height > max_height)
 		{
-			printf("New MaxHeight %u for Codepoint %u\n", Height, Codepoint);
-			MaxHeight = Height;
+			printf("new max_height %u\n", height);
+			max_height = height;
 		}
 
-		uint32_t Left = BitmapGlyph->left;
-		uint32_t Top = BitmapGlyph->top;
-		uint32_t OffX = Left - BgLeft;
-		uint32_t OffY = BgTop - Top;
-		uint32_t Pitch = BitmapGlyph->bitmap.pitch << 3;
+		uint32_t left = bitmap_glyph->left;
+		uint32_t top = bitmap_glyph->top;
+		uint32_t off_x = left - bg_left;
+		uint32_t off_y = bg_top - top;
+		uint32_t pitch = bitmap_glyph->bitmap.pitch << 3;
 
-		for(uint32_t Y = 0; Y < Height; ++Y)
+		for(uint32_t y = 0; y < height; ++y)
 		{
-			for(uint32_t X = 0; X < Width; ++X)
+			for(uint32_t x = 0; x < width; ++x)
 			{
-				uint32_t OldIdx = Y * Pitch + X;
-				uint32_t NewBgIdx = (Y + OffY) * BgSize + (X + OffX);
-				uint32_t Byte = OldIdx >> 3;
-				uint32_t Bit = 7 - (OldIdx & 7);
+				uint32_t old_idx = y * pitch + x;
+				uint32_t new_bg_idx = (y + off_y) * bg_size + (x + off_x);
+				uint32_t byte = old_idx >> 3;
+				uint32_t bit = 7 - (old_idx & 7);
 
-				uint32_t Pixel = (BitmapGlyph->bitmap.buffer[Byte] >> Bit) & 1;
-				if(Pixel)
+				uint32_t pixel = (bitmap_glyph->bitmap.buffer[byte] >> bit) & 1;
+				if(pixel)
 				{
-					BgImage[4 * NewBgIdx + 0] = 255;
-					BgImage[4 * NewBgIdx + 1] = 255;
-					BgImage[4 * NewBgIdx + 2] = 255;
-					BgImage[4 * NewBgIdx + 3] = 255;
+					bg_img[4 * new_bg_idx + 0] = 255;
+					bg_img[4 * new_bg_idx + 1] = 255;
+					bg_img[4 * new_bg_idx + 2] = 255;
+					bg_img[4 * new_bg_idx + 3] = 255;
 				}
 			}
 		}
 
-		CurrentGlyphData->Top = Face->glyph->metrics.horiBearingY / 64.0f;
-		CurrentGlyphData->Left = Face->glyph->metrics.horiBearingX / 64.0f;
-		CurrentGlyphData->Codepoint = Codepoint;
-		++CurrentGlyphData;
+		cur_glyph_data->top = face->glyph->metrics.horiBearingY / 64.0f;
+		cur_glyph_data->left = face->glyph->metrics.horiBearingX / 64.0f;
+		cur_glyph_data->codepoint = codepoint;
+		++cur_glyph_data;
 
-		if(WriteImg)
+		if(write_img)
 		{
-			char Filename[32];
-			sprintf(Filename, "tex/font/%u.png", Codepoint);
+			char path[32];
+			sprintf(path, "tex/font/%u.png", codepoint);
 
-			stbi_write_png(Filename, BgSize, BgSize, 4, BgImage, BgSize * 4);
+			status = stbi_write_png(path, bg_size, bg_size, 4, bg_img, bg_size * 4);
+			assert_neq(status, 0);
 		}
 
-		AllocFree(ImageSize, BgImage);
+		alloc_free(img_size, bg_img);
 
 
 		goto_skip:
-
-		Codepoint = FT_Get_Next_Char(Face, Codepoint, &GlyphIndex);
+		codepoint = FT_Get_Next_Char(face, codepoint, &glyph_idx);
 	}
 
-	printf("MaxWidth %d MaxHeight %d MaxIndex %u\n", MaxWidth, MaxHeight, MaxIndex);
-	++MaxIndex;
+	printf("max_width %d max_height %d max_idx %u\n", max_width, max_height, max_idx);
+	++max_idx;
 
-	FT_Done_Face(Face);
-	FT_Done_FreeType(FreeType);
-
-
-	char* GlyphDataText = AllocMalloc(TEXT_FILE_SIZE);
-	AssertNotNull(GlyphDataText);
-
-	char* Text = GlyphDataText;
-
-	uint32_t Fonts = CurrentGlyphData - GlyphData;
-	int FontSize = (int)(MaxHeight * 1.1f);
-
-	Text += sprintf(Text, "#pragma once\n\n");
-	Text += sprintf(Text, "#include <stdint.h>\n\n");
-	Text += sprintf(Text, "#include <DiepDesktop/client/tex/base.h>\n\n");
-	Text += sprintf(Text, "#define FONT_AVG_SIZE %d\n", AVG_FONT_SIZE);
-	Text += sprintf(Text, "#define FONT_SIZE %d\n", FontSize);
-	Text += sprintf(Text, "#define FONT_ASCENDER %.04ff\n", FontSize * 0.3f - STROKE_THICKNESS * 1.6666f);
-	Text += sprintf(Text, "#define FONT_STROKE_THICKNESS %d\n\n\n", STROKE_THICKNESS);
-	Text += sprintf(Text, "typedef struct GlyphInfo\n{\n");
-	Text += sprintf(Text, "\tfloat Top;\n");
-	Text += sprintf(Text, "\tfloat Left;\n");
-	Text += sprintf(Text, "\tTexInfo Texture;\n");
-	Text += sprintf(Text, "}\nGlyphInfo;\n\n\n");
-	Text += sprintf(Text, "extern const GlyphInfo GlyphInfos[%d];\n\n\n", Fonts);
-	Text += sprintf(Text, "extern const uint32_t GlyphMap[%d];\n", MaxIndex);
-
-	FileWrite("include/DiepDesktop/client/tex/font.h", (FileFile) {
-		.Buffer = (void*) GlyphDataText,
-		.Length = Text - GlyphDataText
-	});
+	FT_Done_Face(face);
+	FT_Done_FreeType(free_type);
 
 
-	Text = GlyphDataText;
+	char* data = alloc_malloc(TEXT_FILE_SIZE);
+	assert_not_null(data);
 
-	Text += sprintf(Text, "#include <DiepDesktop/client/tex/font.h>\n\n\n");
-	Text += sprintf(Text, "const GlyphInfo GlyphInfos[%d] =\n{\n", Fonts);
-	Text += sprintf(Text, "/*   0*/{0},\n");
+	uint32_t fonts = cur_glyph_data - glyph_data;
+	int font_size = (int)(max_height * 1.1f);
 
-	GlyphInfo* Data = GlyphData + 1;
+	char* str = data;
+	str += sprintf(str, "/* This file was generated by font_gen.c */\n\n");
+	str += sprintf(str, "#pragma once\n\n");
+	str += sprintf(str, "#include <DiepDesktop/client/tex/base.h>\n\n");
+	str += sprintf(str, "#define FONT_AVG_SIZE %d\n", FONT_AVG_SIZE);
+	str += sprintf(str, "#define FONT_SIZE %d\n", font_size);
+	str += sprintf(str, "#define FONT_ASCENDER %.04ff\n", font_size * 0.3f - FONT_STROKE_THICKNESS * 1.6666f);
+	str += sprintf(str, "#define FONT_STROKE_THICKNESS %d\n\n\n", FONT_STROKE_THICKNESS);
+	str += sprintf(str, "typedef struct font_glyph_data\n{\n");
+	str += sprintf(str, "\tfloat top;\n");
+	str += sprintf(str, "\tfloat left;\n");
+	str += sprintf(str, "\ttex_t tex;\n");
+	str += sprintf(str, "}\nfont_glyph_data_t;\n\n\n");
+	str += sprintf(str, "extern const font_glyph_data_t font_glyph_data[%d];\n\n", fonts);
+	str += sprintf(str, "extern const uint32_t font_glyph_map[%d];\n", max_idx);
+
+	file_t base_h =
+	{
+		.data = (void*) data,
+		.len = str - data
+	};
+	file_write("include/DiepDesktop/client/font/base.h", base_h);
+
+
+	str = data;
+	str += sprintf(str, "/* This file was generated by font_gen.c */\n\n");
+	str += sprintf(str, "#include <DiepDesktop/client/font/base.h>\n\n\n");
+	str += sprintf(str, "#define __(x) TEX_##x\n");
+	str += sprintf(str, "#define _(x, y, z) { x, y, __(z) },\n\n");
+	str += sprintf(str, "const font_glyph_data_t font_glyph_data[%d] =\n{\n", fonts);
+	str += sprintf(str, "/*   0*/ {0},\n");
+
 	uint32_t i = 1;
-
-	while(Data != CurrentGlyphData)
+	uint32_t full_loops = (fonts - i) / 7;
+	for(; i < full_loops * 7; i += 7)
 	{
-		Text += sprintf(Text,
-			"/*%4u*/{ %.01ff, %.01ff, TEXTURE_%u },\n",
-			i, (float) Data->Top, (float) Data->Left, Data->Codepoint);
-
-		++Data;
-		++i;
+		str += sprintf(str,
+			"/*%4u*/_(%3.0f,%3.0f,%5u)_(%3.0f,%3.0f,%5u)_(%3.0f,%3.0f,%5u)"
+			"_(%3.0f,%3.0f,%5u)_(%3.0f,%3.0f,%5u)_(%3.0f,%3.0f,%5u)_(%3.0f,%3.0f,%5u)\n",
+			i, (float) glyph_data[i].top, (float) glyph_data[i].left, glyph_data[i].codepoint,
+			(float) glyph_data[i + 1].top, (float) glyph_data[i + 1].left, glyph_data[i + 1].codepoint,
+			(float) glyph_data[i + 2].top, (float) glyph_data[i + 2].left, glyph_data[i + 2].codepoint,
+			(float) glyph_data[i + 3].top, (float) glyph_data[i + 3].left, glyph_data[i + 3].codepoint,
+			(float) glyph_data[i + 4].top, (float) glyph_data[i + 4].left, glyph_data[i + 4].codepoint,
+			(float) glyph_data[i + 5].top, (float) glyph_data[i + 5].left, glyph_data[i + 5].codepoint,
+			(float) glyph_data[i + 6].top, (float) glyph_data[i + 6].left, glyph_data[i + 6].codepoint);
 	}
 
-	AllocFree(sizeof(GlyphInfo) * TableSize, GlyphData);
-
-	Text += sprintf(Text, "};\n\n\n");
-	Text += sprintf(Text, "const uint32_t GlyphMap[%d] =\n{\n", MaxIndex);
-
-	uint32_t eights = MaxIndex >> 3;
-	for(i = 0; i < eights << 3; i += 8)
+	if(i != fonts)
 	{
-		Text += sprintf(Text, "/*%4u*/%6u, %6u, %6u, %6u, %6u, %6u, %6u, %6u,\n",
-			i, GlyphMap[i], GlyphMap[i + 1], GlyphMap[i + 2], GlyphMap[i + 3],
-			GlyphMap[i + 4], GlyphMap[i + 5], GlyphMap[i + 6], GlyphMap[i + 7]);
-	}
-
-	for(; i < MaxIndex; ++i)
-	{
-		Text += sprintf(Text, "/*%4u*/%6u,\n", i, GlyphMap[i]);
-	}
-
-	AllocFree(sizeof(uint32_t) * TableSize, GlyphMap);
-
-	Text += sprintf(Text, "};\n");
-
-	FileWrite("src/client/tex/font.c", (FileFile) {
-		.Buffer = (void*) GlyphDataText,
-		.Length = Text - GlyphDataText
-	});
-
-	AllocFree(TEXT_FILE_SIZE, GlyphDataText);
-
-
-	printf("\tswitch(Codepoint)\n\t{\n\n\tcase   '\\t': return ' ';\n\tcase   '\\n': ");
-
-	uint32_t Printed = 1;
-	uint32_t Dedupe = 1;
-	for(i = 32; i <= MaxCodepoint; ++i)
-	{
-		if(!(Printed & 7) && !Dedupe)
+		str += sprintf(str, "/*%4u*/", i);
+		for(; i < fonts; ++i)
 		{
-			printf("\n\t");
-			Dedupe = 1;
+			str += sprintf(str, "_(%3.0f,%3.0f,%5u)",
+				(float) glyph_data[i].top, (float) glyph_data[i].left, glyph_data[i].codepoint);
+		}
+		str += sprintf(str, "\n");
+	}
+
+	alloc_free(sizeof(font_glyph_data_t) * table_size, glyph_data);
+
+	str += sprintf(str, "};\n\n");
+	str += sprintf(str, "#undef _\n");
+	str += sprintf(str, "#undef __\n\n\n");
+	str += sprintf(str, "const uint32_t font_glyph_map[%d] =\n{\n", max_idx);
+
+	i = 0;
+	full_loops = (max_idx - i) / 22;
+	for(; i < full_loops * 22; i += 22)
+	{
+		str += sprintf(str,
+			"/*%4u*/ %4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,%4u,\n",
+			i, glyph_map[i], glyph_map[i + 1], glyph_map[i + 2], glyph_map[i + 3], glyph_map[i + 4],
+			glyph_map[i + 5], glyph_map[i + 6], glyph_map[i + 7], glyph_map[i + 8], glyph_map[i + 9],
+			glyph_map[i + 10], glyph_map[i + 11], glyph_map[i + 12], glyph_map[i + 13], glyph_map[i + 14],
+			glyph_map[i + 15], glyph_map[i + 16], glyph_map[i + 17], glyph_map[i + 18], glyph_map[i + 19],
+			glyph_map[i + 20], glyph_map[i + 21]);
+	}
+
+	if(i != max_idx)
+	{
+		str += sprintf(str, "/*%4u*/ ", i);
+		for(; i < max_idx; ++i)
+		{
+			str += sprintf(str, "%4u,", glyph_map[i]);
+		}
+		*(str - 1) = '\n';
+	}
+
+	alloc_free(sizeof(uint32_t) * table_size, glyph_map);
+
+	str += sprintf(str, "};\n");
+
+	file_t base_c =
+	{
+		.data = (void*) data,
+		.len = str - data
+	};
+	file_write("src/client/font/base.c", base_c);
+
+
+	str = data;
+	str += sprintf(str, "/* This file was generated by font_gen.c */\n\n");
+	str += sprintf(str, "#pragma once\n\n");
+	str += sprintf(str, "#include <stdint.h>\n\n\n");
+	str += sprintf(str, "extern uint32_t\n");
+	str += sprintf(str, "filter_codepoint(\n");
+	str += sprintf(str, "\tuint32_t codepoint\n");
+	str += sprintf(str, "\t);\n");
+
+	file_t filter_h =
+	{
+		.data = (void*) data,
+		.len = str - data
+	};
+	file_write("include/DiepDesktop/client/font/filter.h", filter_h);
+
+
+	str = data;
+	str += sprintf(str, "/* This file was generated by font_gen.c */\n\n");
+	str += sprintf(str, "#include <DiepDesktop/client/font/filter.h>\n\n\n");
+	str += sprintf(str, "#define _(x) case x:\n\n");
+	str += sprintf(str, "uint32_t\nfilter_codepoint(\n\tuint32_t codepoint\n\t)\n{\n");
+	str += sprintf(str, "\tswitch(codepoint)\n\t{\n\n\tcase '\\t': return ' '; case '\\n':\n");
+
+	uint32_t printed = 0;
+	uint32_t dedupe = 1;
+	for(i = 32; i <= max_codepoint; ++i)
+	{
+		if(!(printed % 15) && !dedupe)
+		{
+			str += sprintf(str, "\n");
+			dedupe = 1;
 		}
 
-		if(CodepointMap[i])
+		if(codepoint_map[i])
 		{
-			printf("case %6u: ", i);
-			++Printed;
-			Dedupe = 0;
+			str += sprintf(str, "_(%5u)", i);
+			++printed;
+			dedupe = 0;
 		}
 	}
 
-	printf("return Codepoint;\n\n\tdefault: return 0;\n\n\t}\n");
+	str += sprintf(str, "\n\treturn codepoint;\n\n\tdefault: return 0;\n\n\t}\n}\n");
+	str += sprintf(str, "\n#undef _\n");
 
-	AllocFree(sizeof(uint32_t) * TableSize, CodepointMap);
+	alloc_free(sizeof(uint32_t) * table_size, codepoint_map);
 
+	file_t filter_c =
+	{
+		.data = (void*) data,
+		.len = str - data
+	};
+	file_write("src/client/font/filter.c", filter_c);
+
+	alloc_free(TEXT_FILE_SIZE, data);
 
 	return 0;
 }

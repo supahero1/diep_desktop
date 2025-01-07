@@ -1,52 +1,68 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/rand.h>
 #include <DiepDesktop/shared/debug.h>
 
 #include <math.h>
 
 
-Static uint32_t RandomSeed;
+private uint32_t rand_seed;
 
 
 void
-SeedRand(
-	uint32_t Seed
+rand_set_seed(
+	uint32_t seed
 	)
 {
-	RandomSeed = Seed;
+	rand_seed = seed;
 }
 
 
 uint32_t
-Rand(
+rand_u32(
 	void
 	)
 {
-	return RandomSeed = (1103515245 * RandomSeed + 12345) & 0x7FFFFFFF;
+	return rand_seed = (1103515245 * rand_seed + 12345) & 0x7FFFFFFF;
 }
 
 
 float
-RandF(
+rand_f32(
 	void
 	)
 {
-	return (double) Rand() / (double) 0x7FFFFFFF;
+	return (double) rand_u32() / (double) 0x7FFFFFFF;
 }
 
 
-uint32_t
-RandBit(
+bool
+rand_bool(
 	void
 	)
 {
-	return Rand() & 64;
+	return (rand_u32() & 64) == 0;
 }
 
 
 float
-RandAngle(
+rand_angle(
 	void
 	)
 {
-	return (RandF() - 0.5) * M_PI * 2.0;
+	return (rand_f32() - 0.5) * M_PI * 2.0;
 }

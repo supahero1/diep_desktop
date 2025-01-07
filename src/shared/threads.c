@@ -1,310 +1,162 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/threads.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 
-#include <time.h>
 #include <errno.h>
 #include <string.h>
-#include <stdatomic.h>
 
 
-void
-MutexInit(
-	Mutex* Mtx
+typedef struct thread_data_internal
+{
+	sync_mtx_t mtx;
+	thread_data_t data;
+}
+thread_data_internal_t;
+
+
+private void*
+thread_fn(
+	thread_data_internal_t* internal
 	)
 {
-	int Status = pthread_mutex_init(Mtx, NULL);
-	HardenedAssertEQ(Status, 0);
-}
+	thread_data_t data = internal->data;
 
+	sync_mtx_unlock(&internal->mtx);
 
-void
-MutexDestroy(
-	Mutex* Mtx
-	)
-{
-	int Status = pthread_mutex_destroy(Mtx);
-	HardenedAssertEQ(Status, 0);
-}
-
-
-void
-MutexLock(
-	Mutex* Mtx
-	)
-{
-	int Status = pthread_mutex_lock(Mtx);
-	AssertEQ(Status, 0);
-}
-
-
-void
-MutexUnlock(
-	Mutex* Mtx
-	)
-{
-	int Status = pthread_mutex_unlock(Mtx);
-	AssertEQ(Status, 0);
-}
-
-
-void
-CondVarInit(
-	CondVar* Var
-	)
-{
-	int Status = pthread_cond_init(Var, NULL);
-	HardenedAssertEQ(Status, 0);
-}
-
-
-void
-CondVarDestroy(
-	CondVar* Var
-	)
-{
-	int Status = pthread_cond_destroy(Var);
-	HardenedAssertEQ(Status, 0);
-}
-
-
-void
-CondVarWait(
-	CondVar* Var,
-	Mutex* Mtx
-	)
-{
-	int Status = pthread_cond_wait(Var, Mtx);
-	AssertEQ(Status, 0);
-}
-
-
-void
-CondVarWake(
-	CondVar* Var
-	)
-{
-	int Status = pthread_cond_signal(Var);
-	AssertEQ(Status, 0);
-}
-
-
-void
-SemaphoreInit(
-	Semaphore* Sem,
-	uint32_t Value
-	)
-{
-	int Status = sem_init(Sem, 0, Value);
-	HardenedAssertEQ(Status, 0);
-}
-
-
-void
-SemaphoreDestroy(
-	Semaphore* Sem
-	)
-{
-	int Status = sem_destroy(Sem);
-	HardenedAssertEQ(Status, 0);
-}
-
-
-void
-SemaphoreWait(
-	Semaphore* Sem
-	)
-{
-	int Status;
-	while((Status = sem_wait(Sem)))
-	{
-		if(errno == EINTR)
-		{
-			continue;
-		}
-
-		HardenedAssertUnreachable();
-	}
-}
-
-
-void
-SemaphoreTimedWait(
-	Semaphore* Sem,
-	uint64_t Nanoseconds
-	)
-{
-	struct timespec Time;
-	Time.tv_sec = Nanoseconds / 1000000000;
-	Time.tv_nsec = Nanoseconds % 1000000000;
-
-	int Status;
-	while((Status = sem_timedwait(Sem, &Time)))
-	{
-		if(errno == EINTR)
-		{
-			continue;
-		}
-
-		if(errno == ETIMEDOUT)
-		{
-			break;
-		}
-
-		HardenedAssertUnreachable();
-	}
-}
-
-
-void
-SemaphorePost(
-	Semaphore* Sem
-	)
-{
-	int Status = sem_post(Sem);
-	AssertEQ(Status, 0);
-}
-
-
-typedef struct ThreadDataInternal
-{
-	ThreadData Data;
-
-	Mutex Mtx;
-}
-ThreadDataInternal;
-
-
-Static void*
-ThreadFuncInternal(
-	ThreadDataInternal* Internal
-	)
-{
-	ThreadData Data = Internal->Data;
-
-	MutexUnlock(&Internal->Mtx);
-
-	Data.Func(Data.Arg);
+	data.fn(data.data);
 
 	return NULL;
 }
 
 
 void
-ThreadInit(
-	ThreadT* Thread,
-	ThreadData Data
+thread_init(
+	thread_t* thread,
+	thread_data_t data
 	)
 {
-	ThreadT ID;
+	assert_not_null(data.fn);
 
-	ThreadDataInternal* Internal = AllocMalloc(sizeof(ThreadDataInternal));
-	AssertNotNull(Internal);
+	thread_t id;
 
-	Internal->Data = Data;
-	AssertNotNull(Data.Func);
+	thread_data_internal_t internal;
+	internal.data = data;
 
-	MutexInit(&Internal->Mtx);
-	MutexLock(&Internal->Mtx);
+	sync_mtx_init(&internal.mtx);
+	sync_mtx_lock(&internal.mtx);
 
-	int Status = pthread_create(&ID, NULL,
-		(void* (*)(void*)) ThreadFuncInternal, Internal);
-	HardenedAssertEQ(Status, 0);
+	int status = pthread_create(&id, NULL,
+		(void* (*)(void*)) thread_fn, &internal);
+	hard_assert_eq(status, 0);
 
-	if(Thread)
+	if(thread)
 	{
-		*Thread = ID;
+		*thread = id;
 	}
 
-	MutexLock(&Internal->Mtx);
-	MutexUnlock(&Internal->Mtx);
-
-	MutexDestroy(&Internal->Mtx);
-	AllocFree(sizeof(ThreadDataInternal), Internal);
+	sync_mtx_lock(&internal.mtx);
+	sync_mtx_unlock(&internal.mtx);
+	sync_mtx_free(&internal.mtx);
 }
 
 
 void
-ThreadDestroy(
-	ThreadT* Thread
+thread_free(
+	thread_t* thread
 	)
 {
-	*Thread = -1;
+	*thread = -1;
 }
 
 
 void
-ThreadCancelOn(
+thread_cancel_on(
 	void
 	)
 {
-	int Status = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	AssertEQ(Status, 0);
+	int status = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	assert_eq(status, 0);
 }
 
 
 void
-ThreadCancelOff(
+thread_cancel_off(
 	void
 	)
 {
-	int Status = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-	AssertEQ(Status, 0);
+	int status = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+	assert_eq(status, 0);
 }
 
 
 void
-ThreadAsyncOn(
+thread_async_on(
 	void
 	)
 {
-	int Status = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-	AssertEQ(Status, 0);
+	int status = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+	assert_eq(status, 0);
 }
 
 
 void
-ThreadAsyncOff(
+thread_async_off(
 	void
 	)
 {
-	int Status = pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-	AssertEQ(Status, 0);
+	int status = pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+	assert_eq(status, 0);
 }
 
 
 void
-ThreadDetach(
-	ThreadT Thread
+thread_detach(
+	thread_t thread
 	)
 {
-	int Status = pthread_detach(Thread);
-	HardenedAssertEQ(Status, 0);
+	int status = pthread_detach(thread);
+	hard_assert_eq(status, 0);
 }
 
 
 void
-ThreadJoin(
-	ThreadT Thread
+thread_join(
+	thread_t thread
 	)
 {
-	int Status = pthread_join(Thread, NULL);
-	HardenedAssertEQ(Status, 0);
+	int status = pthread_join(thread, NULL);
+	hard_assert_eq(status, 0);
 }
 
 
-Static void
-ThreadCancel(
-	ThreadT Thread
+private void
+thread_cancel(
+	thread_t thread
 	)
 {
-	int Status = pthread_cancel(Thread);
-	HardenedAssertEQ(Status, 0);
+	int status = pthread_cancel(thread);
+	hard_assert_eq(status, 0);
 }
 
 
-Static ThreadT
-ThreadSelf(
+thread_t
+thread_self(
 	void
 	)
 {
@@ -312,46 +164,46 @@ ThreadSelf(
 }
 
 
-Static bool
-ThreadEqual(
-	ThreadT A,
-	ThreadT B
+bool
+thread_equal(
+	thread_t a,
+	thread_t b
 	)
 {
-	return pthread_equal(A, B);
+	return pthread_equal(a, b);
 }
 
 
 void
-ThreadCancelSync(
-	ThreadT Thread
+thread_cancel_sync(
+	thread_t thread
 	)
 {
-	if(ThreadEqual(Thread, ThreadSelf()))
+	if(thread_equal(thread, thread_self()))
 	{
-		ThreadDetach(Thread);
-		ThreadExit();
+		thread_detach(thread);
+		thread_exit();
 	}
 	else
 	{
-		ThreadCancel(Thread);
-		ThreadJoin(Thread);
+		thread_cancel(thread);
+		thread_join(thread);
 	}
 }
 
 
 void
-ThreadCancelAsync(
-	ThreadT Thread
+thread_cancel_async(
+	thread_t thread
 	)
 {
-	ThreadDetach(Thread);
-	ThreadCancel(Thread);
+	thread_detach(thread);
+	thread_cancel(thread);
 }
 
 
 void
-ThreadExit(
+thread_exit(
 	void
 	)
 {
@@ -360,417 +212,412 @@ ThreadExit(
 
 
 void
-ThreadSleep(
-	uint64_t Nanoseconds
+thread_sleep(
+	uint64_t ns
 	)
 {
-	struct timespec Time;
-	Time.tv_sec = Nanoseconds / 1000000000;
-	Time.tv_nsec = Nanoseconds % 1000000000;
+	struct timespec time;
+	time.tv_sec = ns / 1000000000;
+	time.tv_nsec = ns % 1000000000;
 
 	struct timespec Rem;
 
-	int Status;
-	while((Status = nanosleep(&Time, &Rem)))
+	int status;
+	while((status = nanosleep(&time, &Rem)))
 	{
 		if(errno == EINTR)
 		{
-			Time = Rem;
+			time = Rem;
 			continue;
 		}
 
-		HardenedAssertUnreachable();
+		hard_assert_unreachable();
 	}
 }
 
 
-Static void
-ThreadsResize(
-	ThreadsT* Threads,
-	uint32_t Count
+private void
+threads_resize(
+	threads_t* threads,
+	uint32_t count
 	)
 {
-	uint32_t NewUsed = Threads->Used + Count;
-	uint32_t NewSize;
+	uint32_t new_used = threads->used + count;
+	uint32_t new_size;
 
-	if((NewUsed < (Threads->Size >> 2)) || (NewUsed > Threads->Size))
+	if((new_used < (threads->size >> 2)) || (new_used > threads->size))
 	{
-		NewSize = (NewUsed << 1) | 1;
+		new_size = (new_used << 1) | 1;
 	}
 	else
 	{
 		return;
 	}
 
-	Threads->Threads = AllocRemalloc(sizeof(ThreadT) * Threads->Size,
-		Threads->Threads, sizeof(ThreadT) * NewSize);
-	AssertNotNull(Threads->Threads);
+	threads->threads = alloc_remalloc(sizeof(thread_t) * threads->size,
+		threads->threads, sizeof(thread_t) * new_size);
+	assert_not_null(threads->threads);
 
-	Threads->Size = NewSize;
+	threads->size = new_size;
 }
 
 
 void
-ThreadsInit(
-	ThreadsT* Threads
+threads_init(
+	threads_t* threads
 	)
 {
-	Threads->Threads = NULL;
-	Threads->Used = 0;
-	Threads->Size = 0;
+	threads->threads = NULL;
+	threads->used = 0;
+	threads->size = 0;
 }
 
 
 void
-ThreadsDestroy(
-	ThreadsT* Threads
+threads_free(
+	threads_t* threads
 	)
 {
-	AllocFree(sizeof(ThreadT) * Threads->Size, Threads->Threads);
+	alloc_free(sizeof(thread_t) * threads->size, threads->threads);
 }
 
 
 void
-ThreadsAdd(
-	ThreadsT* Threads,
-	ThreadData Data,
-	uint32_t Count
+threads_add(
+	threads_t* threads,
+	thread_data_t data,
+	uint32_t count
 	)
 {
-	AssertGT(Count, 0);
+	assert_gt(count, 0);
 
-	ThreadsResize(Threads, Count);
+	threads_resize(threads, count);
 
-	ThreadT* Thread = Threads->Threads + Threads->Used;
-	ThreadT* ThreadEnd = Thread + Count;
+	thread_t* thread = threads->threads + threads->used;
+	thread_t* thread_end = thread + count;
 
-	do
+	for(; thread != thread_end; ++thread)
 	{
-		ThreadInit(Thread, Data);
+		thread_init(thread, data);
 	}
-	while(++Thread != ThreadEnd);
 
-	Threads->Used += Count;
+	threads->used += count;
 }
 
 
 void
-ThreadsCancelSync(
-	ThreadsT* Threads,
-	uint32_t Count
+threads_cancel_sync(
+	threads_t* threads,
+	uint32_t count
 	)
 {
-	AssertGT(Count, 0);
-	AssertLE(Count, Threads->Used);
+	assert_gt(count, 0);
+	assert_le(count, threads->used);
 
-	ThreadT* ThreadStart = Threads->Threads + Threads->Used - Count;
+	thread_t* thread_start = threads->threads + threads->used - count;
 
-	ThreadT* Thread = ThreadStart;
-	ThreadT* ThreadEnd = Thread + Count;
+	thread_t* thread = thread_start;
+	thread_t* thread_end = thread + count;
 
-	ThreadT Self = ThreadSelf();
-	bool FoundOurself = false;
+	thread_t self = thread_self();
+	bool found_self = false;
 
-	do
+	for(; thread != thread_end; ++thread)
 	{
-		if(ThreadEqual(*Thread, Self))
+		if(thread_equal(*thread, self))
 		{
-			FoundOurself = true;
+			found_self = true;
 		}
 		else
 		{
-			ThreadCancel(*Thread);
+			thread_cancel(*thread);
 		}
 	}
-	while(++Thread != ThreadEnd);
 
-	Thread = ThreadStart;
-	do
+	for(thread = thread_start; thread != thread_end; ++thread)
 	{
-		if(!ThreadEqual(*Thread, Self))
+		if(!thread_equal(*thread, self))
 		{
-			ThreadJoin(*Thread);
+			thread_join(*thread);
 		}
 	}
-	while(++Thread != ThreadEnd);
 
-	ThreadsResize(Threads, -Count);
+	threads_resize(threads, -count);
 
-	if(FoundOurself)
+	if(found_self)
 	{
-		ThreadDetach(Self);
-		ThreadExit();
+		thread_detach(self);
+		thread_exit();
 	}
 }
 
 
 void
-ThreadsCancelAsync(
-	ThreadsT* Threads,
-	uint32_t Count
+threads_cancel_async(
+	threads_t* threads,
+	uint32_t count
 	)
 {
-	AssertGT(Count, 0);
-	AssertLE(Count, Threads->Used);
+	assert_gt(count, 0);
+	assert_le(count, threads->used);
 
-	ThreadT* ThreadStart = Threads->Threads + Threads->Used - Count;
+	thread_t* thread_start = threads->threads + threads->used - count;
 
-	ThreadT* Thread = ThreadStart;
-	ThreadT* ThreadEnd = Thread + Count;
+	thread_t* thread = thread_start;
+	thread_t* thread_end = thread + count;
 
-	ThreadT Self = ThreadSelf();
-	bool FoundOurself = false;
+	thread_t self = thread_self();
+	bool found_self = false;
 
-	do
+	for(; thread != thread_end; ++thread)
 	{
-		if(ThreadEqual(*Thread, Self))
+		if(thread_equal(*thread, self))
 		{
-			FoundOurself = true;
+			found_self = true;
 		}
 		else
 		{
-			ThreadDetach(*Thread);
-			ThreadCancel(*Thread);
+			thread_detach(*thread);
+			thread_cancel(*thread);
 		}
 	}
-	while(++Thread != ThreadEnd);
 
-	ThreadsResize(Threads, -Count);
+	threads_resize(threads, -count);
 
-	if(FoundOurself)
+	if(found_self)
 	{
-		ThreadDetach(Self);
-		ThreadCancel(Self);
+		thread_detach(self);
+		thread_cancel(self);
 	}
 }
 
 
 void
-ThreadsShutdownSync(
-	ThreadsT* Threads
+threads_cancel_all_sync(
+	threads_t* threads
 	)
 {
-	ThreadsCancelSync(Threads, Threads->Used);
+	threads_cancel_sync(threads, threads->used);
 }
 
 
 void
-ThreadsShutdownAsync(
-	ThreadsT* Threads
+threads_cancel_all_async(
+	threads_t* threads
 	)
 {
-	ThreadsCancelAsync(Threads, Threads->Used);
+	threads_cancel_async(threads, threads->used);
 }
 
 
 void
-ThreadPoolFunc(
-	void* Data
+thread_pool_fn(
+	void* data
 	)
 {
-	ThreadPoolT* Pool = Data;
+	thread_pool_t* pool = data;
 
 	while(1)
 	{
-		ThreadPoolWork(Pool);
+		thread_pool_work(pool);
 	}
 }
 
 
 void
-ThreadPoolInit(
-	ThreadPoolT* Pool
+thread_pool_init(
+	thread_pool_t* pool
 	)
 {
-	SemaphoreInit(&Pool->Sem, 0);
-	MutexInit(&Pool->Mtx);
+	sync_sem_init(&pool->sem, 0);
+	sync_mtx_init(&pool->mtx);
 
-	Pool->Queue = NULL;
-	Pool->Used = 0;
-	Pool->Size = 0;
+	pool->queue = NULL;
+	pool->used = 0;
+	pool->size = 0;
 }
 
 
 void
-ThreadPoolDestroy(
-	ThreadPoolT* Pool
+thread_pool_free(
+	thread_pool_t* pool
 	)
 {
-	AllocFree(sizeof(ThreadData) * Pool->Size, Pool->Queue);
+	alloc_free(sizeof(thread_data_t) * pool->size, pool->queue);
 
-	MutexDestroy(&Pool->Mtx);
-	SemaphoreDestroy(&Pool->Sem);
+	sync_mtx_free(&pool->mtx);
+	sync_sem_free(&pool->sem);
 }
 
 
 void
-ThreadPoolLock(
-	ThreadPoolT* Pool
+thread_pool_lock(
+	thread_pool_t* pool
 	)
 {
-	MutexLock(&Pool->Mtx);
+	sync_mtx_lock(&pool->mtx);
 }
 
 
 void
-ThreadPoolUnlock(
-	ThreadPoolT* Pool
+thread_pool_unlock(
+	thread_pool_t* pool
 	)
 {
-	MutexUnlock(&Pool->Mtx);
+	sync_mtx_unlock(&pool->mtx);
 }
 
 
-Static void
-ThreadPoolResize(
-	ThreadPoolT* Pool,
-	uint32_t Count
+private void
+thread_pool_resize(
+	thread_pool_t* pool,
+	uint32_t count
 	)
 {
-	uint32_t NewUsed = Pool->Used + Count;
-	uint32_t NewSize;
+	uint32_t new_used = pool->used + count;
+	uint32_t new_size;
 
-	if((NewUsed < (Pool->Size >> 2)) || (NewUsed > Pool->Size))
+	if((new_used < (pool->size >> 2)) || (new_used > pool->size))
 	{
-		NewSize = (NewUsed << 1) | 1;
+		new_size = (new_used << 1) | 1;
 	}
 	else
 	{
 		return;
 	}
 
-	Pool->Queue = AllocRemalloc(sizeof(ThreadData) * Pool->Size,
-		Pool->Queue, sizeof(ThreadData) * NewSize);
-	AssertNotNull(Pool->Queue);
+	pool->queue = alloc_remalloc(sizeof(thread_data_t) * pool->size,
+		pool->queue, sizeof(thread_data_t) * new_size);
+	assert_not_null(pool->queue);
 
-	Pool->Size = NewSize;
+	pool->size = new_size;
 }
 
 
-Static void
-ThreadPoolAddCommon(
-	ThreadPoolT* Pool,
-	ThreadData Data,
-	bool Lock
+private void
+thread_pool_add_common(
+	thread_pool_t* pool,
+	thread_data_t data,
+	bool lock
 	)
 {
-	if(Lock)
+	if(lock)
 	{
-		ThreadPoolLock(Pool);
+		thread_pool_lock(pool);
 	}
 
-	ThreadPoolResize(Pool, 1);
+	thread_pool_resize(pool, 1);
 
-	Pool->Queue[Pool->Used++] = Data;
+	pool->queue[pool->used++] = data;
 
-	if(Lock)
+	if(lock)
 	{
-		ThreadPoolUnlock(Pool);
+		thread_pool_unlock(pool);
 	}
 
-	SemaphorePost(&Pool->Sem);
+	sync_sem_post(&pool->sem);
 }
 
 
 void
-ThreadPoolAddU(
-	ThreadPoolT* Pool,
-	ThreadData Data
+thread_pool_add_u(
+	thread_pool_t* pool,
+	thread_data_t data
 	)
 {
-	ThreadPoolAddCommon(Pool, Data, false);
+	thread_pool_add_common(pool, data, false);
 }
 
 
 void
-ThreadPoolAdd(
-	ThreadPoolT* Pool,
-	ThreadData Data
+thread_pool_add(
+	thread_pool_t* pool,
+	thread_data_t data
 	)
 {
-	ThreadPoolAddCommon(Pool, Data, true);
+	thread_pool_add_common(pool, data, true);
 }
 
 
-Static void
-ThreadPoolTryWorkCommon(
-	ThreadPoolT* Pool,
-	bool Lock
+private void
+thread_pool_try_work_common(
+	thread_pool_t* pool,
+	bool lock
 	)
 {
-	if(Lock)
+	if(lock)
 	{
-		ThreadPoolLock(Pool);
+		thread_pool_lock(pool);
 	}
 
-	if(!Pool->Used)
+	if(!pool->used)
 	{
-		if(Lock)
+		if(lock)
 		{
-			ThreadPoolUnlock(Pool);
+			thread_pool_unlock(pool);
 		}
 
 		return;
 	}
 
-	ThreadData Data = *Pool->Queue;
+	thread_data_t data = *pool->queue;
 
-	ThreadPoolResize(Pool, -1);
+	thread_pool_resize(pool, -1);
 
-	if(Pool->Used)
+	if(pool->used)
 	{
-		(void) memmove(Pool->Queue, Pool->Queue + 1,
-			sizeof(ThreadData) * Pool->Used);
+		(void) memmove(pool->queue, pool->queue + 1,
+			sizeof(thread_data_t) * pool->used);
 	}
 
-	if(Lock)
+	if(lock)
 	{
-		ThreadPoolUnlock(Pool);
+		thread_pool_unlock(pool);
 	}
 
-	Data.Func(Data.Arg);
+	data.fn(data.data);
 }
 
 
 void
-ThreadPoolTryWorkU(
-	ThreadPoolT* Pool
+thread_pool_try_work_u(
+	thread_pool_t* pool
 	)
 {
-	ThreadPoolTryWorkCommon(Pool, false);
+	thread_pool_try_work_common(pool, false);
 }
 
 
 void
-ThreadPoolTryWork(
-	ThreadPoolT* Pool
+thread_pool_try_work(
+	thread_pool_t* pool
 	)
 {
-	ThreadPoolTryWorkCommon(Pool, true);
+	thread_pool_try_work_common(pool, true);
 }
 
 
 void
-ThreadPoolWorkU(
-	ThreadPoolT* Pool
+thread_pool_work_u(
+	thread_pool_t* pool
 	)
 {
-	SemaphoreWait(&Pool->Sem);
+	sync_sem_wait(&pool->sem);
 
-	ThreadPoolTryWorkU(Pool);
+	thread_pool_try_work_u(pool);
 }
 
 
 void
-ThreadPoolWork(
-	ThreadPoolT* Pool
+thread_pool_work(
+	thread_pool_t* pool
 	)
 {
-	ThreadAsyncOff();
-		SemaphoreWait(&Pool->Sem);
+	thread_async_off();
+		sync_sem_wait(&pool->sem);
 
-		ThreadCancelOff();
-			ThreadPoolTryWork(Pool);
-		ThreadCancelOn();
-	ThreadAsyncOn();
+		thread_cancel_off();
+			thread_pool_try_work(pool);
+		thread_cancel_on();
+	thread_async_on();
 }

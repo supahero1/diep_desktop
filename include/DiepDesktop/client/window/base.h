@@ -17,37 +17,19 @@
 #pragma once
 
 #include <DiepDesktop/shared/base.h>
+#include <DiepDesktop/shared/sync.h>
 #include <DiepDesktop/shared/color.h>
 #include <DiepDesktop/shared/event.h>
+#include <DiepDesktop/shared/extent.h>
 #include <DiepDesktop/client/tex/base.h>
 
-#define CGLM_FORCE_RADIANS
-#define CGLM_FORCE_LEFT_HANDED
-#define CGLM_FORCE_DEPTH_ZERO_TO_ONE
-#define CGLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-#include <cglm/cglm.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
-typedef struct window_draw_data
-{
-	vec2         pos;
-	vec2         size;
-	float        angle;
-	color_argb_t white_color;
-	float        white_depth;
-	color_argb_t black_color;
-	float        black_depth;
-	tex_t        tex;
-	vec2         tex_scale;
-	vec2         tex_offset;
-}
-window_draw_data_t;
-
-
-extern void
-window_add_draw_data(
-	const window_draw_data_t* data
-	);
+#include <stdatomic.h>
 
 
 typedef enum window_cursor
@@ -58,66 +40,6 @@ typedef enum window_cursor
 	WINDOW_CURSOR__COUNT
 }
 window_cursor_t;
-
-
-extern void
-window_set_cursor(
-	window_cursor_t cursor
-	);
-
-
-extern void
-window_start_typing(
-	void
-	);
-
-
-extern void
-window_stop_typing(
-	void
-	);
-
-
-extern char*
-window_get_clipboard(
-	uint32_t* len
-	);
-
-
-extern void
-window_set_clipboard(
-	const char* str
-	);
-
-
-extern pair_t
-window_get_size(
-	void
-	);
-
-
-extern pair_t
-window_get_mouse_pos(
-	void
-	);
-
-
-extern void
-window_init(
-	void
-	);
-
-
-extern void
-window_run(
-	void
-	);
-
-
-extern void
-window_free(
-	void
-	);
 
 
 typedef enum window_button
@@ -168,17 +90,108 @@ window_key_t;
 #undef __
 
 
-typedef enum window_key_mod
+typedef enum window_mod
 {
-	WINDOW_KEY_MOD_NONE = 0,
-	WINDOW_KEY_MOD_SHIFT = 1,
-	WINDOW_KEY_MOD_CTRL = 2,
-	WINDOW_KEY_MOD_ALT = 4,
-	WINDOW_KEY_MOD_GUI = 8,
-	WINDOW_KEY_MOD_CAPS_LOCK = 16,
-	WINDOW_KEY_MOD__COUNT
+	WINDOW_MOD_NONE = 0,
+	WINDOW_MOD_SHIFT = 1,
+	WINDOW_MOD_CTRL = 2,
+	WINDOW_MOD_ALT = 4,
+	WINDOW_MOD_GUI = 8,
+	WINDOW_MOD_CAPS_LOCK = 16,
+	WINDOW_MOD__COUNT
 }
-window_key_mod_t;
+window_mod_t;
+
+
+typedef struct window
+{
+	sync_mtx_t mtx;
+
+	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
+	window_cursor_t current_cursor;
+
+	SDL_PropertiesID props;
+	SDL_Window* window;
+
+	half_extent_t extent;
+	pair_t size;
+	pair_t mouse;
+
+	bool fullscreen;
+	bool first_frame;
+	_Atomic bool running;
+}
+window_t;
+
+
+extern void
+window_init(
+	window_t* window
+	);
+
+
+extern void
+window_free(
+	window_t* window
+	);
+
+
+extern bool
+window_is_running(
+	window_t* window
+	);
+
+
+extern void
+window_run(
+	window_t* window
+	);
+
+
+extern void
+window_lock(
+	window_t* window
+	);
+
+
+extern void
+window_unlock(
+	window_t* window
+	);
+
+
+extern void
+window_set_cursor(
+	window_t* window,
+	window_cursor_t cursor
+	);
+
+
+extern void
+window_start_typing(
+	window_t* window
+	);
+
+
+extern void
+window_stop_typing(
+	window_t* window
+	);
+
+
+extern char*
+window_get_clipboard(
+	window_t* window,
+	uint32_t* len
+	);
+
+
+extern void
+window_set_clipboard(
+	window_t* window,
+	const char* str
+	);
+
 
 
 typedef struct window_resize_event_data
@@ -287,3 +300,4 @@ typedef struct window_draw_event_data
 window_draw_event_data_t;
 
 extern event_target_t window_draw_target;
+

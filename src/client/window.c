@@ -1,4 +1,19 @@
-#include <DiepDesktop/client/dds.h>
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/base.h>
 #include <DiepDesktop/shared/file.h>
 #include <DiepDesktop/shared/debug.h>
@@ -6,17 +21,15 @@
 #include <DiepDesktop/shared/threads.h>
 #include <DiepDesktop/client/tex/base.h>
 #include <DiepDesktop/shared/alloc_ext.h>
+#include <DiepDesktop/client/window/dds.h>
 
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
-#include <DiepDesktop/client/volk.h>
-
-#include <zstd.h>
+#include <DiepDesktop/client/window/volk.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include <time.h>
 #include <signal.h>
 #include <string.h>
 #include <stdatomic.h>
@@ -24,67 +37,67 @@
 #define VULKAN_MAX_IMAGES 8
 
 
-Static SDL_PropertiesID WindowProps;
-Static SDL_Window* Window;
-Static SDL_Cursor* Cursors[kWINDOW_CURSOR];
-Static WindowCursor CurrentCursor = WINDOW_CURSOR_DEFAULT;
-Static Pair WindowSize;
-Static IPair OldWindowPosition;
-Static IPair OldWindowSize;
-Static Pair MousePosition;
-Static bool Fullscreen = false;
-Static bool FirstFrame = true;
+private SDL_PropertiesID WindowProps;
+private SDL_Window* Window;
+private SDL_Cursor* Cursors[WINDOW_CURSOR__COUNT];
+private window_cursor_t CurrentCursor = WINDOW_CURSOR_DEFAULT;
+private pair_t WindowSize;
+private ipair_t OldWindowPosition;
+private ipair_t OldWindowSize;
+private pair_t MousePosition;
+private bool Fullscreen = false;
+private bool FirstFrame = true;
 
 
 
-Static const char* vkInstanceExtensions[] =
+private const char* vkInstanceExtensions[] =
 {
 #ifndef NDEBUG
 	VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 #endif
 };
 
-Static const char* vkLayers[] =
+private const char* vkLayers[] =
 {
 #ifndef NDEBUG
 	"VK_LAYER_KHRONOS_validation"
 #endif
 };
 
-Static VkInstance vkInstance;
+private VkInstance vkInstance;
 
 
-Static VkSurfaceKHR vkSurface;
-Static VkSurfaceCapabilitiesKHR vkSurfaceCapabilities;
+private VkSurfaceKHR vkSurface;
+private VkSurfaceCapabilitiesKHR vkSurfaceCapabilities;
 
 
-Static const char* vkDeviceExtensions[] =
+private const char* vkDeviceExtensions[] =
 {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 
-Static uint32_t vkQueueID;
-Static VkSampleCountFlagBits vkSamples;
-Static VkPhysicalDeviceLimits vkLimits;
+private uint32_t vkQueueID;
+private VkSampleCountFlagBits vkSamples;
+private VkPhysicalDeviceLimits vkLimits;
 
-Static VkPhysicalDevice vkPhysicalDevice;
-Static VkDevice vkDevice;
-Static VkQueue vkQueue;
-Static VkPhysicalDeviceMemoryProperties vkMemoryProperties;
+private VkPhysicalDevice vkPhysicalDevice;
+private VkDevice vkDevice;
+private VkQueue vkQueue;
+private VkPhysicalDeviceMemoryProperties vkMemoryProperties;
 
-Static VkCommandPool vkCommandPool;
-Static VkCommandBuffer vkCommandBuffer;
-Static VkFence vkFence;
+private VkCommandPool vkCommandPool;
+private VkCommandBuffer vkCommandBuffer;
+private VkFence vkFence;
 
-Static VkExtent2D vkExtent;
-Static uint32_t vkMinImageCount;
-Static VkSurfaceTransformFlagBitsKHR vkTransform;
-Static VkPresentModeKHR vkPresentMode;
+private VkExtent2D vkExtent;
+private uint32_t vkMinImageCount;
+private VkSurfaceTransformFlagBitsKHR vkTransform;
+private VkPresentModeKHR vkPresentMode;
 
 
-Static VkSwapchainKHR vkSwapchain;
-Static uint32_t vkImageCount;
+private VkSwapchainKHR vkSwapchain;
+private uint32_t vkImageCount;
 
 typedef struct VkFrame
 {
@@ -95,44 +108,44 @@ typedef struct VkFrame
 }
 VkFrame;
 
-Static VkFrame vkFrames[VULKAN_MAX_IMAGES];
+private VkFrame vkFrames[VULKAN_MAX_IMAGES];
 
 
 typedef enum VkBarrierSemaphore
 {
 	BARRIER_SEMAPHORE_IMAGE_AVAILABLE,
 	BARRIER_SEMAPHORE_RENDER_FINISHED,
-	kBARRIER_SEMAPHORE
+	BARRIER_SEMAPHORE__COUNT
 }
 VkBarrierSemaphore;
 
 typedef enum VkBarrierFence
 {
 	BARRIER_FENCE_IN_FLIGHT,
-	kBARRIER_FENCE
+	BARRIER_FENCE__COUNT
 }
 VkBarrierFence;
 
 typedef struct VkBarrier
 {
-	VkSemaphore Semaphores[kBARRIER_SEMAPHORE];
-	VkFence Fences[kBARRIER_FENCE];
+	VkSemaphore Semaphores[BARRIER_SEMAPHORE__COUNT];
+	VkFence Fences[BARRIER_FENCE__COUNT];
 }
 VkBarrier;
 
-Static VkBarrier vkBarriers[VULKAN_MAX_IMAGES];
-Static VkBarrier* vkBarrier = vkBarriers;
+private VkBarrier vkBarriers[VULKAN_MAX_IMAGES];
+private VkBarrier* vkBarrier = vkBarriers;
 
 
-Static VkViewport vkViewport;
-Static VkRect2D vkScissor;
+private VkViewport vkViewport;
+private VkRect2D vkScissor;
 
 
-Static VkBuffer vkCopyBuffer;
-Static VkDeviceMemory vkCopyBufferMemory;
+private VkBuffer vkCopyBuffer;
+private VkDeviceMemory vkCopyBufferMemory;
 
 
-Static VkSampler vkSampler;
+private VkSampler vkSampler;
 
 
 typedef enum ImageType
@@ -145,14 +158,14 @@ ImageType;
 
 typedef struct Image
 {
-	const char* Path;
+	const char* path;
 
-	uint32_t Width;
-	uint32_t Height;
+	uint32_t width;
+	uint32_t height;
 	uint32_t Layers;
 
-	VkFormat Format;
-	ImageType Type;
+	VkFormat format;
+	ImageType type;
 
 	VkImage Image;
 	VkImageView View;
@@ -164,29 +177,29 @@ typedef struct Image
 }
 Image;
 
-Static Image vkDepthBuffer =
+private Image vkDepthBuffer =
 {
-	.Format = VK_FORMAT_D32_SFLOAT,
-	.Type = IMAGE_TYPE_DEPTH_STENCIL
+	.format = VK_FORMAT_D32_SFLOAT,
+	.type = IMAGE_TYPE_DEPTH_STENCIL
 };
 
-Static Image vkMultisampling =
+private Image vkMultisampling =
 {
-	.Format = VK_FORMAT_B8G8R8A8_SRGB,
-	.Type = IMAGE_TYPE_MULTISAMPLED
+	.format = VK_FORMAT_B8G8R8A8_SRGB,
+	.type = IMAGE_TYPE_MULTISAMPLED
 };
 
-Static Image vkTextures[TEXTURES_NUM];
+private Image vkTextures[TEXTURES_NUM];
 
 
 typedef struct VkVertexVertexInput
 {
-	vec2 Position;
+	vec2 pos;
 	vec2 TexCoord;
 }
 VkVertexVertexInput;
 
-Static const VkVertexVertexInput vkVertexVertexInput[] =
+private const VkVertexVertexInput vkVertexVertexInput[] =
 {
 	{ { -0.5f, -0.5f }, { 0.0f, 0.0f } },
 	{ {  0.5f, -0.5f }, { 1.0f, 0.0f } },
@@ -194,62 +207,62 @@ Static const VkVertexVertexInput vkVertexVertexInput[] =
 	{ {  0.5f,  0.5f }, { 1.0f, 1.0f } },
 };
 
-Static VkBuffer vkVertexVertexInputBuffer;
-Static VkDeviceMemory vkVertexVertexInputMemory;
+private VkBuffer vkVertexVertexInputBuffer;
+private VkDeviceMemory vkVertexVertexInputMemory;
 
-Static VkBuffer vkVertexInstanceInputBuffer;
-Static VkDeviceMemory vkVertexInstanceInputMemory;
+private VkBuffer vkVertexInstanceInputBuffer;
+private VkDeviceMemory vkVertexInstanceInputMemory;
 
-Static VkBuffer vkDrawCountBuffer;
-Static VkDeviceMemory vkDrawCountMemory;
+private VkBuffer vkDrawCountBuffer;
+private VkDeviceMemory vkDrawCountMemory;
 
 
 typedef struct VkVertexConstantInput
 {
-	Pair WindowSize;
+	pair_t WindowSize;
 }
 VkVertexConstantInput;
 
-Static VkVertexConstantInput vkConstants;
+private VkVertexConstantInput vkConstants;
 
 
-Static VkDescriptorSetLayout vkDescriptors;
-Static VkRenderPass vkRenderPass;
-Static VkPipelineLayout vkPipelineLayout;
-Static VkPipeline vkPipeline;
-Static VkDescriptorPool vkDescriptorPool;
-Static VkDescriptorSet vkDescriptorSet;
+private VkDescriptorSetLayout vkDescriptors;
+private VkRenderPass vkRenderPass;
+private VkPipelineLayout vkPipelineLayout;
+private VkPipeline vkPipeline;
+private VkDescriptorPool vkDescriptorPool;
+private VkDescriptorSet vkDescriptorSet;
 
 
-Static ThreadT vkThread;
-Static _Atomic uint8_t vkShouldRun;
-Static Mutex Mtx;
-Static CondVar Cond;
-Static bool Resized;
-Static Mutex WindowMtx;
+private thread_t vkThread;
+private _Atomic uint8_t vkShouldRun;
+private sync_mtx_t mtx;
+private sync_cond_t Cond;
+private bool Resized;
+private sync_mtx_t WindowMtx;
 
 
-EventTarget WindowResizeTarget;
-EventTarget WindowFocusTarget;
-EventTarget WindowBlurTarget;
-EventTarget WindowKeyDownTarget;
-EventTarget WindowKeyUpTarget;
-EventTarget WindowTextTarget;
-EventTarget WindowMouseDownTarget;
-EventTarget WindowMouseUpTarget;
-EventTarget WindowMouseMoveTarget;
-EventTarget WindowMouseScrollTarget;
+event_target_t window_resize_target;
+event_target_t window_focus_target;
+event_target_t window_blur_target;
+event_target_t window_key_down_target;
+event_target_t window_key_up_target;
+event_target_t window_text_target;
+event_target_t window_mouse_down_target;
+event_target_t window_mouse_up_target;
+event_target_t window_mouse_move_target;
+event_target_t window_mouse_scroll_target;
 
 
-Static DrawData* DrawDataBuffer;
-Static uint32_t DrawDataCount;
+private window_draw_event_data_t* DrawDataBuffer;
+private uint32_t DrawDataCount;
 
-EventTarget WindowDrawTarget;
+event_target_t window_draw_target;
 
 
 
-Pair
-WindowGetSize(
+pair_t
+window_get_size(
 	void
 	)
 {
@@ -257,8 +270,8 @@ WindowGetSize(
 }
 
 
-Pair
-WindowGetMousePosition(
+pair_t
+window_get_mouse_pos(
 	void
 	)
 {
@@ -268,17 +281,17 @@ WindowGetMousePosition(
 
 #ifndef NDEBUG
 
-Static VkDebugUtilsMessengerEXT vkDebugMessenger;
+private VkDebugUtilsMessengerEXT vkDebugMessenger;
 
-Static VKAPI_ATTR VkBool32 VKAPI_CALL
+private VKAPI_ATTR VkBool32 VKAPI_CALL
 VulkanDebugCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT Severity,
-	VkDebugUtilsMessageTypeFlagsEXT Type,
-	const VkDebugUtilsMessengerCallbackDataEXT* Data,
+	VkDebugUtilsMessageTypeFlagsEXT type,
+	const VkDebugUtilsMessengerCallbackDataEXT* data,
 	void* UserData
 	)
 {
-	puts(Data->pMessage);
+	puts(data->pMessage);
 
 	// if(Severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 	// {
@@ -291,7 +304,7 @@ VulkanDebugCallback(
 #endif /* NDEBUG */
 
 
-Static void
+private void
 SDLError(
 	void
 	)
@@ -304,32 +317,32 @@ SDLError(
 }
 
 
-Static void
+private void
 VulkanToggleFullscreen(
 	void
 	)
 {
 	if(Fullscreen)
 	{
-		bool Status = SDL_SetWindowFullscreen(Window, false);
-		AssertTrue(Status);
+		bool status = SDL_SetWindowFullscreen(Window, false);
+		assert_true(status);
 
-		Status = SDL_SetWindowSize(Window, OldWindowSize.W, OldWindowSize.H);
-		AssertTrue(Status);
+		status = SDL_SetWindowSize(Window, OldWindowSize.w, OldWindowSize.h);
+		assert_true(status);
 
-		Status = SDL_SetWindowPosition(Window, OldWindowPosition.X, OldWindowPosition.Y);
-		AssertTrue(Status);
+		status = SDL_SetWindowPosition(Window, OldWindowPosition.x, OldWindowPosition.y);
+		assert_true(status);
 	}
 	else
 	{
-		bool Status = SDL_GetWindowSize(Window, &OldWindowSize.W, &OldWindowSize.H);
-		AssertTrue(Status);
+		bool status = SDL_GetWindowSize(Window, &OldWindowSize.w, &OldWindowSize.h);
+		assert_true(status);
 
-		Status = SDL_GetWindowPosition(Window, &OldWindowPosition.X, &OldWindowPosition.Y);
-		AssertTrue(Status);
+		status = SDL_GetWindowPosition(Window, &OldWindowPosition.x, &OldWindowPosition.y);
+		assert_true(status);
 
-		Status = SDL_SetWindowFullscreen(Window, true);
-		AssertTrue(Status);
+		status = SDL_SetWindowFullscreen(Window, true);
+		assert_true(status);
 	}
 
 	Fullscreen = !Fullscreen;
@@ -346,56 +359,56 @@ WindowGetTime(
 
 
 void
-WindowSetCursor(
-	WindowCursor CursorID
+window_set_cursor(
+	window_cursor_t cursor
 	)
 {
-	if(CursorID != CurrentCursor)
+	if(cursor != CurrentCursor)
 	{
-		CurrentCursor = CursorID;
-		SDL_SetCursor(Cursors[CursorID]);
+		CurrentCursor = cursor;
+		SDL_SetCursor(Cursors[cursor]);
 	}
 }
 
 
 String
-WindowGetClipboard(
+window_get_clipboard(
 	void
 	)
 {
-	char* Text = SDL_GetClipboardText();
-	if(!Text)
+	char* str = SDL_GetClipboardText();
+	if(!str)
 	{
 		return (String){0};
 	}
 
-	uint32_t Length = strlen(Text) + 1;
+	uint32_t len = strlen(str) + 1;
 
-	char* NewText = AllocMalloc(Length);
+	char* NewText = alloc_malloc(len);
 	if(!NewText)
 	{
-		SDL_free(Text);
+		SDL_free(str);
 		return (String){0};
 	}
 
-	memcpy(NewText, Text, Length);
+	memcpy(NewText, str, len);
 
-	SDL_free(Text);
+	SDL_free(str);
 
-	return (String){ .Text = NewText, .Length = Length };
+	return (String){ .str = NewText, .len = len };
 }
 
 
 void
-WindowSetClipboard(
-	const char* Text
+window_set_clipboard(
+	const char* str
 	)
 {
-	SDL_SetClipboardText(Text);
+	SDL_SetClipboardText(str);
 }
 
 
-Static void
+private void
 WindowQuit(
 	void
 	)
@@ -404,306 +417,89 @@ WindowQuit(
 }
 
 
-Static Key
+
+#define ___(x) WINDOW_KEY_##x
+#define __(x) SDLK_##x
+#define _(x) case __(x): return ___(x);
+
+private window_key_t
 MapSDLKey(
-	int Key
+	int key
 	)
 {
-	switch(Key)
+	switch(key)
 	{
 
-	case SDLK_UNKNOWN: return KEY_UNKNOWN;
-	case SDLK_RETURN: return KEY_RETURN;
-	case SDLK_ESCAPE: return KEY_ESCAPE;
-	case SDLK_BACKSPACE: return KEY_BACKSPACE;
-	case SDLK_TAB: return KEY_TAB;
-	case SDLK_SPACE: return KEY_SPACE;
-	case SDLK_EXCLAIM: return KEY_EXCLAIM;
-	case SDLK_DBLAPOSTROPHE: return KEY_DBLAPOSTROPHE;
-	case SDLK_HASH: return KEY_HASH;
-	case SDLK_DOLLAR: return KEY_DOLLAR;
-	case SDLK_PERCENT: return KEY_PERCENT;
-	case SDLK_AMPERSAND: return KEY_AMPERSAND;
-	case SDLK_APOSTROPHE: return KEY_APOSTROPHE;
-	case SDLK_LEFTPAREN: return KEY_LEFTPAREN;
-	case SDLK_RIGHTPAREN: return KEY_RIGHTPAREN;
-	case SDLK_ASTERISK: return KEY_ASTERISK;
-	case SDLK_PLUS: return KEY_PLUS;
-	case SDLK_COMMA: return KEY_COMMA;
-	case SDLK_MINUS: return KEY_MINUS;
-	case SDLK_PERIOD: return KEY_PERIOD;
-	case SDLK_SLASH: return KEY_SLASH;
-	case SDLK_0: return KEY_0;
-	case SDLK_1: return KEY_1;
-	case SDLK_2: return KEY_2;
-	case SDLK_3: return KEY_3;
-	case SDLK_4: return KEY_4;
-	case SDLK_5: return KEY_5;
-	case SDLK_6: return KEY_6;
-	case SDLK_7: return KEY_7;
-	case SDLK_8: return KEY_8;
-	case SDLK_9: return KEY_9;
-	case SDLK_COLON: return KEY_COLON;
-	case SDLK_SEMICOLON: return KEY_SEMICOLON;
-	case SDLK_LESS: return KEY_LESS;
-	case SDLK_EQUALS: return KEY_EQUALS;
-	case SDLK_GREATER: return KEY_GREATER;
-	case SDLK_QUESTION: return KEY_QUESTION;
-	case SDLK_AT: return KEY_AT;
-	case SDLK_LEFTBRACKET: return KEY_LEFTBRACKET;
-	case SDLK_BACKSLASH: return KEY_BACKSLASH;
-	case SDLK_RIGHTBRACKET: return KEY_RIGHTBRACKET;
-	case SDLK_CARET: return KEY_CARET;
-	case SDLK_UNDERSCORE: return KEY_UNDERSCORE;
-	case SDLK_GRAVE: return KEY_GRAVE;
-	case SDLK_A: return KEY_A;
-	case SDLK_B: return KEY_B;
-	case SDLK_C: return KEY_C;
-	case SDLK_D: return KEY_D;
-	case SDLK_E: return KEY_E;
-	case SDLK_F: return KEY_F;
-	case SDLK_G: return KEY_G;
-	case SDLK_H: return KEY_H;
-	case SDLK_I: return KEY_I;
-	case SDLK_J: return KEY_J;
-	case SDLK_K: return KEY_K;
-	case SDLK_L: return KEY_L;
-	case SDLK_M: return KEY_M;
-	case SDLK_N: return KEY_N;
-	case SDLK_O: return KEY_O;
-	case SDLK_P: return KEY_P;
-	case SDLK_Q: return KEY_Q;
-	case SDLK_R: return KEY_R;
-	case SDLK_S: return KEY_S;
-	case SDLK_T: return KEY_T;
-	case SDLK_U: return KEY_U;
-	case SDLK_V: return KEY_V;
-	case SDLK_W: return KEY_W;
-	case SDLK_X: return KEY_X;
-	case SDLK_Y: return KEY_Y;
-	case SDLK_Z: return KEY_Z;
-	case SDLK_LEFTBRACE: return KEY_LEFTBRACE;
-	case SDLK_PIPE: return KEY_PIPE;
-	case SDLK_RIGHTBRACE: return KEY_RIGHTBRACE;
-	case SDLK_TILDE: return KEY_TILDE;
-	case SDLK_DELETE: return KEY_DELETE;
-	case SDLK_PLUSMINUS: return KEY_PLUSMINUS;
-	case SDLK_CAPSLOCK: return KEY_CAPSLOCK;
-	case SDLK_F1: return KEY_F1;
-	case SDLK_F2: return KEY_F2;
-	case SDLK_F3: return KEY_F3;
-	case SDLK_F4: return KEY_F4;
-	case SDLK_F5: return KEY_F5;
-	case SDLK_F6: return KEY_F6;
-	case SDLK_F7: return KEY_F7;
-	case SDLK_F8: return KEY_F8;
-	case SDLK_F9: return KEY_F9;
-	case SDLK_F10: return KEY_F10;
-	case SDLK_F11: return KEY_F11;
-	case SDLK_F12: return KEY_F12;
-	case SDLK_PRINTSCREEN: return KEY_PRINTSCREEN;
-	case SDLK_SCROLLLOCK: return KEY_SCROLLLOCK;
-	case SDLK_PAUSE: return KEY_PAUSE;
-	case SDLK_INSERT: return KEY_INSERT;
-	case SDLK_HOME: return KEY_HOME;
-	case SDLK_PAGEUP: return KEY_PAGEUP;
-	case SDLK_END: return KEY_END;
-	case SDLK_PAGEDOWN: return KEY_PAGEDOWN;
-	case SDLK_RIGHT: return KEY_RIGHT;
-	case SDLK_LEFT: return KEY_LEFT;
-	case SDLK_DOWN: return KEY_DOWN;
-	case SDLK_UP: return KEY_UP;
-	case SDLK_NUMLOCKCLEAR: return KEY_NUMLOCKCLEAR;
-	case SDLK_KP_DIVIDE: return KEY_KP_DIVIDE;
-	case SDLK_KP_MULTIPLY: return KEY_KP_MULTIPLY;
-	case SDLK_KP_MINUS: return KEY_KP_MINUS;
-	case SDLK_KP_PLUS: return KEY_KP_PLUS;
-	case SDLK_KP_ENTER: return KEY_KP_ENTER;
-	case SDLK_KP_1: return KEY_KP_1;
-	case SDLK_KP_2: return KEY_KP_2;
-	case SDLK_KP_3: return KEY_KP_3;
-	case SDLK_KP_4: return KEY_KP_4;
-	case SDLK_KP_5: return KEY_KP_5;
-	case SDLK_KP_6: return KEY_KP_6;
-	case SDLK_KP_7: return KEY_KP_7;
-	case SDLK_KP_8: return KEY_KP_8;
-	case SDLK_KP_9: return KEY_KP_9;
-	case SDLK_KP_0: return KEY_KP_0;
-	case SDLK_KP_PERIOD: return KEY_KP_PERIOD;
-	case SDLK_APPLICATION: return KEY_APPLICATION;
-	case SDLK_POWER: return KEY_POWER;
-	case SDLK_KP_EQUALS: return KEY_KP_EQUALS;
-	case SDLK_F13: return KEY_F13;
-	case SDLK_F14: return KEY_F14;
-	case SDLK_F15: return KEY_F15;
-	case SDLK_F16: return KEY_F16;
-	case SDLK_F17: return KEY_F17;
-	case SDLK_F18: return KEY_F18;
-	case SDLK_F19: return KEY_F19;
-	case SDLK_F20: return KEY_F20;
-	case SDLK_F21: return KEY_F21;
-	case SDLK_F22: return KEY_F22;
-	case SDLK_F23: return KEY_F23;
-	case SDLK_F24: return KEY_F24;
-	case SDLK_EXECUTE: return KEY_EXECUTE;
-	case SDLK_HELP: return KEY_HELP;
-	case SDLK_MENU: return KEY_MENU;
-	case SDLK_SELECT: return KEY_SELECT;
-	case SDLK_STOP: return KEY_STOP;
-	case SDLK_AGAIN: return KEY_AGAIN;
-	case SDLK_UNDO: return KEY_UNDO;
-	case SDLK_CUT: return KEY_CUT;
-	case SDLK_COPY: return KEY_COPY;
-	case SDLK_PASTE: return KEY_PASTE;
-	case SDLK_FIND: return KEY_FIND;
-	case SDLK_MUTE: return KEY_MUTE;
-	case SDLK_VOLUMEUP: return KEY_VOLUMEUP;
-	case SDLK_VOLUMEDOWN: return KEY_VOLUMEDOWN;
-	case SDLK_KP_COMMA: return KEY_KP_COMMA;
-	case SDLK_KP_EQUALSAS400: return KEY_KP_EQUALSAS400;
-	case SDLK_ALTERASE: return KEY_ALTERASE;
-	case SDLK_SYSREQ: return KEY_SYSREQ;
-	case SDLK_CANCEL: return KEY_CANCEL;
-	case SDLK_CLEAR: return KEY_CLEAR;
-	case SDLK_PRIOR: return KEY_PRIOR;
-	case SDLK_RETURN2: return KEY_RETURN2;
-	case SDLK_SEPARATOR: return KEY_SEPARATOR;
-	case SDLK_OUT: return KEY_OUT;
-	case SDLK_OPER: return KEY_OPER;
-	case SDLK_CLEARAGAIN: return KEY_CLEARAGAIN;
-	case SDLK_CRSEL: return KEY_CRSEL;
-	case SDLK_EXSEL: return KEY_EXSEL;
-	case SDLK_KP_00: return KEY_KP_00;
-	case SDLK_KP_000: return KEY_KP_000;
-	case SDLK_THOUSANDSSEPARATOR: return KEY_THOUSANDSSEPARATOR;
-	case SDLK_DECIMALSEPARATOR: return KEY_DECIMALSEPARATOR;
-	case SDLK_CURRENCYUNIT: return KEY_CURRENCYUNIT;
-	case SDLK_CURRENCYSUBUNIT: return KEY_CURRENCYSUBUNIT;
-	case SDLK_KP_LEFTPAREN: return KEY_KP_LEFTPAREN;
-	case SDLK_KP_RIGHTPAREN: return KEY_KP_RIGHTPAREN;
-	case SDLK_KP_LEFTBRACE: return KEY_KP_LEFTBRACE;
-	case SDLK_KP_RIGHTBRACE: return KEY_KP_RIGHTBRACE;
-	case SDLK_KP_TAB: return KEY_KP_TAB;
-	case SDLK_KP_BACKSPACE: return KEY_KP_BACKSPACE;
-	case SDLK_KP_A: return KEY_KP_A;
-	case SDLK_KP_B: return KEY_KP_B;
-	case SDLK_KP_C: return KEY_KP_C;
-	case SDLK_KP_D: return KEY_KP_D;
-	case SDLK_KP_E: return KEY_KP_E;
-	case SDLK_KP_F: return KEY_KP_F;
-	case SDLK_KP_XOR: return KEY_KP_XOR;
-	case SDLK_KP_POWER: return KEY_KP_POWER;
-	case SDLK_KP_PERCENT: return KEY_KP_PERCENT;
-	case SDLK_KP_LESS: return KEY_KP_LESS;
-	case SDLK_KP_GREATER: return KEY_KP_GREATER;
-	case SDLK_KP_AMPERSAND: return KEY_KP_AMPERSAND;
-	case SDLK_KP_DBLAMPERSAND: return KEY_KP_DBLAMPERSAND;
-	case SDLK_KP_VERTICALBAR: return KEY_KP_VERTICALBAR;
-	case SDLK_KP_DBLVERTICALBAR: return KEY_KP_DBLVERTICALBAR;
-	case SDLK_KP_COLON: return KEY_KP_COLON;
-	case SDLK_KP_HASH: return KEY_KP_HASH;
-	case SDLK_KP_SPACE: return KEY_KP_SPACE;
-	case SDLK_KP_AT: return KEY_KP_AT;
-	case SDLK_KP_EXCLAM: return KEY_KP_EXCLAM;
-	case SDLK_KP_MEMSTORE: return KEY_KP_MEMSTORE;
-	case SDLK_KP_MEMRECALL: return KEY_KP_MEMRECALL;
-	case SDLK_KP_MEMCLEAR: return KEY_KP_MEMCLEAR;
-	case SDLK_KP_MEMADD: return KEY_KP_MEMADD;
-	case SDLK_KP_MEMSUBTRACT: return KEY_KP_MEMSUBTRACT;
-	case SDLK_KP_MEMMULTIPLY: return KEY_KP_MEMMULTIPLY;
-	case SDLK_KP_MEMDIVIDE: return KEY_KP_MEMDIVIDE;
-	case SDLK_KP_PLUSMINUS: return KEY_KP_PLUSMINUS;
-	case SDLK_KP_CLEAR: return KEY_KP_CLEAR;
-	case SDLK_KP_CLEARENTRY: return KEY_KP_CLEARENTRY;
-	case SDLK_KP_BINARY: return KEY_KP_BINARY;
-	case SDLK_KP_OCTAL: return KEY_KP_OCTAL;
-	case SDLK_KP_DECIMAL: return KEY_KP_DECIMAL;
-	case SDLK_KP_HEXADECIMAL: return KEY_KP_HEXADECIMAL;
-	case SDLK_LCTRL: return KEY_LCTRL;
-	case SDLK_LSHIFT: return KEY_LSHIFT;
-	case SDLK_LALT: return KEY_LALT;
-	case SDLK_LGUI: return KEY_LGUI;
-	case SDLK_RCTRL: return KEY_RCTRL;
-	case SDLK_RSHIFT: return KEY_RSHIFT;
-	case SDLK_RALT: return KEY_RALT;
-	case SDLK_RGUI: return KEY_RGUI;
-	case SDLK_MODE: return KEY_MODE;
-	case SDLK_SLEEP: return KEY_SLEEP;
-	case SDLK_WAKE: return KEY_WAKE;
-	case SDLK_CHANNEL_INCREMENT: return KEY_CHANNEL_INCREMENT;
-	case SDLK_CHANNEL_DECREMENT: return KEY_CHANNEL_DECREMENT;
-	case SDLK_MEDIA_PLAY: return KEY_MEDIA_PLAY;
-	case SDLK_MEDIA_PAUSE: return KEY_MEDIA_PAUSE;
-	case SDLK_MEDIA_RECORD: return KEY_MEDIA_RECORD;
-	case SDLK_MEDIA_FAST_FORWARD: return KEY_MEDIA_FAST_FORWARD;
-	case SDLK_MEDIA_REWIND: return KEY_MEDIA_REWIND;
-	case SDLK_MEDIA_NEXT_TRACK: return KEY_MEDIA_NEXT_TRACK;
-	case SDLK_MEDIA_PREVIOUS_TRACK: return KEY_MEDIA_PREVIOUS_TRACK;
-	case SDLK_MEDIA_STOP: return KEY_MEDIA_STOP;
-	case SDLK_MEDIA_EJECT: return KEY_MEDIA_EJECT;
-	case SDLK_MEDIA_PLAY_PAUSE: return KEY_MEDIA_PLAY_PAUSE;
-	case SDLK_MEDIA_SELECT: return KEY_MEDIA_SELECT;
-	case SDLK_AC_NEW: return KEY_AC_NEW;
-	case SDLK_AC_OPEN: return KEY_AC_OPEN;
-	case SDLK_AC_CLOSE: return KEY_AC_CLOSE;
-	case SDLK_AC_EXIT: return KEY_AC_EXIT;
-	case SDLK_AC_SAVE: return KEY_AC_SAVE;
-	case SDLK_AC_PRINT: return KEY_AC_PRINT;
-	case SDLK_AC_PROPERTIES: return KEY_AC_PROPERTIES;
-	case SDLK_AC_SEARCH: return KEY_AC_SEARCH;
-	case SDLK_AC_HOME: return KEY_AC_HOME;
-	case SDLK_AC_BACK: return KEY_AC_BACK;
-	case SDLK_AC_FORWARD: return KEY_AC_FORWARD;
-	case SDLK_AC_STOP: return KEY_AC_STOP;
-	case SDLK_AC_REFRESH: return KEY_AC_REFRESH;
-	case SDLK_AC_BOOKMARKS: return KEY_AC_BOOKMARKS;
-	case SDLK_SOFTLEFT: return KEY_SOFTLEFT;
-	case SDLK_SOFTRIGHT: return KEY_SOFTRIGHT;
-	case SDLK_CALL: return KEY_CALL;
-	case SDLK_ENDCALL: return KEY_ENDCALL;
-	default: return KEY_UNKNOWN;
+	_(UNKNOWN)_(RETURN)_(ESCAPE)_(BACKSPACE)_(TAB)_(SPACE)_(EXCLAIM)_(DBLAPOSTROPHE)_(HASH)_(DOLLAR)_(PERCENT)
+	_(AMPERSAND)_(APOSTROPHE)_(LEFTPAREN)_(RIGHTPAREN)_(ASTERISK)_(PLUS)_(COMMA)_(MINUS)_(PERIOD)_(SLASH)_(0)_(1)_(2)
+	_(3)_(4)_(5)_(6)_(7)_(8)_(9)_(COLON)_(SEMICOLON)_(LESS)_(EQUALS)_(GREATER)_(QUESTION)_(AT)_(LEFTBRACKET)_(BACKSLASH)
+	_(RIGHTBRACKET)_(CARET)_(UNDERSCORE)_(GRAVE)_(A)_(B)_(C)_(D)_(E)_(F)_(G)_(H)_(I)_(J)_(K)_(L)_(M)_(N)_(O)_(P)_(Q)_(R)
+	_(S)_(T)_(U)_(V)_(W)_(X)_(Y)_(Z)_(LEFTBRACE)_(PIPE)_(RIGHTBRACE)_(TILDE)_(DELETE)_(PLUSMINUS)_(CAPSLOCK)_(F1)_(F2)
+	_(F3)_(F4)_(F5)_(F6)_(F7)_(F8)_(F9)_(F10)_(F11)_(F12)_(PRINTSCREEN)_(SCROLLLOCK)_(PAUSE)_(INSERT)_(HOME)_(PAGEUP)
+	_(END)_(PAGEDOWN)_(RIGHT)_(LEFT)_(DOWN)_(UP)_(NUMLOCKCLEAR)_(KP_DIVIDE)_(KP_MULTIPLY)_(KP_MINUS)_(KP_PLUS)
+	_(KP_ENTER)_(KP_1)_(KP_2)_(KP_3)_(KP_4)_(KP_5)_(KP_6)_(KP_7)_(KP_8)_(KP_9)_(KP_0)_(KP_PERIOD)_(APPLICATION)_(POWER)
+	_(KP_EQUALS)_(F13)_(F14)_(F15)_(F16)_(F17)_(F18)_(F19)_(F20)_(F21)_(F22)_(F23)_(F24)_(EXECUTE)_(HELP)_(MENU)
+	_(SELECT)_(STOP)_(AGAIN)_(UNDO)_(CUT)_(COPY)_(PASTE)_(FIND)_(MUTE)_(VOLUMEUP)_(VOLUMEDOWN)_(KP_COMMA)
+	_(KP_EQUALSAS400)_(ALTERASE)_(SYSREQ)_(CANCEL)_(CLEAR)_(PRIOR)_(RETURN2)_(SEPARATOR)_(OUT)_(OPER)_(CLEARAGAIN)
+	_(CRSEL)_(EXSEL)_(KP_00)_(KP_000)_(THOUSANDSSEPARATOR)_(DECIMALSEPARATOR)_(CURRENCYUNIT)_(CURRENCYSUBUNIT)
+	_(KP_LEFTPAREN)_(KP_RIGHTPAREN)_(KP_LEFTBRACE)_(KP_RIGHTBRACE)_(KP_TAB)_(KP_BACKSPACE)_(KP_A)_(KP_B)_(KP_C)_(KP_D)
+	_(KP_E)_(KP_F)_(KP_XOR)_(KP_POWER)_(KP_PERCENT)_(KP_LESS)_(KP_GREATER)_(KP_AMPERSAND)_(KP_DBLAMPERSAND)
+	_(KP_VERTICALBAR)_(KP_DBLVERTICALBAR)_(KP_COLON)_(KP_HASH)_(KP_SPACE)_(KP_AT)_(KP_EXCLAM)_(KP_MEMSTORE)
+	_(KP_MEMRECALL)_(KP_MEMCLEAR)_(KP_MEMADD)_(KP_MEMSUBTRACT)_(KP_MEMMULTIPLY)_(KP_MEMDIVIDE)_(KP_PLUSMINUS)_(KP_CLEAR)
+	_(KP_CLEARENTRY)_(KP_BINARY)_(KP_OCTAL)_(KP_DECIMAL)_(KP_HEXADECIMAL)_(LCTRL)_(LSHIFT)_(LALT)_(LGUI)_(RCTRL)
+	_(RSHIFT)_(RALT)_(RGUI)_(MODE)_(SLEEP)_(WAKE)_(CHANNEL_INCREMENT)_(CHANNEL_DECREMENT)_(MEDIA_PLAY)_(MEDIA_PAUSE)
+	_(MEDIA_RECORD)_(MEDIA_FAST_FORWARD)_(MEDIA_REWIND)_(MEDIA_NEXT_TRACK)_(MEDIA_PREVIOUS_TRACK)_(MEDIA_STOP)
+	_(MEDIA_EJECT)_(MEDIA_PLAY_PAUSE)_(MEDIA_SELECT)_(AC_NEW)_(AC_OPEN)_(AC_CLOSE)_(AC_EXIT)_(AC_SAVE)_(AC_PRINT)
+	_(AC_PROPERTIES)_(AC_SEARCH)_(AC_HOME)_(AC_BACK)_(AC_FORWARD)_(AC_STOP)_(AC_REFRESH)_(AC_BOOKMARKS)_(SOFTLEFT)
+	_(SOFTRIGHT)_(CALL)_(ENDCALL)
+
+	default: return WINDOW_KEY_UNKNOWN;
 
 	}
 }
 
+#undef _
+#undef __
+#undef ___
 
-Static KeyMod
+
+private window_key_mod_t
 MapSDLMod(
 	int Mod
 	)
 {
-	KeyMod Result = 0;
+	window_key_mod_t Result = 0;
 
-	if(Mod & SDL_KMOD_SHIFT) Result |= KEY_MOD_SHIFT;
-	if(Mod & SDL_KMOD_CTRL) Result |= KEY_MOD_CTRL;
-	if(Mod & SDL_KMOD_ALT) Result |= KEY_MOD_ALT;
-	if(Mod & SDL_KMOD_GUI) Result |= KEY_MOD_GUI;
-	if(Mod & SDL_KMOD_CAPS) Result |= KEY_MOD_CAPS_LOCK;
+	if(Mod & SDL_KMOD_SHIFT) Result |= WINDOW_KEY_MOD_SHIFT;
+	if(Mod & SDL_KMOD_CTRL) Result |= WINDOW_KEY_MOD_CTRL;
+	if(Mod & SDL_KMOD_ALT) Result |= WINDOW_KEY_MOD_ALT;
+	if(Mod & SDL_KMOD_GUI) Result |= WINDOW_KEY_MOD_GUI;
+	if(Mod & SDL_KMOD_CAPS) Result |= WINDOW_KEY_MOD_CAPS_LOCK;
 
 	return Result;
 }
 
 
-Static MouseButton
-MapSDLButton(
-	int Button
+private window_button_t
+MapSDLbutton(
+	int button
 	)
 {
-	switch(Button)
+	switch(button)
 	{
 
-	case SDL_BUTTON_LEFT: return MOUSE_BUTTON_LEFT;
-	case SDL_BUTTON_MIDDLE: return MOUSE_BUTTON_MIDDLE;
-	case SDL_BUTTON_RIGHT: return MOUSE_BUTTON_RIGHT;
-	case SDL_BUTTON_X1: return MOUSE_BUTTON_X1;
-	case SDL_BUTTON_X2: return MOUSE_BUTTON_X2;
-	default: return MOUSE_BUTTON_UNKNOWN;
+	case SDL_BUTTON_LEFT: return WINDOW_BUTTON_LEFT;
+	case SDL_BUTTON_MIDDLE: return WINDOW_BUTTON_MIDDLE;
+	case SDL_BUTTON_RIGHT: return WINDOW_BUTTON_RIGHT;
+	case SDL_BUTTON_X1: return WINDOW_BUTTON_X1;
+	case SDL_BUTTON_X2: return WINDOW_BUTTON_X2;
+	default: return WINDOW_BUTTON_UNKNOWN;
 
 	}
 }
 
 
-Static void
+private void
 WindowOnEvent(
 	SDL_Event* Event
 	)
@@ -727,7 +523,7 @@ WindowOnEvent(
 	}
 
 
-	MutexLock(&WindowMtx);
+	sync_mtx_lock(&WindowMtx);
 
 
 	switch(Event->type)
@@ -738,7 +534,7 @@ WindowOnEvent(
 		if(!Resized)
 		{
 			Resized = true;
-			CondVarWake(&Cond);
+			sync_cond_wake(&Cond);
 		}
 
 		break;
@@ -746,135 +542,135 @@ WindowOnEvent(
 
 	case SDL_EVENT_WINDOW_FOCUS_GAINED:
 	{
-		EventNotify(&WindowFocusTarget, &((WindowFocusData){0}));
+		event_target_fire(&window_focus_target, &((window_focus_event_data_t){0}));
 		break;
 	}
 
 	case SDL_EVENT_WINDOW_FOCUS_LOST:
 	{
-		EventNotify(&WindowBlurTarget, &((WindowBlurData){0}));
+		event_target_fire(&window_blur_target, &((window_blur_event_data_t){0}));
 		break;
 	}
 
 	case SDL_EVENT_KEY_DOWN:
 	{
-		SDL_KeyboardEvent Key = Event->key;
+		SDL_KeyboardEvent key = Event->key;
 
-		if((Key.mod & SDL_KMOD_CTRL) && (Key.key == SDLK_W || Key.key == SDLK_R))
+		if((key.mod & SDL_KMOD_CTRL) && (key.key == SDLK_W || key.key == SDLK_R))
 		{
 			WindowQuit();
 		}
 
-		if(Key.key == SDLK_F11 && !Key.repeat)
+		if(key.key == SDLK_F11 && !key.repeat)
 		{
 			VulkanToggleFullscreen();
 		}
 
-		WindowKeyDownData EventData =
-		(WindowKeyDownData)
+		window_key_down_event_data_t event_data =
+		(window_key_down_event_data_t)
 		{
-			.Key = MapSDLKey(Key.key),
-			.Mods = MapSDLMod(Key.mod),
-			.Repeat = Key.repeat
+			.key = MapSDLKey(key.key),
+			.mods = MapSDLMod(key.mod),
+			.repeat = key.repeat
 		};
 
-		EventNotify(&WindowKeyDownTarget, &EventData);
+		event_target_fire(&window_key_down_target, &event_data);
 
 		break;
 	}
 
 	case SDL_EVENT_KEY_UP:
 	{
-		SDL_KeyboardEvent Key = Event->key;
+		SDL_KeyboardEvent key = Event->key;
 
-		WindowKeyUpData EventData =
-		(WindowKeyUpData)
+		window_key_up_event_data_t event_data =
+		(window_key_up_event_data_t)
 		{
-			.Key = MapSDLKey(Key.key),
-			.Mods = MapSDLMod(Key.mod)
+			.key = MapSDLKey(key.key),
+			.mods = MapSDLMod(key.mod)
 		};
 
-		EventNotify(&WindowKeyUpTarget, &EventData);
+		event_target_fire(&window_key_up_target, &event_data);
 
 		break;
 	}
 
 	case SDL_EVENT_TEXT_INPUT:
 	{
-		SDL_TextInputEvent Text = Event->text;
+		SDL_TextInputEvent str = Event->text;
 
-		if(!Text.text)
+		if(!str.text)
 		{
 			break;
 		}
 
-		WindowTextData EventData =
-		(WindowTextData)
+		window_text_event_data_t event_data =
+		(window_text_event_data_t)
 		{
-			.Text = Text.text,
-			.Length = strlen(Text.text)
+			.str = str.text,
+			.len = strlen(str.text)
 		};
 
-		EventNotify(&WindowTextTarget, &EventData);
+		event_target_fire(&window_text_target, &event_data);
 
 		break;
 	}
 
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
 	{
-		SDL_MouseButtonEvent Button = Event->button;
+		SDL_MouseButtonEvent button = Event->button;
 
-		float HalfWidth  = WindowSize.W * 0.5f;
-		float HalfHeight = WindowSize.H * 0.5f;
+		float HalfWidth  = WindowSize.w * 0.5f;
+		float HalfHeight = WindowSize.h * 0.5f;
 
-		Pair EventMousePosition =
-		(Pair)
+		pair_t EventMousePosition =
+		(pair_t)
 		{
-			.X = CLAMP_SYM(Button.x - HalfWidth , HalfWidth ),
-			.Y = CLAMP_SYM(Button.y - HalfHeight, HalfHeight)
+			.x = MACRO_CLAMP_SYM(button.x - HalfWidth , HalfWidth ),
+			.y = MACRO_CLAMP_SYM(button.y - HalfHeight, HalfHeight)
 		};
 
-		AssertLT(fabsf(EventMousePosition.X - MousePosition.X), 0.01f);
-		AssertLT(fabsf(EventMousePosition.Y - MousePosition.Y), 0.01f);
+		assert_lt(fabsf(EventMousePosition.x - MousePosition.x), 0.01f);
+		assert_lt(fabsf(EventMousePosition.y - MousePosition.y), 0.01f);
 
-		WindowMouseDownData EventData =
-		(WindowMouseDownData)
+		window_mouse_down_event_data_t event_data =
+		(window_mouse_down_event_data_t)
 		{
-			.Button = MapSDLButton(Button.button),
-			.Position = MousePosition,
-			.Clicks = Button.clicks
+			.button = MapSDLbutton(button.button),
+			.pos = MousePosition,
+			.clicks = button.clicks
 		};
 
-		EventNotify(&WindowMouseDownTarget, &EventData);
+		event_target_fire(&window_mouse_down_target, &event_data);
 
 		break;
 	}
 
 	case SDL_EVENT_MOUSE_BUTTON_UP:
 	{
-		SDL_MouseButtonEvent Button = Event->button;
+		SDL_MouseButtonEvent button = Event->button;
 
-		float HalfWidth  = WindowSize.W * 0.5f;
-		float HalfHeight = WindowSize.H * 0.5f;
+		float HalfWidth  = WindowSize.w * 0.5f;
+		float HalfHeight = WindowSize.h * 0.5f;
 
-		Pair EventMousePosition =
-		(Pair)
+		pair_t EventMousePosition =
+		(pair_t)
 		{
-			.X = CLAMP_SYM(Button.x - HalfWidth , HalfWidth ),
-			.Y = CLAMP_SYM(Button.y - HalfHeight, HalfHeight)
+			.x = MACRO_CLAMP_SYM(button.x - HalfWidth , HalfWidth ),
+			.y = MACRO_CLAMP_SYM(button.y - HalfHeight, HalfHeight)
 		};
 
-		AssertLT(fabsf(EventMousePosition.X - MousePosition.X), 0.01f);
-		AssertLT(fabsf(EventMousePosition.Y - MousePosition.Y), 0.01f);
+		assert_lt(fabsf(EventMousePosition.x - MousePosition.x), 0.01f);
+		assert_lt(fabsf(EventMousePosition.y - MousePosition.y), 0.01f);
 
-		WindowMouseUpData EventData =
-		(WindowMouseUpData)
+		window_mouse_up_event_data_t event_data =
+		(window_mouse_up_event_data_t)
 		{
-			.Button = MapSDLButton(Button.button),
-			.Position = MousePosition
+			.button = MapSDLbutton(button.button),
+			.pos = MousePosition
 		};
 
-		EventNotify(&WindowMouseUpTarget, &EventData);
+		event_target_fire(&window_mouse_up_target, &event_data);
 
 		break;
 	}
@@ -883,25 +679,25 @@ WindowOnEvent(
 	{
 		SDL_MouseMotionEvent Motion = Event->motion;
 
-		WindowMouseMoveData EventData =
-		(WindowMouseMoveData)
+		window_mouse_move_event_data_t event_data =
+		(window_mouse_move_event_data_t)
 		{
-			.OldPosition = MousePosition
+			.old_pos = MousePosition
 		};
 
-		float HalfWidth  = WindowSize.W * 0.5f;
-		float HalfHeight = WindowSize.H * 0.5f;
+		float HalfWidth  = WindowSize.w * 0.5f;
+		float HalfHeight = WindowSize.h * 0.5f;
 
 		MousePosition =
-		(Pair)
+		(pair_t)
 		{
-			.X = CLAMP_SYM(Motion.x - HalfWidth , HalfWidth ),
-			.Y = CLAMP_SYM(Motion.y - HalfHeight, HalfHeight)
+			.x = MACRO_CLAMP_SYM(Motion.x - HalfWidth , HalfWidth ),
+			.y = MACRO_CLAMP_SYM(Motion.y - HalfHeight, HalfHeight)
 		};
 
-		EventData.NewPosition = MousePosition;
+		event_data.new_pos = MousePosition;
 
-		EventNotify(&WindowMouseMoveTarget, &EventData);
+		event_target_fire(&window_mouse_move_target, &event_data);
 
 		break;
 	}
@@ -910,13 +706,13 @@ WindowOnEvent(
 	{
 		SDL_MouseWheelEvent Wheel = Event->wheel;
 
-		WindowMouseScrollData EventData =
-		(WindowMouseScrollData)
+		window_mouse_scroll_event_data_t event_data =
+		(window_mouse_scroll_event_data_t)
 		{
-			.OffsetY = Event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -Wheel.y : Wheel.y
+			.offset_y = Event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -Wheel.y : Wheel.y
 		};
 
-		EventNotify(&WindowMouseScrollTarget, &EventData);
+		event_target_fire(&window_mouse_scroll_target, &event_data);
 
 		break;
 	}
@@ -926,12 +722,12 @@ WindowOnEvent(
 	}
 
 
-	MutexUnlock(&WindowMtx);
+	sync_mtx_unlock(&WindowMtx);
 }
 
 
 void
-WindowStartTyping(
+window_start_typing(
 	void
 	)
 {
@@ -940,7 +736,7 @@ WindowStartTyping(
 
 
 void
-WindowStopTyping(
+window_stop_typing(
 	void
 	)
 {
@@ -948,50 +744,50 @@ WindowStopTyping(
 }
 
 
-Static void
+private void
 VulkanInitSDL(
 	void
 	)
 {
-	bool Status = SDL_InitSubSystem(SDL_INIT_VIDEO);
-	HardenedAssertTrue(Status);
+	bool status = SDL_InitSubSystem(SDL_INIT_VIDEO);
+	hard_assert_true(status);
 
 	WindowProps = SDL_CreateProperties();
-	AssertNEQ(WindowProps, 0);
+	assert_neq(WindowProps, 0);
 
-	Status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
-	AssertTrue(Status);
+	status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
+	assert_true(status);
 
-	Status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
-	AssertTrue(Status);
+	status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
+	assert_true(status);
 
-	Status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
-	AssertTrue(Status);
+	status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
+	assert_true(status);
 
-	Status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
-	AssertTrue(Status);
+	status = SDL_SetBooleanProperty(WindowProps, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
+	assert_true(status);
 
-	Status = SDL_SetNumberProperty(WindowProps, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, GAME_CONST_DEFAULT_WINDOW_WIDTH);
-	AssertTrue(Status);
+	status = SDL_SetNumberProperty(WindowProps, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, GAME_CONST_DEFAULT_WINDOW_WIDTH);
+	assert_true(status);
 
-	Status = SDL_SetNumberProperty(WindowProps, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, GAME_CONST_DEFAULT_WINDOW_HEIGHT);
-	AssertTrue(Status);
+	status = SDL_SetNumberProperty(WindowProps, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, GAME_CONST_DEFAULT_WINDOW_HEIGHT);
+	assert_true(status);
 
-	Status = SDL_SetStringProperty(WindowProps, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "Game");
-	AssertTrue(Status);
+	status = SDL_SetStringProperty(WindowProps, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "Game");
+	assert_true(status);
 
-	Status = SDL_SetBooleanProperty(WindowProps, SDL_HINT_FORCE_RAISEWINDOW, true);
-	AssertTrue(Status);
+	status = SDL_SetBooleanProperty(WindowProps, SDL_HINT_FORCE_RAISEWINDOW, true);
+	assert_true(status);
 
 	Window = SDL_CreateWindowWithProperties(WindowProps);
 	if(!Window)
 	{
 		SDLError();
-		HardenedAssertUnreachable();
+		hard_assert_unreachable();
 	}
 
-	Status = SDL_SetWindowMinimumSize(Window, 480, 270);
-	AssertTrue(Status);
+	status = SDL_SetWindowMinimumSize(Window, 480, 270);
+	assert_true(status);
 
 	// SDL_Rect MouseBound = { 0, 0, 1280, 720 };
 	// SDL_SetWindowMouseRect(Window, &MouseBound);
@@ -1002,13 +798,13 @@ VulkanInitSDL(
 }
 
 
-Static void
+private void
 VulkanDestroySDL(
 	void
 	)
 {
 	SDL_Cursor** Cursor = Cursors;
-	SDL_Cursor** CursorEnd = Cursor + ARRAYLEN(Cursors);
+	SDL_Cursor** CursorEnd = Cursor + MACRO_ARRAY_LEN(Cursors);
 
 	do
 	{
@@ -1023,7 +819,7 @@ VulkanDestroySDL(
 }
 
 
-Static void
+private void
 VulkanInitInstance(
 	void
 	)
@@ -1043,13 +839,13 @@ VulkanInitInstance(
 	InstanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	InstanceInfo.flags = 0;
 	InstanceInfo.pApplicationInfo = &AppInfo;
-	InstanceInfo.enabledLayerCount = ARRAYLEN(vkLayers);
+	InstanceInfo.enabledLayerCount = MACRO_ARRAY_LEN(vkLayers);
 	InstanceInfo.ppEnabledLayerNames = vkLayers;
 
 	uint32_t SDLExtensionCount;
 	const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
-	uint32_t ExtensionCount = SDLExtensionCount + ARRAYLEN(vkInstanceExtensions);
+	uint32_t ExtensionCount = SDLExtensionCount + MACRO_ARRAY_LEN(vkInstanceExtensions);
 	const char* Extensions[ExtensionCount];
 
 	const char** Extension = Extensions;
@@ -1057,7 +853,7 @@ VulkanInitInstance(
 	{
 		*(Extension++) = SDLExtensions[i];
 	}
-	for(uint32_t i = 0; i < ARRAYLEN(vkInstanceExtensions); ++i)
+	for(uint32_t i = 0; i < MACRO_ARRAY_LEN(vkInstanceExtensions); ++i)
 	{
 		*(Extension++) = vkInstanceExtensions[i];
 	}
@@ -1088,18 +884,18 @@ VulkanInitInstance(
 #endif
 
 	VkResult Result = vkCreateInstance(&InstanceInfo, NULL, &vkInstance);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	volkLoadInstance(vkInstance);
 
 #ifndef NDEBUG
 	Result = vkCreateDebugUtilsMessengerEXT(vkInstance, &DebugInfo, NULL, &vkDebugMessenger);
-	AssertEQ(Result, VK_SUCCESS);
+	assert_eq(Result, VK_SUCCESS);
 #endif
 }
 
 
-Static void
+private void
 VulkanDestroyInstance(
 	void
 	)
@@ -1114,21 +910,21 @@ VulkanDestroyInstance(
 }
 
 
-Static void
+private void
 VulkanInitSurface(
 	void
 	)
 {
-	bool Status = SDL_Vulkan_CreateSurface(Window, vkInstance, NULL, &vkSurface);
-	if(Status == false)
+	bool status = SDL_Vulkan_CreateSurface(Window, vkInstance, NULL, &vkSurface);
+	if(status == false)
 	{
 		SDLError();
-		HardenedAssertUnreachable();
+		hard_assert_unreachable();
 	}
 }
 
 
-Static void
+private void
 VulkanDestroySurface(
 	void
 	)
@@ -1137,19 +933,19 @@ VulkanDestroySurface(
 }
 
 
-Static void
+private void
 VulkanBeginCommandBuffer(
 	void
 	)
 {
 	VkResult Result = vkWaitForFences(vkDevice, 1, &vkFence, VK_TRUE, UINT64_MAX);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	Result = vkResetFences(vkDevice, 1, &vkFence);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	Result = vkResetCommandBuffer(vkCommandBuffer, 0);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkCommandBufferBeginInfo BeginInfo = {0};
 	BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1158,17 +954,17 @@ VulkanBeginCommandBuffer(
 	BeginInfo.pInheritanceInfo = NULL;
 
 	Result = vkBeginCommandBuffer(vkCommandBuffer, &BeginInfo);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 }
 
 
-Static void
+private void
 VulkanEndCommandBuffer(
 	void
 	)
 {
 	VkResult Result = vkEndCommandBuffer(vkCommandBuffer);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkSubmitInfo SubmitInfo = {0};
 	SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1195,7 +991,7 @@ typedef struct VkDeviceScore
 VkDeviceScore;
 
 
-Static bool
+private bool
 VulkanGetDeviceFeatures(
 	VkPhysicalDevice Device,
 	VkDeviceScore* DeviceScore
@@ -1206,13 +1002,13 @@ VulkanGetDeviceFeatures(
 
 	if(!Features.sampleRateShading)
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
 	if(!Features.textureCompressionBC)
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
@@ -1220,7 +1016,7 @@ VulkanGetDeviceFeatures(
 }
 
 
-Static bool
+private bool
 VulkanGetDeviceQueues(
 	VkPhysicalDevice Device,
 	VkDeviceScore* DeviceScore
@@ -1231,27 +1027,27 @@ VulkanGetDeviceQueues(
 
 	if(QueueCount == 0)
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
 	VkQueueFamilyProperties Queues[QueueCount];
 	vkGetPhysicalDeviceQueueFamilyProperties(Device, &QueueCount, Queues);
 
-	VkQueueFamilyProperties* Queue = Queues;
+	VkQueueFamilyProperties* queue = Queues;
 
-	for(uint32_t i = 0; i < QueueCount; ++i, ++Queue)
+	for(uint32_t i = 0; i < QueueCount; ++i, ++queue)
 	{
 		VkBool32 Present;
 		VkResult Result = vkGetPhysicalDeviceSurfaceSupportKHR(Device, i, vkSurface, &Present);
 
 		if(Result != VK_SUCCESS)
 		{
-			HardenedLogLocation();
+			hard_assert_log();
 			return false;
 		}
 
-		if(Present && (Queue->queueFlags & VK_QUEUE_GRAPHICS_BIT))
+		if(Present && (queue->queueFlags & VK_QUEUE_GRAPHICS_BIT))
 		{
 			DeviceScore->QueueID = i;
 
@@ -1259,18 +1055,18 @@ VulkanGetDeviceQueues(
 		}
 	}
 
-	HardenedLogLocation();
+	hard_assert_log();
 	return false;
 }
 
 
-Static bool
+private bool
 VulkanGetDeviceExtensions(
 	VkPhysicalDevice Device,
 	VkDeviceScore* DeviceScore
 	)
 {
-	if(ARRAYLEN(vkDeviceExtensions) == 0)
+	if(MACRO_ARRAY_LEN(vkDeviceExtensions) == 0)
 	{
 		return true;
 	}
@@ -1279,7 +1075,7 @@ VulkanGetDeviceExtensions(
 	vkEnumerateDeviceExtensionProperties(Device, NULL, &ExtensionCount, NULL);
 	if(ExtensionCount == 0)
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
@@ -1287,7 +1083,7 @@ VulkanGetDeviceExtensions(
 	vkEnumerateDeviceExtensionProperties(Device, NULL, &ExtensionCount, Extensions);
 
 	const char** RequiredExtension = vkDeviceExtensions;
-	const char** RequiredExtensionEnd = RequiredExtension + ARRAYLEN(vkDeviceExtensions);
+	const char** RequiredExtensionEnd = RequiredExtension + MACRO_ARRAY_LEN(vkDeviceExtensions);
 
 	do
 	{
@@ -1303,7 +1099,7 @@ VulkanGetDeviceExtensions(
 
 			if(++Extension == EndExtension)
 			{
-				HardenedLogLocation("%s", *RequiredExtension);
+				hard_assert_log("%s", *RequiredExtension);
 				return false;
 			}
 		}
@@ -1314,7 +1110,7 @@ VulkanGetDeviceExtensions(
 }
 
 
-Static void
+private void
 VulkanUpdateConstants(
 	void
 	)
@@ -1330,71 +1126,71 @@ VulkanUpdateConstants(
 	vkScissor.offset.y = 0;
 	vkScissor.extent = vkExtent;
 
-	Pair Size =
-	(Pair)
+	pair_t size =
+	(pair_t)
 	{
-		.W = vkExtent.width,
-		.H = vkExtent.height
+		.w = vkExtent.width,
+		.h = vkExtent.height
 	};
 
-	if(WindowSize.W != Size.W || WindowSize.H != Size.H)
+	if(WindowSize.w != size.w || WindowSize.h != size.h)
 	{
-		WindowResizeData EventData =
-		(WindowResizeData)
+		window_resize_event_data_t event_data =
+		(window_resize_event_data_t)
 		{
-			.OldSize = WindowSize
+			.old_size = WindowSize
 		};
 
-		WindowSize = Size;
+		WindowSize = size;
 		vkConstants.WindowSize = WindowSize;
 
-		EventData.NewSize = WindowSize;
+		event_data.new_size = WindowSize;
 
-		EventNotify(&WindowResizeTarget, &EventData);
+		event_target_fire(&window_resize_target, &event_data);
 	}
 }
 
 
-Static void
+private void
 VulkanGetExtent(
 	void
 	)
 {
-	int Width = 0;
-	int Height = 0;
+	int width = 0;
+	int height = 0;
 
 	while(1)
 	{
 		VkResult Result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 			vkPhysicalDevice, vkSurface, &vkSurfaceCapabilities);
-		HardenedAssertEQ(Result, VK_SUCCESS);
+		hard_assert_eq(Result, VK_SUCCESS);
 
-		Width = vkSurfaceCapabilities.currentExtent.width;
-		Height = vkSurfaceCapabilities.currentExtent.height;
+		width = vkSurfaceCapabilities.currentExtent.width;
+		height = vkSurfaceCapabilities.currentExtent.height;
 
-		if(Width != 0 && Height != 0)
+		if(width != 0 && height != 0)
 		{
 			break;
 		}
 
-		MutexLock(&Mtx);
+		sync_mtx_lock(&mtx);
 			while(!Resized)
 			{
-				CondVarWait(&Cond, &Mtx);
+				sync_cond_wait(&Cond, &mtx);
 			}
 
 			Resized = false;
-		MutexUnlock(&Mtx);
+		sync_mtx_unlock(&mtx);
 	}
 
-	Width = CLAMP(
-		Width,
+	width = MACRO_CLAMP(
+		width,
 		vkSurfaceCapabilities.maxImageExtent.width,
 		vkSurfaceCapabilities.minImageExtent.width
 		);
 
-	Height = CLAMP(
-		Height,
+	height = MACRO_CLAMP(
+		height,
 		vkSurfaceCapabilities.maxImageExtent.height,
 		vkSurfaceCapabilities.minImageExtent.height
 		);
@@ -1402,15 +1198,15 @@ VulkanGetExtent(
 	vkExtent =
 	(VkExtent2D)
 	{
-		.width = Width,
-		.height = Height
+		.width = width,
+		.height = height
 	};
 
 	VulkanUpdateConstants();
 }
 
 
-Static bool
+private bool
 VulkanGetDeviceSwapchain(
 	VkPhysicalDevice Device,
 	VkDeviceScore* DeviceScore
@@ -1422,13 +1218,13 @@ VulkanGetDeviceSwapchain(
 
 	if(Result != VK_SUCCESS)
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
 	if(FormatCount == 0)
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
@@ -1438,24 +1234,24 @@ VulkanGetDeviceSwapchain(
 
 	if(Result != VK_SUCCESS)
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
-	VkSurfaceFormatKHR* Format = Formats;
-	VkSurfaceFormatKHR* FormatEnd = Format + ARRAYLEN(Formats);
+	VkSurfaceFormatKHR* format = Formats;
+	VkSurfaceFormatKHR* FormatEnd = format + MACRO_ARRAY_LEN(Formats);
 
 	while(1)
 	{
-		if(Format->format == VK_FORMAT_B8G8R8A8_SRGB &&
-			Format->colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		if(format->format == VK_FORMAT_B8G8R8A8_SRGB &&
+			format->colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 		{
 			break;
 		}
 
-		if(++Format == FormatEnd)
+		if(++format == FormatEnd)
 		{
-			HardenedLogLocation();
+			hard_assert_log();
 			return false;
 		}
 	}
@@ -1464,7 +1260,7 @@ VulkanGetDeviceSwapchain(
 }
 
 
-Static bool
+private bool
 VulkanGetDeviceProperties(
 	VkPhysicalDevice Device,
 	VkDeviceScore* DeviceScore
@@ -1499,7 +1295,7 @@ VulkanGetDeviceProperties(
 	}
 	else
 	{
-		HardenedLogLocation();
+		hard_assert_log();
 		return false;
 	}
 
@@ -1507,37 +1303,37 @@ VulkanGetDeviceProperties(
 
 	if(Properties.limits.maxImageDimension2D < 1024)
 	{
-		HardenedLogLocation("%u\n", Properties.limits.maxImageDimension2D);
+		hard_assert_log("%u\n", Properties.limits.maxImageDimension2D);
 		return false;
 	}
 
 	if(Properties.limits.maxPushConstantsSize < sizeof(VkVertexConstantInput))
 	{
-		HardenedLogLocation("%u\n", Properties.limits.maxPushConstantsSize);
+		hard_assert_log("%u\n", Properties.limits.maxPushConstantsSize);
 		return false;
 	}
 
 	if(Properties.limits.maxBoundDescriptorSets < 1)
 	{
-		HardenedLogLocation("%u\n", Properties.limits.maxBoundDescriptorSets);
+		hard_assert_log("%u\n", Properties.limits.maxBoundDescriptorSets);
 		return false;
 	}
 
 	if(Properties.limits.maxPerStageDescriptorSamplers < 8)
 	{
-		HardenedLogLocation("%u\n", Properties.limits.maxPerStageDescriptorSamplers);
+		hard_assert_log("%u\n", Properties.limits.maxPerStageDescriptorSamplers);
 		return false;
 	}
 
 	if(Properties.limits.maxImageArrayLayers < 2048)
 	{
-		HardenedLogLocation("%u\n", Properties.limits.maxImageArrayLayers);
+		hard_assert_log("%u\n", Properties.limits.maxImageArrayLayers);
 		return false;
 	}
 
 	if(Properties.limits.maxPerStageDescriptorSampledImages < 8192)
 	{
-		HardenedLogLocation("%u\n", Properties.limits.maxPerStageDescriptorSampledImages);
+		hard_assert_log("%u\n", Properties.limits.maxPerStageDescriptorSampledImages);
 		return false;
 	}
 
@@ -1548,7 +1344,7 @@ VulkanGetDeviceProperties(
 }
 
 
-Static VkDeviceScore
+private VkDeviceScore
 VulkanGetDeviceScore(
 	VkPhysicalDevice Device
 	)
@@ -1590,20 +1386,20 @@ VulkanGetDeviceScore(
 }
 
 
-Static void
+private void
 VulkanInitDevice(
 	void
 	)
 {
 	uint32_t DeviceCount;
 	vkEnumeratePhysicalDevices(vkInstance, &DeviceCount, NULL);
-	HardenedAssertNEQ(DeviceCount, 0);
+	hard_assert_neq(DeviceCount, 0);
 
 	VkPhysicalDevice Devices[DeviceCount];
 	vkEnumeratePhysicalDevices(vkInstance, &DeviceCount, Devices);
 
 	VkPhysicalDevice* Device = Devices;
-	VkPhysicalDevice* DeviceEnd = Device + ARRAYLEN(Devices);
+	VkPhysicalDevice* DeviceEnd = Device + MACRO_ARRAY_LEN(Devices);
 
 	VkPhysicalDevice BestDevice = NULL;
 	VkDeviceScore BestDeviceScore = {0};
@@ -1621,7 +1417,7 @@ VulkanInitDevice(
 	}
 	while(++Device != DeviceEnd);
 
-	HardenedAssertNotNull(BestDevice);
+	hard_assert_not_null(BestDevice);
 
 	vkQueueID = BestDeviceScore.QueueID;
 	vkSamples = BestDeviceScore.Samples;
@@ -1630,13 +1426,13 @@ VulkanInitDevice(
 
 	float Priority = 1.0f;
 
-	VkDeviceQueueCreateInfo Queue = {0};
-	Queue.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	Queue.pNext = NULL;
-	Queue.flags = 0;
-	Queue.queueFamilyIndex = vkQueueID;
-	Queue.queueCount = 1;
-	Queue.pQueuePriorities = &Priority;
+	VkDeviceQueueCreateInfo queue = {0};
+	queue.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queue.pNext = NULL;
+	queue.flags = 0;
+	queue.queueFamilyIndex = vkQueueID;
+	queue.queueCount = 1;
+	queue.pQueuePriorities = &Priority;
 
 	VkPhysicalDeviceFeatures DeviceFeatures = {0};
 	DeviceFeatures.sampleRateShading = VK_TRUE;
@@ -1647,15 +1443,15 @@ VulkanInitDevice(
 	DeviceInfo.pNext = NULL;
 	DeviceInfo.flags = 0;
 	DeviceInfo.queueCreateInfoCount = 1;
-	DeviceInfo.pQueueCreateInfos = &Queue;
-	DeviceInfo.enabledLayerCount = ARRAYLEN(vkLayers);
+	DeviceInfo.pQueueCreateInfos = &queue;
+	DeviceInfo.enabledLayerCount = MACRO_ARRAY_LEN(vkLayers);
 	DeviceInfo.ppEnabledLayerNames = vkLayers;
-	DeviceInfo.enabledExtensionCount = ARRAYLEN(vkDeviceExtensions);
+	DeviceInfo.enabledExtensionCount = MACRO_ARRAY_LEN(vkDeviceExtensions);
 	DeviceInfo.ppEnabledExtensionNames = vkDeviceExtensions;
 	DeviceInfo.pEnabledFeatures = &DeviceFeatures;
 
 	VkResult Result = vkCreateDevice(BestDevice, &DeviceInfo, NULL, &vkDevice);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	volkLoadDevice(vkDevice);
 
@@ -1671,7 +1467,7 @@ VulkanInitDevice(
 	PoolInfo.queueFamilyIndex = vkQueueID;
 
 	Result = vkCreateCommandPool(vkDevice, &PoolInfo, NULL, &vkCommandPool);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VkCommandBufferAllocateInfo AllocInfo = {0};
@@ -1682,7 +1478,7 @@ VulkanInitDevice(
 	AllocInfo.commandBufferCount = 1;
 
 	Result = vkAllocateCommandBuffers(vkDevice, &AllocInfo, &vkCommandBuffer);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VkFenceCreateInfo FenceInfo = {0};
@@ -1691,12 +1487,12 @@ VulkanInitDevice(
 	FenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	Result = vkCreateFence(vkDevice, &FenceInfo, NULL, &vkFence);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VulkanGetExtent();
-	vkMinImageCount = MAX(
-		MIN(2, vkSurfaceCapabilities.maxImageCount),
+	vkMinImageCount = MACRO_MAX(
+		MACRO_MIN(2, vkSurfaceCapabilities.maxImageCount),
 		vkSurfaceCapabilities.minImageCount
 	);
 	vkTransform = vkSurfaceCapabilities.currentTransform;
@@ -1705,13 +1501,13 @@ VulkanInitDevice(
 	uint32_t PresentModeCount;
 	Result = vkGetPhysicalDeviceSurfacePresentModesKHR(
 		vkPhysicalDevice, vkSurface, &PresentModeCount, NULL);
-	HardenedAssertEQ(Result, VK_SUCCESS);
-	HardenedAssertNEQ(PresentModeCount, 0);
+	hard_assert_eq(Result, VK_SUCCESS);
+	hard_assert_neq(PresentModeCount, 0);
 
 	VkPresentModeKHR PresentModes[PresentModeCount];
 	Result = vkGetPhysicalDeviceSurfacePresentModesKHR(
 		vkPhysicalDevice, vkSurface, &PresentModeCount, PresentModes);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkPresentModeKHR* PresentMode = PresentModes;
 	VkPresentModeKHR* PresentModeEnd = PresentModes + PresentModeCount;
@@ -1732,7 +1528,7 @@ VulkanInitDevice(
 }
 
 
-Static void
+private void
 VulkanDestroyDevice(
 	void
 	)
@@ -1745,16 +1541,16 @@ VulkanDestroyDevice(
 }
 
 
-Static uint32_t
+private uint32_t
 VulkanGetMemory(
-	uint32_t Bits,
+	uint32_t bits,
 	VkMemoryPropertyFlags Properties
 	)
 {
 	for(uint32_t i = 0; i < vkMemoryProperties.memoryTypeCount; ++i)
 	{
 		if(
-			(Bits & (1 << i)) &&
+			(bits & (1 << i)) &&
 			(vkMemoryProperties.memoryTypes[i].propertyFlags & Properties) == Properties
 			)
 		{
@@ -1762,16 +1558,16 @@ VulkanGetMemory(
 		}
 	}
 
-	HardenedAssertUnreachable();
+	hard_assert_unreachable();
 }
 
 
-Static void
+private void
 VulkanGetBuffer(
-	VkDeviceSize Size,
+	VkDeviceSize size,
 	VkBufferUsageFlags Usage,
 	VkMemoryPropertyFlags Properties,
-	VkBuffer* Buffer,
+	VkBuffer* buffer,
 	VkDeviceMemory* BufferMemory
 	)
 {
@@ -1779,17 +1575,17 @@ VulkanGetBuffer(
 	BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	BufferInfo.pNext = NULL;
 	BufferInfo.flags = 0;
-	BufferInfo.size = Size;
+	BufferInfo.size = size;
 	BufferInfo.usage = Usage;
 	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	BufferInfo.queueFamilyIndexCount = 0;
 	BufferInfo.pQueueFamilyIndices = NULL;
 
-	VkResult Result = vkCreateBuffer(vkDevice, &BufferInfo, NULL, Buffer);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	VkResult Result = vkCreateBuffer(vkDevice, &BufferInfo, NULL, buffer);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkMemoryRequirements Requirements;
-	vkGetBufferMemoryRequirements(vkDevice, *Buffer, &Requirements);
+	vkGetBufferMemoryRequirements(vkDevice, *buffer, &Requirements);
 
 	VkMemoryAllocateInfo AllocInfo = {0};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1798,49 +1594,49 @@ VulkanGetBuffer(
 	AllocInfo.memoryTypeIndex = VulkanGetMemory(Requirements.memoryTypeBits, Properties);
 
 	Result = vkAllocateMemory(vkDevice, &AllocInfo, NULL, BufferMemory);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
-	vkBindBufferMemory(vkDevice, *Buffer, *BufferMemory, 0);
+	vkBindBufferMemory(vkDevice, *buffer, *BufferMemory, 0);
 }
 
 
-Static void
+private void
 VulkanGetStagingBuffer(
-	VkDeviceSize Size,
-	VkBuffer* Buffer,
+	VkDeviceSize size,
+	VkBuffer* buffer,
 	VkDeviceMemory* BufferMemory
 	)
 {
-	VulkanGetBuffer(Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Buffer, BufferMemory);
+	VulkanGetBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer, BufferMemory);
 }
 
 
-Static void
+private void
 VulkanGetVertexBuffer(
-	VkDeviceSize Size,
-	VkBuffer* Buffer,
+	VkDeviceSize size,
+	VkBuffer* buffer,
 	VkDeviceMemory* BufferMemory
 	)
 {
-	VulkanGetBuffer(Size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, Buffer, BufferMemory);
+	VulkanGetBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, BufferMemory);
 }
 
 
-Static void
+private void
 VulkanGetDrawIndirectBuffer(
-	VkDeviceSize Size,
-	VkBuffer* Buffer,
+	VkDeviceSize size,
+	VkBuffer* buffer,
 	VkDeviceMemory* BufferMemory
 	)
 {
-	VulkanGetBuffer(Size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, Buffer, BufferMemory);
+	VulkanGetBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, BufferMemory);
 }
 
 
-Static void
+private void
 VulkanDestroyCopyBuffer(
 	void
 	)
@@ -1850,14 +1646,14 @@ VulkanDestroyCopyBuffer(
 }
 
 
-Static void
+private void
 VulkanCopyToBuffer(
-	VkBuffer Buffer,
-	const void* Data,
-	VkDeviceSize Size
+	VkBuffer buffer,
+	const void* data,
+	VkDeviceSize size
 	)
 {
-	if(!Size)
+	if(!size)
 	{
 		return;
 	}
@@ -1866,71 +1662,71 @@ VulkanCopyToBuffer(
 
 	VulkanDestroyCopyBuffer();
 
-	VulkanGetStagingBuffer(Size, &vkCopyBuffer, &vkCopyBufferMemory);
+	VulkanGetStagingBuffer(size, &vkCopyBuffer, &vkCopyBufferMemory);
 
 	void* Memory;
 
 	VkResult Result = vkMapMemory(vkDevice, vkCopyBufferMemory, 0, VK_WHOLE_SIZE, 0, &Memory);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
-	memcpy(Memory, Data, Size);
+	memcpy(Memory, data, size);
 	vkUnmapMemory(vkDevice, vkCopyBufferMemory);
 
 	VkBufferCopy Copy = {0};
 	Copy.srcOffset = 0;
 	Copy.dstOffset = 0;
-	Copy.size = Size;
+	Copy.size = size;
 
-	vkCmdCopyBuffer(vkCommandBuffer, vkCopyBuffer, Buffer, 1, &Copy);
+	vkCmdCopyBuffer(vkCommandBuffer, vkCopyBuffer, buffer, 1, &Copy);
 
 	VulkanEndCommandBuffer();
 }
 
 
-Static void
+private void
 VulkanCopyTextureToImage(
 	Image* Image,
-	DDSTexture* Texture
+	dds_tex_t* tex
 	)
 {
 	VulkanBeginCommandBuffer();
 
 	VulkanDestroyCopyBuffer();
 
-	VkDeviceSize Size = DDSDataSize(Texture);
-	uint8_t* Data = &Texture->Data[0];
+	VkDeviceSize size = dds_data_size(tex);
+	uint8_t* data = &tex->data[0];
 
-	VulkanGetStagingBuffer(Size, &vkCopyBuffer, &vkCopyBufferMemory);
+	VulkanGetStagingBuffer(size, &vkCopyBuffer, &vkCopyBufferMemory);
 
 	void* Memory;
 
 	VkResult Result = vkMapMemory(vkDevice, vkCopyBufferMemory, 0, VK_WHOLE_SIZE, 0, &Memory);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
-	memcpy(Memory, Data, Size);
+	memcpy(Memory, data, size);
 	vkUnmapMemory(vkDevice, vkCopyBufferMemory);
 
 	VkBufferImageCopy Copies[Image->Layers];
 
-	uint32_t Layer = 0;
+	uint32_t layer = 0;
 	VkBufferImageCopy* Copy = Copies;
-	VkBufferImageCopy* CopyEnd = Copies + ARRAYLEN(Copies);
+	VkBufferImageCopy* CopyEnd = Copies + MACRO_ARRAY_LEN(Copies);
 
 	while(1)
 	{
 		*Copy = (VkBufferImageCopy){0};
-		Copy->bufferOffset = DDSOffset(Texture, Layer);
+		Copy->bufferOffset = dds_offset(tex, layer);
 		Copy->bufferRowLength = 0;
 		Copy->bufferImageHeight = 0;
 		Copy->imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		Copy->imageSubresource.mipLevel = 0;
-		Copy->imageSubresource.baseArrayLayer = Layer;
+		Copy->imageSubresource.baseArrayLayer = layer;
 		Copy->imageSubresource.layerCount = 1;
 		Copy->imageOffset.x = 0;
 		Copy->imageOffset.y = 0;
 		Copy->imageOffset.z = 0;
-		Copy->imageExtent.width = Image->Width;
-		Copy->imageExtent.height = Image->Height;
+		Copy->imageExtent.width = Image->width;
+		Copy->imageExtent.height = Image->height;
 		Copy->imageExtent.depth = 1;
 
 		if(++Copy == CopyEnd)
@@ -1938,17 +1734,17 @@ VulkanCopyTextureToImage(
 			break;
 		}
 
-		++Layer;
+		++layer;
 	}
 
 	vkCmdCopyBufferToImage(vkCommandBuffer, vkCopyBuffer, Image->Image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ARRAYLEN(Copies), Copies);
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, MACRO_ARRAY_LEN(Copies), Copies);
 
 	VulkanEndCommandBuffer();
 }
 
 
-Static void
+private void
 VulkanTransitionImageLayout(
 	Image* Image,
 	VkImageLayout From,
@@ -1984,7 +1780,7 @@ VulkanTransitionImageLayout(
 	}
 	else
 	{
-		AssertUnreachable();
+		assert_unreachable();
 	}
 
 	Barrier.oldLayout = From;
@@ -2004,14 +1800,14 @@ VulkanTransitionImageLayout(
 }
 
 
-Static void
+private void
 VulkanCreateImage(
 	Image* Image
 	)
 {
-	DDSTexture* Texture = NULL;
+	dds_tex_t* tex = NULL;
 
-	switch(Image->Type)
+	switch(Image->type)
 	{
 
 	case IMAGE_TYPE_DEPTH_STENCIL:
@@ -2020,8 +1816,8 @@ VulkanCreateImage(
 		Image->Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		Image->Samples = vkSamples;
 
-		Image->Width = vkExtent.width;
-		Image->Height = vkExtent.height;
+		Image->width = vkExtent.width;
+		Image->height = vkExtent.height;
 		Image->Layers = 1;
 
 		break;
@@ -2033,8 +1829,8 @@ VulkanCreateImage(
 		Image->Usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		Image->Samples = vkSamples;
 
-		Image->Width = vkExtent.width;
-		Image->Height = vkExtent.height;
+		Image->width = vkExtent.width;
+		Image->height = vkExtent.height;
 		Image->Layers = 1;
 
 		break;
@@ -2042,15 +1838,15 @@ VulkanCreateImage(
 
 	case IMAGE_TYPE_TEXTURE:
 	{
-		Texture = DDSLoad(Image->Path);
+		tex = dds_load(Image->path);
 
 		Image->Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 		Image->Usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		Image->Samples = VK_SAMPLE_COUNT_1_BIT;
 
-		Image->Width = Texture->Width;
-		Image->Height = Texture->Height;
-		Image->Layers = Texture->ArraySize;
+		Image->width = tex->width;
+		Image->height = tex->height;
+		Image->Layers = tex->array_size;
 
 		break;
 	}
@@ -2062,9 +1858,9 @@ VulkanCreateImage(
 	ImageInfo.pNext = NULL;
 	ImageInfo.flags = 0;
 	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
-	ImageInfo.format = Image->Format;
-	ImageInfo.extent.width = Image->Width;
-	ImageInfo.extent.height = Image->Height;
+	ImageInfo.format = Image->format;
+	ImageInfo.extent.width = Image->width;
+	ImageInfo.extent.height = Image->height;
 	ImageInfo.extent.depth = 1;
 	ImageInfo.mipLevels = 1;
 	ImageInfo.arrayLayers = Image->Layers;
@@ -2077,7 +1873,7 @@ VulkanCreateImage(
 	ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 	VkResult Result = vkCreateImage(vkDevice, &ImageInfo, NULL, &Image->Image);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkMemoryRequirements Requirements;
 	vkGetImageMemoryRequirements(vkDevice, Image->Image, &Requirements);
@@ -2089,10 +1885,10 @@ VulkanCreateImage(
 	AllocInfo.memoryTypeIndex = VulkanGetMemory(Requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	Result = vkAllocateMemory(vkDevice, &AllocInfo, NULL, &Image->Memory);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	Result = vkBindImageMemory(vkDevice, Image->Image, Image->Memory, 0);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkImageViewCreateInfo ViewInfo = {0};
 	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -2100,7 +1896,7 @@ VulkanCreateImage(
 	ViewInfo.flags = 0;
 	ViewInfo.image = Image->Image;
 	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-	ViewInfo.format = Image->Format;
+	ViewInfo.format = Image->format;
 	ViewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 	ViewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	ViewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -2112,22 +1908,22 @@ VulkanCreateImage(
 	ViewInfo.subresourceRange.layerCount = Image->Layers;
 
 	Result = vkCreateImageView(vkDevice, &ViewInfo, NULL, &Image->View);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
-	if(Image->Type == IMAGE_TYPE_TEXTURE)
+	if(Image->type == IMAGE_TYPE_TEXTURE)
 	{
 		VulkanTransitionImageLayout(Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		VulkanCopyTextureToImage(Image, Texture);
+		VulkanCopyTextureToImage(Image, tex);
 
-		DDSFree(Texture);
+		dds_free(tex);
 
 		VulkanTransitionImageLayout(Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 }
 
 
-Static void
+private void
 VulkanDestroyImage(
 	Image* Image
 	)
@@ -2138,7 +1934,7 @@ VulkanDestroyImage(
 }
 
 
-Static void
+private void
 VulkanInitImages(
 	void
 	)
@@ -2148,7 +1944,7 @@ VulkanInitImages(
 }
 
 
-Static void
+private void
 VulkanDestroyImages(
 	void
 	)
@@ -2158,36 +1954,36 @@ VulkanDestroyImages(
 }
 
 
-Static VkShaderModule
+private VkShaderModule
 VulkanCreateShader(
-	const char* Path
+	const char* path
 	)
 {
-	FileFile File;
-	bool Status = FileRead(Path, &File);
-	HardenedAssertTrue(Status);
+	file_t file;
+	bool status = file_read(path, &file);
+	hard_assert_true(status);
 
-	const uint32_t* Code = (const uint32_t*) File.Buffer;
+	const uint32_t* Code = (const uint32_t*) file.data;
 
 	VkShaderModuleCreateInfo ShaderInfo = {0};
 	ShaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	ShaderInfo.pNext = NULL;
 	ShaderInfo.flags = 0;
-	ShaderInfo.codeSize = File.Length;
+	ShaderInfo.codeSize = file.len;
 	ShaderInfo.pCode = Code;
 
 	VkShaderModule Shader;
 
 	VkResult Result = vkCreateShaderModule(vkDevice, &ShaderInfo, NULL, &Shader);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
-	FileFree(File);
+	file_free(file);
 
 	return Shader;
 }
 
 
-Static void
+private void
 VulkanDestroyShader(
 	VkShaderModule Shader
 	)
@@ -2196,7 +1992,7 @@ VulkanDestroyShader(
 }
 
 
-Static void
+private void
 VulkanInitPipeline(
 	void
 	)
@@ -2237,7 +2033,7 @@ VulkanInitPipeline(
 	VkAttachmentDescription Attachments[3] = {0};
 
 	Attachments[0].flags = 0;
-	Attachments[0].format = vkMultisampling.Format;
+	Attachments[0].format = vkMultisampling.format;
 	Attachments[0].samples = vkSamples;
 	Attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	Attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -2247,7 +2043,7 @@ VulkanInitPipeline(
 	Attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	Attachments[1].flags = 0;
-	Attachments[1].format = vkDepthBuffer.Format;
+	Attachments[1].format = vkDepthBuffer.format;
 	Attachments[1].samples = vkSamples;
 	Attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	Attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -2270,7 +2066,7 @@ VulkanInitPipeline(
 	RenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	RenderPassInfo.pNext = NULL;
 	RenderPassInfo.flags = 0;
-	RenderPassInfo.attachmentCount = ARRAYLEN(Attachments);
+	RenderPassInfo.attachmentCount = MACRO_ARRAY_LEN(Attachments);
 	RenderPassInfo.pAttachments = Attachments;
 	RenderPassInfo.subpassCount = 1;
 	RenderPassInfo.pSubpasses = &Subpass;
@@ -2278,7 +2074,7 @@ VulkanInitPipeline(
 	RenderPassInfo.pDependencies = &Dependency;
 
 	VkResult Result = vkCreateRenderPass(vkDevice, &RenderPassInfo, NULL, &vkRenderPass);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VkShaderModule VertexModule = VulkanCreateShader("vert.spv");
@@ -2312,7 +2108,7 @@ VulkanInitPipeline(
 	DynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	DynamicState.pNext = NULL;
 	DynamicState.flags = 0;
-	DynamicState.dynamicStateCount = ARRAYLEN(DynamicStates);
+	DynamicState.dynamicStateCount = MACRO_ARRAY_LEN(DynamicStates);
 	DynamicState.pDynamicStates = DynamicStates;
 
 	VkVertexInputBindingDescription VertexBindings[2] = {0};
@@ -2322,7 +2118,7 @@ VulkanInitPipeline(
 	VertexBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	VertexBindings[1].binding = 1;
-	VertexBindings[1].stride = sizeof(VkVertexInstanceInput);
+	VertexBindings[1].stride = sizeof(window_draw_data_t);
 	VertexBindings[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
 	VkVertexInputAttributeDescription Attributes[] =
@@ -2331,7 +2127,7 @@ VulkanInitPipeline(
 			.location = 0,
 			.binding = 0,
 			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = offsetof(VkVertexVertexInput, Position)
+			.offset = offsetof(VkVertexVertexInput, pos)
 		},
 		{
 			.location = 1,
@@ -2343,61 +2139,61 @@ VulkanInitPipeline(
 			.location = 2,
 			.binding = 1,
 			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = offsetof(VkVertexInstanceInput, Position)
+			.offset = offsetof(window_draw_data_t, pos)
 		},
 		{
 			.location = 3,
 			.binding = 1,
 			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = offsetof(VkVertexInstanceInput, Dimensions)
+			.offset = offsetof(window_draw_data_t, size)
 		},
 		{
 			.location = 4,
 			.binding = 1,
 			.format = VK_FORMAT_B8G8R8A8_UNORM,
-			.offset = offsetof(VkVertexInstanceInput, WhiteColor)
+			.offset = offsetof(window_draw_data_t, white_color)
 		},
 		{
 			.location = 5,
 			.binding = 1,
 			.format = VK_FORMAT_R32_SFLOAT,
-			.offset = offsetof(VkVertexInstanceInput, WhiteDepth)
+			.offset = offsetof(window_draw_data_t, white_depth)
 		},
 		{
 			.location = 6,
 			.binding = 1,
 			.format = VK_FORMAT_B8G8R8A8_UNORM,
-			.offset = offsetof(VkVertexInstanceInput, BlackColor)
+			.offset = offsetof(window_draw_data_t, black_color)
 		},
 		{
 			.location = 7,
 			.binding = 1,
 			.format = VK_FORMAT_R32_SFLOAT,
-			.offset = offsetof(VkVertexInstanceInput, BlackDepth)
+			.offset = offsetof(window_draw_data_t, black_depth)
 		},
 		{
 			.location = 8,
 			.binding = 1,
 			.format = VK_FORMAT_R16G16_UINT,
-			.offset = offsetof(VkVertexInstanceInput, Texture)
+			.offset = offsetof(window_draw_data_t, tex)
 		},
 		{
 			.location = 9,
 			.binding = 1,
 			.format = VK_FORMAT_R32_SFLOAT,
-			.offset = offsetof(VkVertexInstanceInput, Rotation)
+			.offset = offsetof(window_draw_data_t, angle)
 		},
 		{
 			.location = 10,
 			.binding = 1,
 			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = offsetof(VkVertexInstanceInput, TexScale)
+			.offset = offsetof(window_draw_data_t, tex_scale)
 		},
 		{
 			.location = 11,
 			.binding = 1,
 			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = offsetof(VkVertexInstanceInput, TexOffset)
+			.offset = offsetof(window_draw_data_t, tex_offset)
 		}
 	};
 
@@ -2405,9 +2201,9 @@ VulkanInitPipeline(
 	VertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	VertexInput.pNext = NULL;
 	VertexInput.flags = 0;
-	VertexInput.vertexBindingDescriptionCount = ARRAYLEN(VertexBindings);
+	VertexInput.vertexBindingDescriptionCount = MACRO_ARRAY_LEN(VertexBindings);
 	VertexInput.pVertexBindingDescriptions = VertexBindings;
-	VertexInput.vertexAttributeDescriptionCount = ARRAYLEN(Attributes);
+	VertexInput.vertexAttributeDescriptionCount = MACRO_ARRAY_LEN(Attributes);
 	VertexInput.pVertexAttributeDescriptions = Attributes;
 
 	VkPipelineInputAssemblyStateCreateInfo InputAssembly = {0};
@@ -2494,7 +2290,7 @@ VulkanInitPipeline(
 
 	Bindings[0].binding = 0;
 	Bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	Bindings[0].descriptorCount = ARRAYLEN(vkTextures);
+	Bindings[0].descriptorCount = MACRO_ARRAY_LEN(vkTextures);
 	Bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	Bindings[0].pImmutableSamplers = NULL;
 
@@ -2502,11 +2298,11 @@ VulkanInitPipeline(
 	Descriptors.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	Descriptors.pNext = NULL;
 	Descriptors.flags = 0;
-	Descriptors.bindingCount = ARRAYLEN(Bindings);
+	Descriptors.bindingCount = MACRO_ARRAY_LEN(Bindings);
 	Descriptors.pBindings = Bindings;
 
 	Result = vkCreateDescriptorSetLayout(vkDevice, &Descriptors, NULL, &vkDescriptors);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkPushConstantRange PushConstants[1] = {0};
 
@@ -2520,11 +2316,11 @@ VulkanInitPipeline(
 	LayoutInfo.flags = 0;
 	LayoutInfo.setLayoutCount = 1;
 	LayoutInfo.pSetLayouts = &vkDescriptors;
-	LayoutInfo.pushConstantRangeCount = ARRAYLEN(PushConstants);
+	LayoutInfo.pushConstantRangeCount = MACRO_ARRAY_LEN(PushConstants);
 	LayoutInfo.pPushConstantRanges = PushConstants;
 
 	Result = vkCreatePipelineLayout(vkDevice, &LayoutInfo, NULL, &vkPipelineLayout);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VkGraphicsPipelineCreateInfo PipelineInfo = {0};
@@ -2549,14 +2345,14 @@ VulkanInitPipeline(
 	PipelineInfo.basePipelineIndex = -1;
 
 	Result = vkCreateGraphicsPipelines(vkDevice, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &vkPipeline);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VulkanDestroyShader(VertexModule);
 	VulkanDestroyShader(FragmentModule);
 }
 
 
-Static void
+private void
 VulkanDestroyPipeline(
 	void
 	)
@@ -2568,13 +2364,13 @@ VulkanDestroyPipeline(
 }
 
 
-Static void
+private void
 VulkanInitConsts(
 	void
 	)
 {
 	VkBarrier* Barrier = vkBarriers;
-	VkBarrier* BarrierEnd = Barrier + ARRAYLEN(vkBarriers);
+	VkBarrier* BarrierEnd = Barrier + MACRO_ARRAY_LEN(vkBarriers);
 
 	do
 	{
@@ -2583,15 +2379,15 @@ VulkanInitConsts(
 		SemaphoreInfo.pNext = NULL;
 		SemaphoreInfo.flags = 0;
 
-		VkSemaphore* Semaphore = Barrier->Semaphores;
-		VkSemaphore* SemaphoreEnd = Semaphore + ARRAYLEN(Barrier->Semaphores);
+		VkSemaphore* sync_sem_t = Barrier->Semaphores;
+		VkSemaphore* SemaphoreEnd = sync_sem_t + MACRO_ARRAY_LEN(Barrier->Semaphores);
 
 		do
 		{
-			VkResult Result = vkCreateSemaphore(vkDevice, &SemaphoreInfo, NULL, Semaphore);
-			HardenedAssertEQ(Result, VK_SUCCESS);
+			VkResult Result = vkCreateSemaphore(vkDevice, &SemaphoreInfo, NULL, sync_sem_t);
+			hard_assert_eq(Result, VK_SUCCESS);
 		}
-		while(++Semaphore != SemaphoreEnd);
+		while(++sync_sem_t != SemaphoreEnd);
 
 
 		VkFenceCreateInfo FenceInfo = {0};
@@ -2600,33 +2396,33 @@ VulkanInitConsts(
 		FenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		VkFence* Fence = Barrier->Fences;
-		VkFence* FenceEnd = Barrier->Fences + ARRAYLEN(Barrier->Fences);
+		VkFence* FenceEnd = Barrier->Fences + MACRO_ARRAY_LEN(Barrier->Fences);
 
 		do
 		{
 			VkResult Result = vkCreateFence(vkDevice, &FenceInfo, NULL, Fence);
-			HardenedAssertEQ(Result, VK_SUCCESS);
+			hard_assert_eq(Result, VK_SUCCESS);
 		}
 		while(++Fence != FenceEnd);
 	}
 	while(++Barrier != BarrierEnd);
 
 
-	VkCommandBuffer CommandBuffers[ARRAYLEN(vkFrames)];
+	VkCommandBuffer CommandBuffers[MACRO_ARRAY_LEN(vkFrames)];
 
 	VkCommandBufferAllocateInfo AllocInfo = {0};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	AllocInfo.pNext = NULL;
 	AllocInfo.commandPool = vkCommandPool;
 	AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	AllocInfo.commandBufferCount = ARRAYLEN(CommandBuffers);
+	AllocInfo.commandBufferCount = MACRO_ARRAY_LEN(CommandBuffers);
 
 	VkResult Result = vkAllocateCommandBuffers(vkDevice, &AllocInfo, CommandBuffers);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VkFrame* Frame = vkFrames;
-	VkFrame* FrameEnd = Frame + ARRAYLEN(vkFrames);
+	VkFrame* FrameEnd = Frame + MACRO_ARRAY_LEN(vkFrames);
 
 	VkCommandBuffer* CommandBuffer = CommandBuffers;
 
@@ -2644,15 +2440,15 @@ VulkanInitConsts(
 }
 
 
-Static void
+private void
 VulkanDestroyConsts(
 	void
 	)
 {
 	VkFrame* Frame = vkFrames;
-	VkFrame* FrameEnd = Frame + ARRAYLEN(vkFrames);
+	VkFrame* FrameEnd = Frame + MACRO_ARRAY_LEN(vkFrames);
 
-	VkCommandBuffer CommandBuffers[ARRAYLEN(vkFrames)];
+	VkCommandBuffer CommandBuffers[MACRO_ARRAY_LEN(vkFrames)];
 	VkCommandBuffer* CommandBuffer = CommandBuffers;
 
 	while(1)
@@ -2667,16 +2463,16 @@ VulkanDestroyConsts(
 		++CommandBuffer;
 	}
 
-	vkFreeCommandBuffers(vkDevice, vkCommandPool, ARRAYLEN(CommandBuffers), CommandBuffers);
+	vkFreeCommandBuffers(vkDevice, vkCommandPool, MACRO_ARRAY_LEN(CommandBuffers), CommandBuffers);
 
 
 	VkBarrier* Barrier = vkBarriers;
-	VkBarrier* BarrierEnd = Barrier + ARRAYLEN(vkBarriers);
+	VkBarrier* BarrierEnd = Barrier + MACRO_ARRAY_LEN(vkBarriers);
 
 	do
 	{
 		VkFence* Fence = Barrier->Fences;
-		VkFence* FenceEnd = Barrier->Fences + ARRAYLEN(Barrier->Fences);
+		VkFence* FenceEnd = Barrier->Fences + MACRO_ARRAY_LEN(Barrier->Fences);
 
 		do
 		{
@@ -2685,42 +2481,42 @@ VulkanDestroyConsts(
 		while(++Fence != FenceEnd);
 
 
-		VkSemaphore* Semaphore = Barrier->Semaphores;
-		VkSemaphore* SemaphoreEnd = Barrier->Semaphores + ARRAYLEN(Barrier->Semaphores);
+		VkSemaphore* sync_sem_t = Barrier->Semaphores;
+		VkSemaphore* SemaphoreEnd = Barrier->Semaphores + MACRO_ARRAY_LEN(Barrier->Semaphores);
 
 		do
 		{
-			vkDestroySemaphore(vkDevice, *Semaphore, NULL);
+			vkDestroySemaphore(vkDevice, *sync_sem_t, NULL);
 		}
-		while(++Semaphore != SemaphoreEnd);
+		while(++sync_sem_t != SemaphoreEnd);
 	}
 	while(++Barrier != BarrierEnd);
 }
 
 
-Static void
+private void
 VulkanInitFrames(
 	void
 	)
 {
 	uint32_t ImageCount;
 	VkResult Result = vkGetSwapchainImagesKHR(vkDevice, vkSwapchain, &ImageCount, NULL);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	if(vkImageCount == 0)
 	{
-		AssertNEQ(ImageCount, 0);
-		AssertLE(ImageCount, ARRAYLEN(vkFrames));
+		assert_neq(ImageCount, 0);
+		assert_le(ImageCount, MACRO_ARRAY_LEN(vkFrames));
 		vkImageCount = ImageCount;
 	}
 	else
 	{
-		AssertEQ(ImageCount, vkImageCount);
+		assert_eq(ImageCount, vkImageCount);
 	}
 
 	VkImage Images[vkImageCount];
 	Result = vkGetSwapchainImagesKHR(vkDevice, vkSwapchain, &vkImageCount, Images);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VkFrame* Frame = vkFrames;
@@ -2751,7 +2547,7 @@ VulkanInitFrames(
 		ViewInfo.subresourceRange.layerCount = 1;
 
 		VkResult Result = vkCreateImageView(vkDevice, &ViewInfo, NULL, &Frame->ImageView);
-		HardenedAssertEQ(Result, VK_SUCCESS);
+		hard_assert_eq(Result, VK_SUCCESS);
 
 
 		VkImageView Attachments[] =
@@ -2766,14 +2562,14 @@ VulkanInitFrames(
 		FramebufferInfo.pNext = NULL;
 		FramebufferInfo.flags = 0;
 		FramebufferInfo.renderPass = vkRenderPass;
-		FramebufferInfo.attachmentCount = ARRAYLEN(Attachments);
+		FramebufferInfo.attachmentCount = MACRO_ARRAY_LEN(Attachments);
 		FramebufferInfo.pAttachments = Attachments;
 		FramebufferInfo.width = vkExtent.width;
 		FramebufferInfo.height = vkExtent.height;
 		FramebufferInfo.layers = 1;
 
 		Result = vkCreateFramebuffer(vkDevice, &FramebufferInfo, NULL, &Frame->Framebuffer);
-		HardenedAssertEQ(Result, VK_SUCCESS);
+		hard_assert_eq(Result, VK_SUCCESS);
 
 
 		if(++Frame == FrameEnd)
@@ -2786,7 +2582,7 @@ VulkanInitFrames(
 }
 
 
-Static void
+private void
 VulkanDestroyFrames(
 	void
 	)
@@ -2803,7 +2599,7 @@ VulkanDestroyFrames(
 }
 
 
-Static VkSwapchainKHR
+private VkSwapchainKHR
 VulkanCreateSwapchain(
 	VkSwapchainKHR OldSwapchain
 	)
@@ -2831,13 +2627,13 @@ VulkanCreateSwapchain(
 	VkSwapchainKHR Swapchain;
 
 	VkResult Result = vkCreateSwapchainKHR(vkDevice, &SwapchainInfo, NULL, &Swapchain);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	return Swapchain;
 }
 
 
-Static void
+private void
 VulkanInitSwapchain(
 	void
 	)
@@ -2848,7 +2644,7 @@ VulkanInitSwapchain(
 }
 
 
-Static void
+private void
 VulkanDestroySwapchain(
 	void
 	)
@@ -2859,7 +2655,7 @@ VulkanDestroySwapchain(
 }
 
 
-Static void
+private void
 VulkanReinitSwapchain(
 	void
 	)
@@ -2874,7 +2670,7 @@ VulkanReinitSwapchain(
 }
 
 
-Static void
+private void
 VulkanInitTextures(
 	void
 	)
@@ -2900,42 +2696,42 @@ VulkanInitTextures(
 	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 
 	VkResult Result = vkCreateSampler(vkDevice, &SamplerInfo, NULL, &vkSampler);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
-	Image* Texture = vkTextures;
-	Image* TextureEnd = vkTextures + ARRAYLEN(vkTextures);
+	Image* tex = vkTextures;
+	Image* TextureEnd = vkTextures + MACRO_ARRAY_LEN(vkTextures);
 
-	const TexFile* TextureFile = TextureFiles;
+	const tex_file_t* TextureFile = TextureFiles;
 
-	while(Texture != TextureEnd)
+	while(tex != TextureEnd)
 	{
-		Texture->Path = TextureFile->Path;
-		Texture->Format = VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
-		Texture->Type = IMAGE_TYPE_TEXTURE;
+		tex->path = TextureFile->path;
+		tex->format = VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+		tex->type = IMAGE_TYPE_TEXTURE;
 
-		VulkanCreateImage(Texture);
+		VulkanCreateImage(tex);
 
 		++TextureFile;
-		++Texture;
+		++tex;
 	}
 
 
 	VkDescriptorPoolSize PoolSizes[1] = {0};
 
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[0].descriptorCount = ARRAYLEN(vkTextures);
+	PoolSizes[0].descriptorCount = MACRO_ARRAY_LEN(vkTextures);
 
 	VkDescriptorPoolCreateInfo DescriptorInfo = {0};
 	DescriptorInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	DescriptorInfo.pNext = NULL;
 	DescriptorInfo.flags = 0;
 	DescriptorInfo.maxSets = 1;
-	DescriptorInfo.poolSizeCount = ARRAYLEN(PoolSizes);
+	DescriptorInfo.poolSizeCount = MACRO_ARRAY_LEN(PoolSizes);
 	DescriptorInfo.pPoolSizes = PoolSizes;
 
 	Result = vkCreateDescriptorPool(vkDevice, &DescriptorInfo, NULL, &vkDescriptorPool);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	VkDescriptorSetAllocateInfo AllocInfo = {0};
@@ -2946,17 +2742,17 @@ VulkanInitTextures(
 	AllocInfo.pSetLayouts = &vkDescriptors;
 
 	Result = vkAllocateDescriptorSets(vkDevice, &AllocInfo, &vkDescriptorSet);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
-	VkDescriptorImageInfo ImageInfos[ARRAYLEN(vkTextures)] = {0};
-	VkWriteDescriptorSet DescriptorWrites[ARRAYLEN(vkTextures)] = {0};
+	VkDescriptorImageInfo ImageInfos[MACRO_ARRAY_LEN(vkTextures)] = {0};
+	VkWriteDescriptorSet DescriptorWrites[MACRO_ARRAY_LEN(vkTextures)] = {0};
 
-	Texture = vkTextures;
+	tex = vkTextures;
 
-	for(uint32_t i = 0; i < ARRAYLEN(vkTextures); ++i) {
+	for(uint32_t i = 0; i < MACRO_ARRAY_LEN(vkTextures); ++i) {
 		ImageInfos[i].sampler = vkSampler;
-		ImageInfos[i].imageView = Texture->View;
+		ImageInfos[i].imageView = tex->View;
 		ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		DescriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2970,14 +2766,14 @@ VulkanInitTextures(
 		DescriptorWrites[i].pBufferInfo = NULL;
 		DescriptorWrites[i].pTexelBufferView = NULL;
 
-		++Texture;
+		++tex;
 	}
 
-	vkUpdateDescriptorSets(vkDevice, ARRAYLEN(vkTextures), DescriptorWrites, 0, NULL);
+	vkUpdateDescriptorSets(vkDevice, MACRO_ARRAY_LEN(vkTextures), DescriptorWrites, 0, NULL);
 }
 
 
-Static void
+private void
 VulkanDestroyTextures(
 	void
 	)
@@ -2985,21 +2781,21 @@ VulkanDestroyTextures(
 	vkDestroyDescriptorPool(vkDevice, vkDescriptorPool, NULL);
 
 
-	Image* Texture = vkTextures;
-	Image* TextureEnd = vkTextures + ARRAYLEN(vkTextures);
+	Image* tex = vkTextures;
+	Image* TextureEnd = vkTextures + MACRO_ARRAY_LEN(vkTextures);
 
-	while(Texture != TextureEnd)
+	while(tex != TextureEnd)
 	{
-		VulkanDestroyImage(Texture);
+		VulkanDestroyImage(tex);
 
-		++Texture;
+		++tex;
 	}
 
 	vkDestroySampler(vkDevice, vkSampler, NULL);
 }
 
 
-Static void
+private void
 VulkanInitVertex(
 	void
 	)
@@ -3007,17 +2803,17 @@ VulkanInitVertex(
 	VulkanGetVertexBuffer(sizeof(vkVertexVertexInput), &vkVertexVertexInputBuffer, &vkVertexVertexInputMemory);
 	VulkanCopyToBuffer(vkVertexVertexInputBuffer, vkVertexVertexInput, sizeof(vkVertexVertexInput));
 
-	VulkanGetVertexBuffer(sizeof(VkVertexInstanceInput) * GAME_CONST_MAX_TEXTURES,
+	VulkanGetVertexBuffer(sizeof(window_draw_data_t) * GAME_CONST_MAX_TEXTURES,
 		&vkVertexInstanceInputBuffer, &vkVertexInstanceInputMemory);
 
-	DrawDataBuffer = AllocMalloc(sizeof(DrawData) * GAME_CONST_MAX_TEXTURES);
-	HardenedAssertNotNull(DrawDataBuffer);
+	DrawDataBuffer = alloc_malloc(sizeof(window_draw_event_data_t) * GAME_CONST_MAX_TEXTURES);
+	hard_assert_not_null(DrawDataBuffer);
 
 	VulkanGetDrawIndirectBuffer(sizeof(VkDrawIndirectCommand), &vkDrawCountBuffer, &vkDrawCountMemory);
 }
 
 
-Static void
+private void
 VulkanDestroyVertex(
 	void
 	)
@@ -3025,7 +2821,7 @@ VulkanDestroyVertex(
 	vkFreeMemory(vkDevice, vkDrawCountMemory, NULL);
 	vkDestroyBuffer(vkDevice, vkDrawCountBuffer, NULL);
 
-	AllocFree(sizeof(DrawData) * GAME_CONST_MAX_TEXTURES, DrawDataBuffer);
+	alloc_free(sizeof(window_draw_event_data_t) * GAME_CONST_MAX_TEXTURES, DrawDataBuffer);
 
 	vkFreeMemory(vkDevice, vkVertexInstanceInputMemory, NULL);
 	vkDestroyBuffer(vkDevice, vkVertexInstanceInputBuffer, NULL);
@@ -3035,29 +2831,29 @@ VulkanDestroyVertex(
 }
 
 
-Static void
+private void
 VulkanInitSync(
 	void
 	)
 {
-	MutexInit(&Mtx);
-	CondVarInit(&Cond);
-	MutexInit(&WindowMtx);
+	sync_mtx_init(&mtx);
+	sync_cond_init(&Cond);
+	sync_mtx_init(&WindowMtx);
 }
 
 
-Static void
+private void
 VulkanDestroySync(
 	void
 	)
 {
-	MutexDestroy(&WindowMtx);
-	CondVarDestroy(&Cond);
-	MutexDestroy(&Mtx);
+	sync_mtx_free(&WindowMtx);
+	sync_cond_free(&Cond);
+	sync_mtx_free(&mtx);
 }
 
 
-Static void
+private void
 VulkanRecordCommands(
 	void
 	)
@@ -3075,7 +2871,7 @@ VulkanRecordCommands(
 	do
 	{
 		VkResult Result = vkResetCommandBuffer(Frame->CommandBuffer, 0);
-		HardenedAssertEQ(Result, VK_SUCCESS);
+		hard_assert_eq(Result, VK_SUCCESS);
 
 		VkCommandBufferBeginInfo BeginInfo = {0};
 		BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -3084,7 +2880,7 @@ VulkanRecordCommands(
 		BeginInfo.pInheritanceInfo = NULL;
 
 		Result = vkBeginCommandBuffer(Frame->CommandBuffer, &BeginInfo);
-		HardenedAssertEQ(Result, VK_SUCCESS);
+		hard_assert_eq(Result, VK_SUCCESS);
 
 		VkRenderPassBeginInfo RenderPassInfo = {0};
 		RenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -3094,7 +2890,7 @@ VulkanRecordCommands(
 		RenderPassInfo.renderArea.offset.x = 0;
 		RenderPassInfo.renderArea.offset.y = 0;
 		RenderPassInfo.renderArea.extent = vkExtent;
-		RenderPassInfo.clearValueCount = ARRAYLEN(ClearValues);
+		RenderPassInfo.clearValueCount = MACRO_ARRAY_LEN(ClearValues);
 		RenderPassInfo.pClearValues = ClearValues;
 
 		vkCmdBeginRenderPass(Frame->CommandBuffer, &RenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -3118,13 +2914,13 @@ VulkanRecordCommands(
 		vkCmdEndRenderPass(Frame->CommandBuffer);
 
 		Result = vkEndCommandBuffer(Frame->CommandBuffer);
-		HardenedAssertEQ(Result, VK_SUCCESS);
+		hard_assert_eq(Result, VK_SUCCESS);
 	}
 	while(++Frame != FrameEnd);
 }
 
 
-Static void
+private void
 VulkanRecreateSwapchain(
 	void
 	)
@@ -3142,21 +2938,21 @@ VulkanRecreateSwapchain(
 
 
 void
-WindowAddDrawData(
-	const DrawData* Data
+window_add_draw_event_data(
+	const window_draw_event_data_t* data
 	)
 {
-	DrawDataBuffer[DrawDataCount++] = *Data;
+	DrawDataBuffer[DrawDataCount++] = *data;
 }
 
 
-Static void
+private void
 VulkanDraw(
 	void
 	)
 {
 	VkResult Result = vkWaitForFences(vkDevice, 1, vkBarrier->Fences + BARRIER_FENCE_IN_FLIGHT, VK_TRUE, UINT64_MAX);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	uint32_t ImageIndex;
 	Result = vkAcquireNextImageKHR(vkDevice, vkSwapchain, UINT64_MAX,
@@ -3171,20 +2967,20 @@ VulkanDraw(
 	VkFrame* Frame = vkFrames + ImageIndex;
 
 	Result = vkResetFences(vkDevice, 1, vkBarrier->Fences + BARRIER_FENCE_IN_FLIGHT);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 
 	DrawDataCount = 0;
-	MutexLock(&WindowMtx);
-		EventNotify(&WindowDrawTarget, &((WindowDrawData){0}));
-	MutexUnlock(&WindowMtx);
+	sync_mtx_lock(&WindowMtx);
+		event_target_fire(&window_draw_target, &((window_draw_event_data_t){0}));
+	sync_mtx_unlock(&WindowMtx);
 
-	uint32_t TotalSize = sizeof(DrawData) * DrawDataCount;
-	VulkanCopyToBuffer(vkVertexInstanceInputBuffer, DrawDataBuffer, TotalSize);
+	uint32_t total_size = sizeof(window_draw_event_data_t) * DrawDataCount;
+	VulkanCopyToBuffer(vkVertexInstanceInputBuffer, DrawDataBuffer, total_size);
 
 
 	VkDrawIndirectCommand Command = {0};
-	Command.vertexCount = ARRAYLEN(vkVertexVertexInput);
+	Command.vertexCount = MACRO_ARRAY_LEN(vkVertexVertexInput);
 	Command.instanceCount = DrawDataCount;
 	Command.firstVertex = 0;
 	Command.firstInstance = 0;
@@ -3209,7 +3005,7 @@ VulkanDraw(
 	SubmitInfo.pSignalSemaphores = vkBarrier->Semaphores + BARRIER_SEMAPHORE_RENDER_FINISHED;
 
 	Result = vkQueueSubmit(vkQueue, 1, &SubmitInfo, vkBarrier->Fences[BARRIER_FENCE_IN_FLIGHT]);
-	HardenedAssertEQ(Result, VK_SUCCESS);
+	hard_assert_eq(Result, VK_SUCCESS);
 
 	VkPresentInfoKHR PresentInfo = {0};
 	PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -3228,7 +3024,7 @@ VulkanDraw(
 		VulkanRecreateSwapchain();
 	}
 
-	if(++vkBarrier == vkBarriers + ARRAYLEN(vkBarriers))
+	if(++vkBarrier == vkBarriers + MACRO_ARRAY_LEN(vkBarriers))
 	{
 		vkBarrier = vkBarriers;
 	}
@@ -3236,7 +3032,7 @@ VulkanDraw(
 
 
 void
-WindowInit(
+window_init(
 	void
 	)
 {
@@ -3256,12 +3052,12 @@ WindowInit(
 }
 
 
-Static void
+private void
 VulkanThreadFN(
-	void* Data
+	void* data
 	)
 {
-	(void) Data;
+	(void) data;
 
 	while(atomic_load_explicit(&vkShouldRun, memory_order_acquire))
 	{
@@ -3277,7 +3073,7 @@ VulkanThreadFN(
 }
 
 
-Static void
+private void
 WindowInterrupt(
 	int Signal
 	)
@@ -3287,7 +3083,7 @@ WindowInterrupt(
 
 
 void
-WindowRun(
+window_run(
 	void
 	)
 {
@@ -3295,14 +3091,14 @@ WindowRun(
 
 	atomic_init(&vkShouldRun, 1);
 
-	ThreadData Data =
-	(ThreadData)
+	thread_data_t data =
+	(thread_data_t)
 	{
-		.Func = VulkanThreadFN,
-		.Arg = NULL
+		.fn = VulkanThreadFN,
+		.data = NULL
 	};
 
-	ThreadInit(&vkThread, Data);
+	thread_init(&vkThread, data);
 
 	while(1)
 	{
@@ -3322,12 +3118,12 @@ WindowRun(
 
 
 void
-WindowFree(
+window_free(
 	void
 	)
 {
-	ThreadJoin(vkThread);
-	ThreadDestroy(&vkThread);
+	thread_join(vkThread);
+	thread_free(&vkThread);
 
 	vkDeviceWaitIdle(vkDevice);
 

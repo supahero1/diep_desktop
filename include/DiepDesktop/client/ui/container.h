@@ -1,3 +1,19 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #pragma once
 
 #include <DiepDesktop/client/ui/base.h>
@@ -21,17 +37,17 @@ typedef struct UIContainer
 	float GoalOffsetY;
 
 	float OffsetX;
-	float OffsetY;
+	float offset_y;
 
 	float OffsetMin;
 	float OffsetMax;
 
-	ARGB WhiteColor;
-	ARGB BlackColor;
-	TexInfo Texture;
+	color_argb_t white_color;
+	color_argb_t black_color;
+	TexInfo tex;
 
-	UIElement* Head;
-	UIElement* Tail;
+	UIElement* head;
+	UIElement* tail;
 }
 UIContainer;
 
@@ -43,9 +59,9 @@ typedef struct UIContainerInfo
 	bool AutoW;
 	bool AutoH;
 
-	ARGB WhiteColor;
-	ARGB BlackColor;
-	TexInfo Texture;
+	color_argb_t white_color;
+	color_argb_t black_color;
+	TexInfo tex;
 }
 UIContainerInfo;
 
@@ -59,7 +75,7 @@ UIElementIsContainer(
 extern UIElement*
 UIAllocContainer(
 	UIElementInfo ElementInfo,
-	UIContainerInfo Info
+	UIContainerInfo info
 	);
 
 

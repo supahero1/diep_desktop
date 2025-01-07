@@ -12,36 +12,36 @@
 #define SCROLL_STRENGTH 64.0f
 
 
-Static UIElement* ColorPickerContainer;
-Static UIElement* ColorPickerElement;
-Static UIElement* ColorPickerBackground;
-Static IHandle ColorPickerHexText;
+private UIElement* ColorPickerContainer;
+private UIElement* ColorPickerElement;
+private UIElement* ColorPickerBackground;
+private IHandle ColorPickerHexText;
 
 typedef struct IColorPickerLine
 {
 	UISlider* Slider;
-	IHandle Value;
+	IHandle value;
 }
 IColorPickerLine;
 
-Static IColorPickerLine ColorPickerBrightness;
-Static IColorPickerLine ColorPickerOpacity;
-Static IColorPickerLine ColorPickerRed;
-Static IColorPickerLine ColorPickerGreen;
-Static IColorPickerLine ColorPickerBlue;
+private IColorPickerLine ColorPickerBrightness;
+private IColorPickerLine ColorPickerOpacity;
+private IColorPickerLine ColorPickerRed;
+private IColorPickerLine ColorPickerGreen;
+private IColorPickerLine ColorPickerBlue;
 
-Static UIElement* CurrentColorContainer;
+private UIElement* CurrentColorContainer;
 
-Static UIElement* CurrentDropdown;
+private UIElement* CurrentDropdown;
 
-Static const char NoNewlineCharFilter[256] =
+private const char NoNewlineCharFilter[256] =
 {
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 , ' ',  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	' ', '!', '"', '#', '$', '%', '&','\'', '(', ')', '*', '+', ',', '-', '.', '/',
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?',
-	'@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
-	'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[','\\', ']', '^', '_',
+	'@', 'A', 'b', 'C', 'D', 'E', 'F', 'g', 'h', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+	'P', 'Q', 'r', 's', 'T', 'U', 'v', 'w', 'x', 'y', 'Z', '[','\\', ']', '^', '_',
 	'`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
 	'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~',  0 ,
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
@@ -54,7 +54,7 @@ Static const char NoNewlineCharFilter[256] =
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 };
 
-Static const char IntegerCharFilter[256] =
+private const char IntegerCharFilter[256] =
 {
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
@@ -74,13 +74,13 @@ Static const char IntegerCharFilter[256] =
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 };
 
-Static const char HexColorCharFilter[256] =
+private const char HexColorCharFilter[256] =
 {
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	 0 ,  0 ,  0 , '#',  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
-	 0 , 'A', 'B', 'C', 'D', 'E', 'F',  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
+	 0 , 'A', 'b', 'C', 'D', 'E', 'F',  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	 0 , 'a', 'b', 'c', 'd', 'e', 'f',  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
@@ -94,7 +94,7 @@ Static const char HexColorCharFilter[256] =
 	 0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
 };
 
-Static const char* TextCharFilters[] =
+private const char* TextCharFilters[] =
 {
 	[I_TEXT_TYPE_MULTILINE_TEXT] = NULL,
 	[I_TEXT_TYPE_SINGLELINE_TEXT] = NoNewlineCharFilter,
@@ -108,7 +108,7 @@ IUpdateElement(
 	IHandle* Element
 	)
 {
-	UIUpdateElement(Element->Source);
+	UIUpdateElement(Element->source);
 }
 
 
@@ -117,7 +117,7 @@ IActivateElement(
 	IHandle* Element
 	)
 {
-	UIActivateElement(Element->Source);
+	UIActivateElement(Element->source);
 }
 
 
@@ -126,7 +126,7 @@ IDeactivateElement(
 	IHandle* Element
 	)
 {
-	UIDeactivateElement(Element->Source);
+	UIDeactivateElement(Element->source);
 }
 
 
@@ -136,7 +136,7 @@ IAddElementFirst(
 	IHandle* Parent
 	)
 {
-	UIAddElementFirst(Element->Source, Parent->Destination);
+	UIAddElementFirst(Element->source, Parent->Destination);
 }
 
 
@@ -146,7 +146,7 @@ IAddElementLast(
 	IHandle* Parent
 	)
 {
-	UIAddElementLast(Element->Source, Parent->Destination);
+	UIAddElementLast(Element->source, Parent->Destination);
 }
 
 
@@ -156,7 +156,7 @@ IAddElementBefore(
 	IHandle* Before
 	)
 {
-	UIAddElementBefore(Element->Source, Before->Source);
+	UIAddElementBefore(Element->source, Before->source);
 }
 
 
@@ -166,7 +166,7 @@ IAddElementAfter(
 	IHandle* After
 	)
 {
-	UIAddElementAfter(Element->Source, After->Source);
+	UIAddElementAfter(Element->source, After->source);
 }
 
 
@@ -175,7 +175,7 @@ IUnlinkElement(
 	IHandle* Element
 	)
 {
-	UIUnlinkElement(Element->Source);
+	UIUnlinkElement(Element->source);
 }
 
 
@@ -184,7 +184,7 @@ IRemoveElement(
 	IHandle* Element
 	)
 {
-	UIRemoveElement(Element->Source);
+	UIRemoveElement(Element->source);
 }
 
 
@@ -194,32 +194,32 @@ IRemoveElement(
 typedef struct IPrivateContainerData
 {
 	UICallback Callback;
-	void* Data;
+	void* data;
 }
 IPrivateContainerData;
 
 
-Static void
+private void
 IContainerCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertNotNull(Element->Data);
-	IPrivateContainerData* Data = Element->Data;
+	assert_not_null(Element->data);
+	IPrivateContainerData* data = Element->data;
 
-	AssertTrue(Element->Scrollable);
+	assert_true(Element->Scrollable);
 
-	AssertEQ(Element->Type, UI_TYPE_CONTAINER);
+	assert_eq(Element->type, UI_TYPE_CONTAINER);
 	UIContainer* Parent = &Element->Container;
-	AssertNotNull(Parent->Head);
+	assert_not_null(Parent->head);
 
-	UIElement* Scrollable = Parent->Head;
-	AssertEQ(Scrollable->Type, UI_TYPE_CONTAINER);
+	UIElement* Scrollable = Parent->head;
+	assert_eq(Scrollable->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &Scrollable->Container;
 
-	UIElement* Bar = Parent->Tail;
-	AssertEQ(Scrollable->Next, Bar);
+	UIElement* Bar = Parent->tail;
+	assert_eq(Scrollable->next, Bar);
 
 
 	switch(Event)
@@ -227,8 +227,8 @@ IContainerCallback(
 
 	case UI_EVENT_FREE:
 	{
-		Data->Callback(Element, UI_EVENT_FREE);
-		free(Data);
+		data->Callback(Element, UI_EVENT_FREE);
+		free(data);
 
 		break;
 	}
@@ -244,13 +244,13 @@ IContainerCallback(
 			Container->GoalOffsetX += ScrollOffset * SCROLL_STRENGTH;
 		}
 
-		Fallthrough();
+		fallthrough();
 	}
 
 	default:
 	{
-		IPrivateContainerData* Data = Element->Data;
-		Data->Callback(Element, Event);
+		IPrivateContainerData* data = Element->data;
+		data->Callback(Element, Event);
 		break;
 	}
 
@@ -258,23 +258,23 @@ IContainerCallback(
 }
 
 
-Static void
+private void
 IScrollableContainerCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_CONTAINER);
+	assert_eq(Element->type, UI_TYPE_CONTAINER);
 
 	UIElement* Parent = Element->Parent;
-	AssertNotNull(Parent);
-	AssertEQ(Parent->Type, UI_TYPE_CONTAINER);
+	assert_not_null(Parent);
+	assert_eq(Parent->type, UI_TYPE_CONTAINER);
 
-	AssertNotNull(Parent->Data);
-	IPrivateContainerData* Data = Parent->Data;
+	assert_not_null(Parent->data);
+	IPrivateContainerData* data = Parent->data;
 
-	UIElement* Scrollbar = Element->Next;
-	AssertEQ(Scrollbar->Type, UI_TYPE_SCROLLBAR);
+	UIElement* Scrollbar = Element->next;
+	assert_eq(Scrollbar->type, UI_TYPE_SCROLLBAR);
 
 
 	switch(Event)
@@ -289,14 +289,14 @@ IScrollableContainerCallback(
 	{
 		UIScrollbarUpdate(Scrollbar);
 
-		Fallthrough();
+		fallthrough();
 	}
 
 	case UI_EVENT_FREE: break;
 
 	default:
 	{
-		Data->Callback(Parent, Event);
+		data->Callback(Parent, Event);
 		break;
 	}
 
@@ -310,7 +310,7 @@ ICreateContainer(
 	const IContainer* Container
 	)
 {
-	IHandle Handle;
+	IHandle handle;
 
 	if(!Container->Scrollable)
 	{
@@ -318,10 +318,10 @@ ICreateContainer(
 		*C =
 		(UIElement)
 		{
-			.X = Element->X,
-			.Y = Element->Y,
-			.W = Element->W,
-			.H = Element->H,
+			.x = Element->x,
+			.y = Element->y,
+			.w = Element->w,
+			.h = Element->h,
 
 			.MarginTop = Element->MarginTop,
 			.MarginLeft = Element->MarginLeft,
@@ -338,7 +338,7 @@ ICreateContainer(
 
 			.AlignX = Element->AlignX,
 			.AlignY = Element->AlignY,
-			.Position = Element->Position,
+			.pos = Element->pos,
 			.RelativeAlignX = Element->RelativeAlignX,
 			.RelativeAlignY = Element->RelativeAlignY,
 
@@ -351,45 +351,45 @@ ICreateContainer(
 			.InteractiveBorder = Element->InteractiveBorder,
 
 			.TextFocus = Container->TextFocus,
-			.Relative = Element->Relative ? Element->Relative->Source : NULL,
+			.Relative = Element->Relative ? Element->Relative->source : NULL,
 
 			.Callback = Element->Callback,
-			.Data = Element->Data,
+			.data = Element->data,
 
-			.Type = UI_TYPE_CONTAINER,
+			.type = UI_TYPE_CONTAINER,
 			.Container =
 			(UIContainer)
 			{
 				.Axis = Container->Axis,
 
-				.WhiteColor = Container->WhiteColor,
-				.BlackColor = Container->BlackColor,
-				.Texture = Container->Texture
+				.white_color = Container->white_color,
+				.black_color = Container->black_color,
+				.tex = Container->tex
 			}
 		};
 
 		UIInitialize(C);
 
-		Handle.Source = Handle.Destination = C;
+		handle.source = handle.Destination = C;
 	}
 	else
 	{
-		AssertFalse((Container->AutoW || Container->AutoH));
+		assert_false((Container->AutoW || Container->AutoH));
 
-		IPrivateContainerData* Data = malloc(sizeof(IPrivateContainerData));
-		AssertNotNull(Data);
+		IPrivateContainerData* data = malloc(sizeof(IPrivateContainerData));
+		assert_not_null(data);
 
-		Data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
-		Data->Data = Element->Data;
+		data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
+		data->data = Element->data;
 
 		UIElement* P = UIGetElement();
 		*P =
 		(UIElement)
 		{
-			.X = Element->X,
-			.Y = Element->Y,
-			.W = Element->W,
-			.H = Element->H,
+			.x = Element->x,
+			.y = Element->y,
+			.w = Element->w,
+			.h = Element->h,
 
 			.MarginTop = Element->MarginTop,
 			.MarginLeft = Element->MarginLeft,
@@ -406,7 +406,7 @@ ICreateContainer(
 
 			.AlignX = Element->AlignX,
 			.AlignY = Element->AlignY,
-			.Position = Element->Position,
+			.pos = Element->pos,
 			.RelativeAlignX = Element->RelativeAlignX,
 			.RelativeAlignY = Element->RelativeAlignY,
 
@@ -419,27 +419,27 @@ ICreateContainer(
 			.ScrollPassthrough = Container->ScrollPassthrough,
 			.InteractiveBorder = Element->InteractiveBorder,
 
-			.Relative = Element->Relative ? Element->Relative->Source : NULL,
+			.Relative = Element->Relative ? Element->Relative->source : NULL,
 
 			.Callback = IContainerCallback,
-			.Data = Data,
+			.data = data,
 
-			.Type = UI_TYPE_CONTAINER,
+			.type = UI_TYPE_CONTAINER,
 			.Container =
 			(UIContainer)
 			{
 				.Axis = !Container->Axis,
 
-				.WhiteColor = Container->WhiteColor,
-				.BlackColor = Container->BlackColor,
-				.Texture = Container->Texture
+				.white_color = Container->white_color,
+				.black_color = Container->black_color,
+				.tex = Container->tex
 			}
 		};
 
 		UIInitialize(P);
 
-		float W;
-		float H;
+		float w;
+		float h;
 		bool AutoW;
 		bool AutoH;
 		float ScrollbarW;
@@ -448,53 +448,53 @@ ICreateContainer(
 		if(Container->Axis == UI_AXIS_HORIZONTAL)
 		{
 			/* No point in making it scrollable if content never overflows */
-			AssertFalse(Container->AutoW);
+			assert_false(Container->AutoW);
 
-			W = 0.0f;
+			w = 0.0f;
 			AutoW = true;
 
 			if(Container->AutoH)
 			{
-				H = 0.0f;
+				h = 0.0f;
 				AutoH = true;
 			}
 			else
 			{
-				H = Element->H - SCROLLBAR_SIZE;
+				h = Element->h - SCROLLBAR_SIZE;
 				AutoH = false;
 			}
 
-			ScrollbarW = Element->W;
+			ScrollbarW = Element->w;
 			ScrollbarH = SCROLLBAR_SIZE;
 		}
 		else
 		{
-			AssertFalse(Container->AutoH);
+			assert_false(Container->AutoH);
 
 			if(Container->AutoW)
 			{
-				W = 0.0f;
+				w = 0.0f;
 				AutoW = true;
 			}
 			else
 			{
-				W = Element->W - SCROLLBAR_SIZE;
+				w = Element->w - SCROLLBAR_SIZE;
 				AutoW = false;
 			}
 
-			H = 0.0f;
+			h = 0.0f;
 			AutoH = true;
 
 			ScrollbarW = SCROLLBAR_SIZE;
-			ScrollbarH = Element->H;
+			ScrollbarH = Element->h;
 		}
 
 		UIElement* C = UIGetElement();
 		*C =
 		(UIElement)
 		{
-			.W = W,
-			.H = H,
+			.w = w,
+			.h = h,
 
 			.Opacity = 0xFF,
 
@@ -508,7 +508,7 @@ ICreateContainer(
 
 			.Callback = IScrollableContainerCallback,
 
-			.Type = UI_TYPE_CONTAINER,
+			.type = UI_TYPE_CONTAINER,
 			.Container =
 			(UIContainer)
 			{
@@ -518,12 +518,12 @@ ICreateContainer(
 
 		UIInitialize(C);
 
-		UIElement* S = UIGetElement();
-		*S =
+		UIElement* s = UIGetElement();
+		*s =
 		(UIElement)
 		{
-			.W = ScrollbarW,
-			.H = ScrollbarH,
+			.w = ScrollbarW,
+			.h = ScrollbarH,
 
 			.Opacity = 0xFF,
 
@@ -535,27 +535,27 @@ ICreateContainer(
 
 			.Callback = UIScrollbarCallback,
 
-			.Type = UI_TYPE_SCROLLBAR,
+			.type = UI_TYPE_SCROLLBAR,
 			.Scrollbar =
 			(UIScrollbar)
 			{
 				.Axis = Container->Axis,
 
-				.Color = Container->ScrollbarColor,
+				.color = Container->ScrollbarColor,
 				.AltColor = Container->ScrollbarAltColor
 			}
 		};
 
-		UIInitialize(S);
+		UIInitialize(s);
 
 		UIAddElementLast(C, P);
-		UIAddElementLast(S, P);
+		UIAddElementLast(s, P);
 
-		Handle.Source = P;
-		Handle.Destination = C;
+		handle.source = P;
+		handle.Destination = C;
 	}
 
-	return Handle;
+	return handle;
 }
 
 
@@ -565,9 +565,9 @@ ICreateContainer(
 typedef struct IPrivateTextData
 {
 	UICallback Callback;
-	void* Data;
+	void* data;
 
-	ITextType Type;
+	ITextType type;
 	ITextData TextData;
 
 	UIElement* Placeholder;
@@ -575,61 +575,61 @@ typedef struct IPrivateTextData
 IPrivateTextData;
 
 
-Static const uint32_t*
+private const uint32_t*
 SkipCodepoint(
 	const uint32_t* Str,
 	const uint32_t Char
 	)
 {
-	const uint32_t* S = Str;
+	const uint32_t* s = Str;
 
-	while(*S && *S == Char)
+	while(*s && *s == Char)
 	{
-		++S;
+		++s;
 	}
 
-	if(S != Str)
+	if(s != Str)
 	{
-		--S;
+		--s;
 	}
 
-	return S;
+	return s;
 }
 
 
-Static void
+private void
 ITextWrite(
 	UIElement* Element,
 	char* Str,
-	uint32_t Length,
+	uint32_t len,
 	bool Changed
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
-	uint32_t* Codepoints = malloc(Length * sizeof(uint32_t));
-	AssertNotNull(Codepoints);
+	uint32_t* Codepoints = malloc(len * sizeof(uint32_t));
+	assert_not_null(Codepoints);
 
-	uint32_t Count = utf8proc_decompose((const uint8_t*) Str,
-		Length, (int32_t*) Codepoints, Length, UTF8PROC_NULLTERM);
-	AssertLE(Count, Length);
+	uint32_t count = utf8proc_decompose((const uint8_t*) Str,
+		len, (int32_t*) Codepoints, len, UTF8PROC_NULLTERM);
+	assert_le(count, len);
 
-	Codepoints = realloc(Codepoints, Count * sizeof(uint32_t));
-	AssertNotNull(Codepoints);
+	Codepoints = realloc(Codepoints, count * sizeof(uint32_t));
+	assert_not_null(Codepoints);
 
 	free(Text->Codepoints);
 	Text->Codepoints = Codepoints;
-	Text->Length = Count;
+	Text->len = count;
 
 	UIUpdateElement(Element);
 
-	IPrivateTextData* Data = Element->Data;
-	AssertNotNull(Data);
+	IPrivateTextData* data = Element->data;
+	assert_not_null(data);
 
 	if(Changed)
 	{
-		Data->Callback(Element, UI_EVENT_CHANGE);
+		data->Callback(Element, UI_EVENT_CHANGE);
 	}
 }
 
@@ -637,7 +637,7 @@ ITextWrite(
 typedef char*
 (*ValueToTextFunc)(
 	char* Str,
-	uint32_t* Length,
+	uint32_t* len,
 	const ITextData* TextData
 	);
 
@@ -647,124 +647,124 @@ typedef void
 	);
 
 
-Static char*
+private char*
 IntegerToText(
 	char* Str,
-	uint32_t* Length,
+	uint32_t* len,
 	const ITextData* TextData
 	)
 {
 	if(!Str)
 	{
 		Str = malloc(32);
-		AssertNotNull(Str);
+		assert_not_null(Str);
 	}
 
-	int64_t Value = TextData->Integer.Value;
+	int64_t value = TextData->Integer.value;
 
-	int Len = snprintf(Str, 32, "%" PRIi64, Value);
-	AssertGT(Len, 0);
+	int Len = snprintf(Str, 32, "%" PRIi64, value);
+	assert_gt(Len, 0);
 
-	if(Length)
+	if(len)
 	{
-		*Length = Len;
+		*len = Len;
 	}
 
 	return Str;
 }
 
 
-Static void
+private void
 ITextOnIntegerSubmit(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
-	AssertNotNull(Element->Data);
-	IPrivateTextData* Data = Element->Data;
-	AssertEQ(Data->Type, I_TEXT_TYPE_INTEGER);
-	ITextData* TextData = &Data->TextData;
+	assert_not_null(Element->data);
+	IPrivateTextData* data = Element->data;
+	assert_eq(data->type, I_TEXT_TYPE_INTEGER);
+	ITextData* TextData = &data->TextData;
 	ITextInteger* Integer = &TextData->Integer;
 
-	const uint32_t* S = SkipCodepoint(Text->Codepoints, ' ');
-	S = SkipCodepoint(S, '-');
-	S = SkipCodepoint(S, '+');
+	const uint32_t* s = SkipCodepoint(Text->Codepoints, ' ');
+	s = SkipCodepoint(s, '-');
+	s = SkipCodepoint(s, '+');
 
-	int64_t Value = MIN(MAX(strtoll(S, NULL, 10), Integer->Min), Integer->Max);
-	bool Changed = Integer->Value != Value;
-	Integer->Value = Value;
+	int64_t value = MACRO_MIN(MACRO_MAX(strtoll(s, NULL, 10), Integer->min), Integer->max);
+	bool Changed = Integer->value != value;
+	Integer->value = value;
 
 	char Str[32];
-	uint32_t Length;
-	IntegerToText(Str, &Length, TextData);
+	uint32_t len;
+	IntegerToText(Str, &len, TextData);
 
-	ITextWrite(Element, Str, Length, Changed);
+	ITextWrite(Element, Str, len, Changed);
 }
 
 
-Static char*
+private char*
 HexColorToText(
 	char* Str,
-	uint32_t* Length,
+	uint32_t* len,
 	const ITextData* TextData
 	)
 {
 	if(!Str)
 	{
 		Str = malloc(16);
-		AssertNotNull(Str);
+		assert_not_null(Str);
 	}
 
-	ARGB Color = TextData->HexColor.Color;
+	color_argb_t color = TextData->HexColor.color;
 
-	int Len = snprintf(Str, 16, "#%02X%02X%02X%02X", Color.R, Color.G, Color.B, Color.A);
-	AssertGT(Len, 0);
-	*Length = Len;
+	int Len = snprintf(Str, 16, "#%02X%02X%02X%02X", color.r, color.g, color.b, color.a);
+	assert_gt(Len, 0);
+	*len = Len;
 
 	return Str;
 }
 
 
-Static void
+private void
 ITextOnHexColorSubmit(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
-	AssertNotNull(Element->Data);
-	IPrivateTextData* Data = Element->Data;
-	AssertEQ(Data->Type, I_TEXT_TYPE_HEX_COLOR);
-	ITextData* TextData = &Data->TextData;
+	assert_not_null(Element->data);
+	IPrivateTextData* data = Element->data;
+	assert_eq(data->type, I_TEXT_TYPE_HEX_COLOR);
+	ITextData* TextData = &data->TextData;
 	ITextHexColor* HexColor = &TextData->HexColor;
 
-	const char* S = SkipCodepoint(Text->Str, ' ');
-	S = SkipCodepoint(S, '#');
-	if(*S == '#')
+	const char* s = SkipCodepoint(Text->Str, ' ');
+	s = SkipCodepoint(s, '#');
+	if(*s == '#')
 	{
-		++S;
+		++s;
 	}
 
 
-	uint32_t Value = strtoul(S, NULL, 16);
-	ARGB Color;
+	uint32_t value = strtoul(s, NULL, 16);
+	color_argb_t color;
 
 
-	switch(strlen(S))
+	switch(strlen(s))
 	{
 
 	case 1:
 	{
-		Color =
-		(ARGB)
+		color =
+		(color_argb_t)
 		{
-			.B = Value * 0x11,
-			.G = Value * 0x11,
-			.R = Value * 0x11,
-			.A = 0xFF
+			.b = value * 0x11,
+			.g = value * 0x11,
+			.r = value * 0x11,
+			.a = 0xFF
 		};
 
 		break;
@@ -772,13 +772,13 @@ ITextOnHexColorSubmit(
 
 	case 3:
 	{
-		Color =
-		(ARGB)
+		color =
+		(color_argb_t)
 		{
-			.B = (Value & 0xF) * 0x11,
-			.G = ((Value >> 4) & 0xF) * 0x11,
-			.R = ((Value >> 8) & 0xF) * 0x11,
-			.A = 0xFF
+			.b = (value & 0xF) * 0x11,
+			.g = ((value >> 4) & 0xF) * 0x11,
+			.r = ((value >> 8) & 0xF) * 0x11,
+			.a = 0xFF
 		};
 
 		break;
@@ -786,13 +786,13 @@ ITextOnHexColorSubmit(
 
 	case 4:
 	{
-		Color =
-		(ARGB)
+		color =
+		(color_argb_t)
 		{
-			.B = ((Value >> 4) & 0xF) * 0x11,
-			.G = ((Value >> 8) & 0xF) * 0x11,
-			.R = ((Value >> 12) & 0xF) * 0x11,
-			.A = (Value & 0xF) * 0x11
+			.b = ((value >> 4) & 0xF) * 0x11,
+			.g = ((value >> 8) & 0xF) * 0x11,
+			.r = ((value >> 12) & 0xF) * 0x11,
+			.a = (value & 0xF) * 0x11
 		};
 
 		break;
@@ -800,13 +800,13 @@ ITextOnHexColorSubmit(
 
 	case 6:
 	{
-		Color =
-		(ARGB)
+		color =
+		(color_argb_t)
 		{
-			.B = Value & 0xFF,
-			.G = (Value >> 8) & 0xFF,
-			.R = (Value >> 16) & 0xFF,
-			.A = 0xFF
+			.b = value & 0xFF,
+			.g = (value >> 8) & 0xFF,
+			.r = (value >> 16) & 0xFF,
+			.a = 0xFF
 		};
 
 		break;
@@ -814,13 +814,13 @@ ITextOnHexColorSubmit(
 
 	case 8:
 	{
-		Color =
-		(ARGB)
+		color =
+		(color_argb_t)
 		{
-			.B = (Value >> 8) & 0xFF,
-			.G = (Value >> 16) & 0xFF,
-			.R = (Value >> 24) & 0xFF,
-			.A = Value & 0xFF
+			.b = (value >> 8) & 0xFF,
+			.g = (value >> 16) & 0xFF,
+			.r = (value >> 24) & 0xFF,
+			.a = value & 0xFF
 		};
 
 		break;
@@ -828,25 +828,25 @@ ITextOnHexColorSubmit(
 
 	default:
 	{
-		Color = HexColor->Color;
+		color = HexColor->color;
 		break;
 	}
 
 	}
 
 
-	bool Changed = HexColor->Color.ARGB != Color.ARGB;
-	HexColor->Color = Color;
+	bool Changed = HexColor->color.color_argb_t != color.color_argb_t;
+	HexColor->color = color;
 
 	char Str[16];
-	uint32_t Length;
-	HexColorToText(Str, &Length, TextData);
+	uint32_t len;
+	HexColorToText(Str, &len, TextData);
 
-	ITextWrite(Element, Str, Length, Changed);
+	ITextWrite(Element, Str, len, Changed);
 }
 
 
-Static ValueToTextFunc ValueToText[] =
+private ValueToTextFunc ValueToText[] =
 {
 	[I_TEXT_TYPE_MULTILINE_TEXT] = NULL,
 	[I_TEXT_TYPE_SINGLELINE_TEXT] = NULL,
@@ -855,7 +855,7 @@ Static ValueToTextFunc ValueToText[] =
 };
 
 
-Static TextSubmitFunc TextSubmit[] =
+private TextSubmitFunc TextSubmit[] =
 {
 	[I_TEXT_TYPE_MULTILINE_TEXT] = NULL,
 	[I_TEXT_TYPE_SINGLELINE_TEXT] = NULL,
@@ -864,17 +864,17 @@ Static TextSubmitFunc TextSubmit[] =
 };
 
 
-Static void
+private void
 ITextCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
-	AssertNotNull(Element->Data);
-	IPrivateTextData* Data = Element->Data;
+	assert_not_null(Element->data);
+	IPrivateTextData* data = Element->data;
 
 	UITextCallback(Element, Event);
 
@@ -884,23 +884,23 @@ ITextCallback(
 
 	case UI_EVENT_CHANGE:
 	{
-		if(!Data->Placeholder)
+		if(!data->Placeholder)
 		{
 			break;
 		}
 
 		if(Text->Str[0] == 0)
 		{
-			if(!UIIsLinked(Data->Placeholder))
+			if(!UIIsLinked(data->Placeholder))
 			{
-				UIAddElementBefore(Data->Placeholder, Element);
+				UIAddElementBefore(data->Placeholder, Element);
 			}
 		}
 		else
 		{
-			if(UIIsLinked(Data->Placeholder))
+			if(UIIsLinked(data->Placeholder))
 			{
-				UIUnlinkElement(Data->Placeholder);
+				UIUnlinkElement(data->Placeholder);
 			}
 		}
 
@@ -909,13 +909,13 @@ ITextCallback(
 
 	case UI_EVENT_SUBMIT:
 	{
-		TextSubmitFunc OnSubmit = TextSubmit[Data->Type];
+		TextSubmitFunc OnSubmit = TextSubmit[data->type];
 		if(OnSubmit)
 		{
 			OnSubmit(Element);
 		}
 
-		Data->Callback(Element, UI_EVENT_SUBMIT);
+		data->Callback(Element, UI_EVENT_SUBMIT);
 		break;
 	}
 
@@ -923,15 +923,15 @@ ITextCallback(
 	{
 		free(Text->Str);
 
-		Data->Callback(Element, UI_EVENT_FREE);
-		free(Data);
+		data->Callback(Element, UI_EVENT_FREE);
+		free(data);
 
 		break;
 	}
 
 	default:
 	{
-		Data->Callback(Element, Event);
+		data->Callback(Element, Event);
 		break;
 	}
 
@@ -939,13 +939,13 @@ ITextCallback(
 }
 
 
-Static void
+private void
 ITextPlaceholderCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
 	UITextCallback(Element, Event);
@@ -956,8 +956,8 @@ ITextPlaceholderCallback(
 
 	case UI_EVENT_MOUSE_DOWN:
 	{
-		AssertNotNull(Element->Next);
-		UIElement* ActualText = Element->Next;
+		assert_not_null(Element->next);
+		UIElement* ActualText = Element->next;
 		UIFocusText(ActualText);
 		break;
 	}
@@ -974,13 +974,13 @@ ITextPlaceholderCallback(
 }
 
 
-Static void
+private void
 ITextContainerCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_CONTAINER);
+	assert_eq(Element->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &Element->Container;
 
 	if(Event != UI_EVENT_MOUSE_DOWN)
@@ -988,8 +988,8 @@ ITextContainerCallback(
 		return;
 	}
 
-	AssertNotNull(Container->Tail);
-	UIElement* ActualText = Container->Tail;
+	assert_not_null(Container->tail);
+	UIElement* ActualText = Container->tail;
 	UIFocusText(ActualText);
 }
 
@@ -1001,51 +1001,51 @@ ICreateText(
 	const IText* Text
 	)
 {
-	IPrivateTextData* Data = malloc(sizeof(IPrivateTextData));
-	AssertNotNull(Data);
+	IPrivateTextData* data = malloc(sizeof(IPrivateTextData));
+	assert_not_null(data);
 
-	Data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
-	Data->Data = Element->Data;
+	data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
+	data->data = Element->data;
 
-	Data->Type = Text->Type;
-	Data->TextData = Text->Data;
+	data->type = Text->type;
+	data->TextData = Text->data;
 
-	AssertLT(Text->Type, kI_TEXT_TYPE);
-	const char* CharFilter = TextCharFilters[Text->Type];
+	assert_lt(Text->type, I_TEXT_TYPE__COUNT);
+	const char* CharFilter = TextCharFilters[Text->type];
 
 	char* Str;
-	uint32_t Length;
+	uint32_t len;
 	if(!Text->Str)
 	{
-		ValueToTextFunc ToText = ValueToText[Text->Type];
+		ValueToTextFunc ToText = ValueToText[Text->type];
 		if(ToText)
 		{
-			Str = ToText(NULL, &Length, &Text->Data);
+			Str = ToText(NULL, &len, &Text->data);
 		}
 		else
 		{
 			Str = malloc(1);
-			AssertNotNull(Str);
+			assert_not_null(Str);
 
 			Str[0] = 0;
-			Length = 0;
+			len = 0;
 		}
 	}
 	else
 	{
-		if(!Text->Length)
+		if(!Text->len)
 		{
-			Length = strlen(Text->Str);
+			len = strlen(Text->Str);
 		}
 		else
 		{
-			Length = Text->Length;
+			len = Text->len;
 		}
 
-		Str = malloc(Length + 1);
-		AssertNotNull(Str);
+		Str = malloc(len + 1);
+		assert_not_null(Str);
 
-		memcpy(Str, Text->Str, Length + 1);
+		memcpy(Str, Text->Str, len + 1);
 	}
 
 	UIElement* T = UIGetElement();
@@ -1056,7 +1056,7 @@ ICreateText(
 
 		.AlignX = Element->AlignX,
 		.AlignY = Element->AlignY,
-		.Position = Element->Position,
+		.pos = Element->pos,
 		.RelativeAlignX = Element->RelativeAlignX,
 		.RelativeAlignY = Element->RelativeAlignY,
 
@@ -1066,15 +1066,15 @@ ICreateText(
 		.ScrollPassthrough = true,
 
 		.Callback = ITextCallback,
-		.Data = Data,
+		.data = data,
 
-		.Type = UI_TYPE_TEXT,
+		.type = UI_TYPE_TEXT,
 		.Text =
 		(UIText)
 		{
 			.Str = Str,
-			.Length = Text->Length,
-			.MaxLength = Text->MaxLength,
+			.len = Text->len,
+			.max_len = Text->max_len,
 			.MaxWidth = Text->MaxWidth,
 
 			.FontSize = Text->FontSize,
@@ -1101,11 +1101,11 @@ ICreateText(
 		*P =
 		(UIElement)
 		{
-			.Opacity = AmulA(Element->Opacity, 0xB0),
+			.Opacity = color_a_mul_a(Element->Opacity, 0xB0),
 
 			.AlignX = Text->AlignX,
 			.AlignY = UI_ALIGN_TOP,
-			.Position = UI_POSITION_INLINE,
+			.pos = UI_POSITION_INLINE,
 
 			.AutoH = true,
 			.Clickable = true,
@@ -1116,12 +1116,12 @@ ICreateText(
 
 			.Callback = ITextPlaceholderCallback,
 
-			.Type = UI_TYPE_TEXT,
+			.type = UI_TYPE_TEXT,
 			.Text =
 			(UIText)
 			{
 				.Str = strdup(Text->Placeholder),
-				.MaxLength = Text->MaxLength,
+				.max_len = Text->max_len,
 				.MaxWidth = Text->MaxWidth,
 
 				.FontSize = Text->FontSize,
@@ -1138,20 +1138,20 @@ ICreateText(
 		UIInitialize(P);
 		UIActivateElement(P);
 
-		Data->Placeholder = P;
+		data->Placeholder = P;
 	}
 	else
 	{
-		Data->Placeholder = NULL;
+		data->Placeholder = NULL;
 	}
 
 	IHandle C = ICreateContainer(
 		&((IElement)
 		{
-			.X = Element->X,
-			.Y = Element->Y,
-			.W = Element->W,
-			.H = Element->H,
+			.x = Element->x,
+			.y = Element->y,
+			.w = Element->w,
+			.h = Element->h,
 
 			.MarginTop = Element->MarginTop,
 			.MarginLeft = Element->MarginLeft,
@@ -1168,7 +1168,7 @@ ICreateText(
 
 			.AlignX = Element->AlignX,
 			.AlignY = Element->AlignY,
-			.Position = Element->Position,
+			.pos = Element->pos,
 			.RelativeAlignX = Element->RelativeAlignX,
 			.RelativeAlignY = Element->RelativeAlignY,
 
@@ -1187,9 +1187,9 @@ ICreateText(
 			.Selectable = true,
 			.ScrollPassthrough = true,
 
-			.WhiteColor = Container->WhiteColor,
-			.BlackColor = Container->BlackColor,
-			.Texture = Container->Texture,
+			.white_color = Container->white_color,
+			.black_color = Container->black_color,
+			.tex = Container->tex,
 
 			.TextFocus = T
 		}) :
@@ -1206,7 +1206,7 @@ ICreateText(
 
 	UIAddElementLast(T, C.Destination);
 
-	return (IHandle) { .Source = C.Source, .Destination = NULL };
+	return (IHandle) { .source = C.source, .Destination = NULL };
 }
 
 
@@ -1216,28 +1216,28 @@ ICreateText(
 typedef struct IPrivateCheckboxData
 {
 	UICallback Callback;
-	void* Data;
+	void* data;
 }
 IPrivateCheckboxData;
 
 
-Static void
+private void
 ICheckboxCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_CHECKBOX);
+	assert_eq(Element->type, UI_TYPE_CHECKBOX);
 	UICheckbox* Checkbox = &Element->Checkbox;
 
 	(void) Checkbox;
 
-	AssertNotNull(Element->Data);
-	IPrivateCheckboxData* Data = Element->Data;
+	assert_not_null(Element->data);
+	IPrivateCheckboxData* data = Element->data;
 
 	UICheckboxCallback(Element, Event);
 
-	Data->Callback(Element, Event);
+	data->Callback(Element, Event);
 }
 
 
@@ -1247,20 +1247,20 @@ ICreateCheckbox(
 	const ICheckbox* Checkbox
 	)
 {
-	IPrivateCheckboxData* Data = malloc(sizeof(IPrivateCheckboxData));
-	AssertNotNull(Data);
+	IPrivateCheckboxData* data = malloc(sizeof(IPrivateCheckboxData));
+	assert_not_null(data);
 
-	Data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
-	Data->Data = Element->Data;
+	data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
+	data->data = Element->data;
 
 	UIElement* T = UIGetElement();
 	*T =
 	(UIElement)
 	{
-		.X = Element->X,
-		.Y = Element->Y,
-		.W = Element->W,
-		.H = Element->H,
+		.x = Element->x,
+		.y = Element->y,
+		.w = Element->w,
+		.h = Element->h,
 
 		.MarginTop = Element->MarginTop,
 		.MarginLeft = Element->MarginLeft,
@@ -1277,19 +1277,19 @@ ICreateCheckbox(
 
 		.AlignX = Element->AlignX,
 		.AlignY = Element->AlignY,
-		.Position = Element->Position,
+		.pos = Element->pos,
 		.RelativeAlignX = Element->RelativeAlignX,
 		.RelativeAlignY = Element->RelativeAlignY,
 
 		.Clickable = true,
 		.InteractiveBorder = Element->InteractiveBorder,
 
-		.Relative = Element->Relative ? Element->Relative->Source : NULL,
+		.Relative = Element->Relative ? Element->Relative->source : NULL,
 
 		.Callback = ICheckboxCallback,
-		.Data = Data,
+		.data = data,
 
-		.Type = UI_TYPE_CHECKBOX,
+		.type = UI_TYPE_CHECKBOX,
 		.Checkbox =
 		(UICheckbox)
 		{
@@ -1303,26 +1303,26 @@ ICreateCheckbox(
 
 	UIInitialize(T);
 
-	return (IHandle) { .Source = T, .Destination = NULL };
+	return (IHandle) { .source = T, .Destination = NULL };
 }
 
 
-Static UIElement*
+private UIElement*
 ITextGetTextElement(
 	IHandle Text
 	)
 {
 	UIElement* T;
 
-	if(Text.Source->Type == UI_TYPE_CONTAINER)
+	if(Text.source->type == UI_TYPE_CONTAINER)
 	{
-		T = Text.Source->Container.Head;
+		T = Text.source->Container.head;
 	}
 	else
 	{
-		T = Text.Source;
+		T = Text.source;
 	}
-	AssertEQ(T->Type, UI_TYPE_TEXT);
+	assert_eq(T->type, UI_TYPE_TEXT);
 
 	return T;
 }
@@ -1335,104 +1335,104 @@ ITextGetInteger(
 {
 	UIElement* T = ITextGetTextElement(Text);
 
-	IPrivateTextData* Data = T->Data;
-	AssertNotNull(Data);
+	IPrivateTextData* data = T->data;
+	assert_not_null(data);
 
-	ITextData* TextData = &Data->TextData;
-	AssertEQ(Data->Type, I_TEXT_TYPE_INTEGER);
+	ITextData* TextData = &data->TextData;
+	assert_eq(data->type, I_TEXT_TYPE_INTEGER);
 	ITextInteger* Integer = &TextData->Integer;
 
-	return Integer->Value;
+	return Integer->value;
 }
 
 
 void
 ITextSetIntegerExplicit(
 	IHandle Text,
-	int64_t Value,
+	int64_t value,
 	bool Changed
 	)
 {
 	UIElement* T = ITextGetTextElement(Text);
 
-	IPrivateTextData* Data = T->Data;
-	AssertNotNull(Data);
+	IPrivateTextData* data = T->data;
+	assert_not_null(data);
 
-	ITextData* TextData = &Data->TextData;
-	AssertEQ(Data->Type, I_TEXT_TYPE_INTEGER);
+	ITextData* TextData = &data->TextData;
+	assert_eq(data->type, I_TEXT_TYPE_INTEGER);
 	ITextInteger* Integer = &TextData->Integer;
 
-	Integer->Value = Value;
+	Integer->value = value;
 
 	char Str[32];
-	uint32_t Length;
-	IntegerToText(Str, &Length, TextData);
+	uint32_t len;
+	IntegerToText(Str, &len, TextData);
 
-	ITextWrite(T, Str, Length, Changed);
+	ITextWrite(T, Str, len, Changed);
 }
 
 
 void
 ITextSetInteger(
 	IHandle Text,
-	int64_t Value
+	int64_t value
 	)
 {
-	ITextSetIntegerExplicit(Text, Value, true);
+	ITextSetIntegerExplicit(Text, value, true);
 }
 
 
-ARGB
+color_argb_t
 ITextGetHexColor(
 	IHandle Text
 	)
 {
 	UIElement* T = ITextGetTextElement(Text);
 
-	IPrivateTextData* Data = T->Data;
-	AssertNotNull(Data);
+	IPrivateTextData* data = T->data;
+	assert_not_null(data);
 
-	ITextData* TextData = &Data->TextData;
-	AssertEQ(Data->Type, I_TEXT_TYPE_HEX_COLOR);
+	ITextData* TextData = &data->TextData;
+	assert_eq(data->type, I_TEXT_TYPE_HEX_COLOR);
 	ITextHexColor* HexColor = &TextData->HexColor;
 
-	return HexColor->Color;
+	return HexColor->color;
 }
 
 
 void
 ITextSetHexColorExplicit(
 	IHandle Text,
-	ARGB Color,
+	color_argb_t color,
 	bool Changed
 	)
 {
 	UIElement* T = ITextGetTextElement(Text);
 
-	IPrivateTextData* Data = T->Data;
-	AssertNotNull(Data);
+	IPrivateTextData* data = T->data;
+	assert_not_null(data);
 
-	ITextData* TextData = &Data->TextData;
-	AssertEQ(Data->Type, I_TEXT_TYPE_HEX_COLOR);
+	ITextData* TextData = &data->TextData;
+	assert_eq(data->type, I_TEXT_TYPE_HEX_COLOR);
 	ITextHexColor* HexColor = &TextData->HexColor;
 
-	HexColor->Color = Color;
+	HexColor->color = color;
 
 	char Str[16];
-	uint32_t Length;
-	HexColorToText(Str, &Length, TextData);
+	uint32_t len;
+	HexColorToText(Str, &len, TextData);
 
-	ITextWrite(T, Str, Length, Changed);
+	ITextWrite(T, Str, len, Changed);
 }
 
 
 void
 ITextSetHexColor(
-	IHandle Value,
-	ARGB Color
+	IHandle value,
+	color_argb_t color
 	)
 {
-	ITextSetHexColorExplicit(Value, Color, true);
+	ITextSetHexColorExplicit(value, color, true);
 }
 
 
@@ -1442,26 +1442,26 @@ ITextSetHexColor(
 typedef struct IPrivateSliderData
 {
 	UICallback Callback;
-	void* Data;
+	void* data;
 }
 IPrivateSliderData;
 
 
-Static void
+private void
 ISliderCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SLIDER);
+	assert_eq(Element->type, UI_TYPE_SLIDER);
 	// UISlider* Slider = &Element->Slider;
 
-	AssertNotNull(Element->Data);
-	IPrivateSliderData* Data = Element->Data;
+	assert_not_null(Element->data);
+	IPrivateSliderData* data = Element->data;
 
 	UISliderCallback(Element, Event);
 
-	Data->Callback(Element, Event);
+	data->Callback(Element, Event);
 }
 
 
@@ -1471,23 +1471,23 @@ ICreateSlider(
 	const ISlider* Slider
 	)
 {
-	AssertGE(Slider->Value, 0);
-	AssertLT(Slider->Value, Slider->Sections);
+	assert_ge(Slider->value, 0);
+	assert_lt(Slider->value, Slider->Sections);
 
-	IPrivateSliderData* Data = malloc(sizeof(IPrivateSliderData));
-	AssertNotNull(Data);
+	IPrivateSliderData* data = malloc(sizeof(IPrivateSliderData));
+	assert_not_null(data);
 
-	Data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
-	Data->Data = Element->Data;
+	data->Callback = Element->Callback ? Element->Callback : UIEmptyCallback;
+	data->data = Element->data;
 
 	UIElement* T = UIGetElement();
 	*T =
 	(UIElement)
 	{
-		.X = Element->X,
-		.Y = Element->Y,
-		.W = Element->W,
-		.H = Element->H,
+		.x = Element->x,
+		.y = Element->y,
+		.w = Element->w,
+		.h = Element->h,
 
 		.MarginTop = Element->MarginTop,
 		.MarginLeft = Element->MarginLeft,
@@ -1504,82 +1504,82 @@ ICreateSlider(
 
 		.AlignX = Element->AlignX,
 		.AlignY = Element->AlignY,
-		.Position = Element->Position,
+		.pos = Element->pos,
 		.RelativeAlignX = Element->RelativeAlignX,
 		.RelativeAlignY = Element->RelativeAlignY,
 
 		.Clickable = true,
 		.InteractiveBorder = Element->InteractiveBorder,
 
-		.Relative = Element->Relative ? Element->Relative->Source : NULL,
+		.Relative = Element->Relative ? Element->Relative->source : NULL,
 
 		.Callback = ISliderCallback,
-		.Data = Data,
+		.data = data,
 
-		.Type = UI_TYPE_SLIDER,
+		.type = UI_TYPE_SLIDER,
 		.Slider =
 		(UISlider)
 		{
 			.Axis = Slider->Axis,
 			.Sections = Slider->Sections,
-			.Value = Slider->Value,
+			.value = Slider->value,
 
-			.Color = Slider->Color,
+			.color = Slider->color,
 			.BgColor = Slider->BgColor,
 
-			.Type = UI_SLIDER_TYPE_NORMAL
+			.type = UI_SLIDER_TYPE_NORMAL
 		}
 	};
 
 	UIInitialize(T);
 
-	return (IHandle) { .Source = T, .Destination = NULL };
+	return (IHandle) { .source = T, .Destination = NULL };
 }
 
 
 
 
 
-Static void
+private void
 IColorPickerUpdate(
-	ARGB Color
+	color_argb_t color
 	)
 {
-	ARGB OpaqueColor = Color;
-	OpaqueColor.A = 255;
+	color_argb_t OpaqueColor = color;
+	OpaqueColor.a = 255;
 
 	ColorPickerElement->ColorPicker.ColorRGB = OpaqueColor;
-	float Value = UIColorPickerUpdate(ColorPickerElement);
-	uint32_t Brightness = nearbyintf(Value * 255.0f);
+	float value = UIColorPickerUpdate(ColorPickerElement);
+	uint32_t Brightness = nearbyintf(value * 255.0f);
 
-	ColorPickerBrightness.Slider->Color = ColorPickerElement->ColorPicker.ColorRGB;
-	ColorPickerOpacity.Slider->Color = OpaqueColor;
-	ColorPickerRed.Slider->Color = OpaqueColor;
-	ColorPickerGreen.Slider->Color = OpaqueColor;
-	ColorPickerBlue.Slider->Color = OpaqueColor;
+	ColorPickerBrightness.Slider->color = ColorPickerElement->ColorPicker.ColorRGB;
+	ColorPickerOpacity.Slider->color = OpaqueColor;
+	ColorPickerRed.Slider->color = OpaqueColor;
+	ColorPickerGreen.Slider->color = OpaqueColor;
+	ColorPickerBlue.Slider->color = OpaqueColor;
 
-	CurrentColorContainer->Container.WhiteColor = Color;
-	ColorPickerBackground->Container.WhiteColor = Color;
+	CurrentColorContainer->Container.white_color = color;
+	ColorPickerBackground->Container.white_color = color;
 
-	ColorPickerBrightness.Slider->Value = Brightness;
-	ColorPickerOpacity.Slider->Value = Color.A;
-	ColorPickerRed.Slider->Value = Color.R;
-	ColorPickerGreen.Slider->Value = Color.G;
-	ColorPickerBlue.Slider->Value = Color.B;
+	ColorPickerBrightness.Slider->value = Brightness;
+	ColorPickerOpacity.Slider->value = color.a;
+	ColorPickerRed.Slider->value = color.r;
+	ColorPickerGreen.Slider->value = color.g;
+	ColorPickerBlue.Slider->value = color.b;
 
-	ITextSetHexColorExplicit(ColorPickerHexText, Color, false);
+	ITextSetHexColorExplicit(ColorPickerHexText, color, false);
 
-	ITextSetIntegerExplicit(ColorPickerBrightness.Value, Brightness, false);
-	ITextSetIntegerExplicit(ColorPickerOpacity.Value, Color.A, false);
-	ITextSetIntegerExplicit(ColorPickerRed.Value, Color.R, false);
-	ITextSetIntegerExplicit(ColorPickerGreen.Value, Color.G, false);
-	ITextSetIntegerExplicit(ColorPickerBlue.Value, Color.B, false);
+	ITextSetIntegerExplicit(ColorPickerBrightness.value, Brightness, false);
+	ITextSetIntegerExplicit(ColorPickerOpacity.value, color.a, false);
+	ITextSetIntegerExplicit(ColorPickerRed.value, color.r, false);
+	ITextSetIntegerExplicit(ColorPickerGreen.value, color.g, false);
+	ITextSetIntegerExplicit(ColorPickerBlue.value, color.b, false);
 
 	CurrentColorContainer->Callback(CurrentColorContainer, UI_EVENT_CHANGE);
 }
 
 
-Static void
+private void
 IHexTextCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1592,12 +1592,12 @@ IHexTextCallback(
 		return;
 	}
 
-	ARGB Color = ITextGetHexColor(ColorPickerHexText);
-	IColorPickerUpdate(Color);
+	color_argb_t color = ITextGetHexColor(ColorPickerHexText);
+	IColorPickerUpdate(color);
 }
 
 
-Static void
+private void
 IColorPickerCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1612,12 +1612,12 @@ IColorPickerCallback(
 	case UI_EVENT_MOUSE_DOWN:
 	case UI_EVENT_MOUSE_MOVE:
 	{
-		HSV ColorHSV = RGBtoHSV(CurrentColorContainer->Container.WhiteColor);
-		HSV PickedColor = ColorPickerElement->ColorPicker.ColorHSV;
-		ColorHSV.H = PickedColor.H;
-		ColorHSV.S = PickedColor.S;
-		ARGB ColorRGB = HSVtoRGB(ColorHSV);
-		ColorRGB.A = CurrentColorContainer->Container.WhiteColor.A;
+		color_hsv_t ColorHSV = color_argb_to_hsv(CurrentColorContainer->Container.white_color);
+		color_hsv_t PickedColor = ColorPickerElement->ColorPicker.ColorHSV;
+		ColorHSV.h = PickedColor.h;
+		ColorHSV.s = PickedColor.s;
+		color_argb_t ColorRGB = color_hsv_to_argb(ColorHSV);
+		ColorRGB.a = CurrentColorContainer->Container.white_color.a;
 		IColorPickerUpdate(ColorRGB);
 		break;
 	}
@@ -1628,21 +1628,21 @@ IColorPickerCallback(
 }
 
 
-Static void
+private void
 IBrightnessSliderRecalculate(
 	void
 	)
 {
-	HSV ColorHSV = ColorPickerElement->ColorPicker.ColorHSV;
-	ColorHSV.V = ColorPickerBrightness.Slider->Value / 255.0f;
-	ARGB ColorRGB = HSVtoRGB(ColorHSV);
+	color_hsv_t ColorHSV = ColorPickerElement->ColorPicker.ColorHSV;
+	ColorHSV.v = ColorPickerBrightness.Slider->value / 255.0f;
+	color_argb_t ColorRGB = color_hsv_to_argb(ColorHSV);
 	ColorPickerElement->ColorPicker.ColorRGB = ColorRGB;
-	ColorRGB.A = ColorPickerOpacity.Slider->Value;
+	ColorRGB.a = ColorPickerOpacity.Slider->value;
 	IColorPickerUpdate(ColorRGB);
 }
 
 
-Static void
+private void
 IBrightnessSliderCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1667,7 +1667,7 @@ IBrightnessSliderCallback(
 }
 
 
-Static void
+private void
 IBrightnessTextCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1680,23 +1680,23 @@ IBrightnessTextCallback(
 		return;
 	}
 
-	ColorPickerBrightness.Slider->Value = ITextGetInteger(ColorPickerBrightness.Value);
+	ColorPickerBrightness.Slider->value = ITextGetInteger(ColorPickerBrightness.value);
 	IBrightnessSliderRecalculate();
 }
 
 
-Static void
+private void
 IOpacitySliderRecalculate(
 	void
 	)
 {
-	ARGB ColorRGB = CurrentColorContainer->Container.WhiteColor;
-	ColorRGB.A = ColorPickerOpacity.Slider->Value;
+	color_argb_t ColorRGB = CurrentColorContainer->Container.white_color;
+	ColorRGB.a = ColorPickerOpacity.Slider->value;
 	IColorPickerUpdate(ColorRGB);
 }
 
 
-Static void
+private void
 IOpacitySliderCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1721,7 +1721,7 @@ IOpacitySliderCallback(
 }
 
 
-Static void
+private void
 IOpacityTextCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1734,23 +1734,23 @@ IOpacityTextCallback(
 		return;
 	}
 
-	ColorPickerOpacity.Slider->Value = ITextGetInteger(ColorPickerOpacity.Value);
+	ColorPickerOpacity.Slider->value = ITextGetInteger(ColorPickerOpacity.value);
 	IOpacitySliderRecalculate();
 }
 
 
-Static void
+private void
 IRedSliderRecalculate(
 	void
 	)
 {
-	ARGB ColorRGB = CurrentColorContainer->Container.WhiteColor;
-	ColorRGB.R = ColorPickerRed.Slider->Value;
+	color_argb_t ColorRGB = CurrentColorContainer->Container.white_color;
+	ColorRGB.r = ColorPickerRed.Slider->value;
 	IColorPickerUpdate(ColorRGB);
 }
 
 
-Static void
+private void
 IRedSliderCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1775,7 +1775,7 @@ IRedSliderCallback(
 }
 
 
-Static void
+private void
 IRedTextCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1788,23 +1788,23 @@ IRedTextCallback(
 		return;
 	}
 
-	ColorPickerRed.Slider->Value = ITextGetInteger(ColorPickerRed.Value);
+	ColorPickerRed.Slider->value = ITextGetInteger(ColorPickerRed.value);
 	IRedSliderRecalculate();
 }
 
 
-Static void
+private void
 IGreenSliderRecalculate(
 	void
 	)
 {
-	ARGB ColorRGB = CurrentColorContainer->Container.WhiteColor;
-	ColorRGB.G = ColorPickerGreen.Slider->Value;
+	color_argb_t ColorRGB = CurrentColorContainer->Container.white_color;
+	ColorRGB.g = ColorPickerGreen.Slider->value;
 	IColorPickerUpdate(ColorRGB);
 }
 
 
-Static void
+private void
 IGreenSliderCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1829,7 +1829,7 @@ IGreenSliderCallback(
 }
 
 
-Static void
+private void
 IGreenTextCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1842,23 +1842,23 @@ IGreenTextCallback(
 		return;
 	}
 
-	ColorPickerGreen.Slider->Value = ITextGetInteger(ColorPickerGreen.Value);
+	ColorPickerGreen.Slider->value = ITextGetInteger(ColorPickerGreen.value);
 	IGreenSliderRecalculate();
 }
 
 
-Static void
+private void
 IBlueSliderRecalculate(
 	void
 	)
 {
-	ARGB ColorRGB = CurrentColorContainer->Container.WhiteColor;
-	ColorRGB.B = ColorPickerBlue.Slider->Value;
+	color_argb_t ColorRGB = CurrentColorContainer->Container.white_color;
+	ColorRGB.b = ColorPickerBlue.Slider->value;
 	IColorPickerUpdate(ColorRGB);
 }
 
 
-Static void
+private void
 IBlueSliderCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1883,7 +1883,7 @@ IBlueSliderCallback(
 }
 
 
-Static void
+private void
 IBlueTextCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -1896,12 +1896,12 @@ IBlueTextCallback(
 		return;
 	}
 
-	ColorPickerBlue.Slider->Value = ITextGetInteger(ColorPickerBlue.Value);
+	ColorPickerBlue.Slider->value = ITextGetInteger(ColorPickerBlue.value);
 	IBlueSliderRecalculate();
 }
 
 
-Static UICallback ColorPickerSliderCallback[] =
+private UICallback ColorPickerSliderCallback[] =
 {
 	[UI_SLIDER_TYPE_BRIGHTNESS] = IBrightnessSliderCallback,
 	[UI_SLIDER_TYPE_OPACITY] = IOpacitySliderCallback,
@@ -1911,7 +1911,7 @@ Static UICallback ColorPickerSliderCallback[] =
 };
 
 
-Static UICallback ColorPickerTextCallback[] =
+private UICallback ColorPickerTextCallback[] =
 {
 	[UI_SLIDER_TYPE_BRIGHTNESS] = IBrightnessTextCallback,
 	[UI_SLIDER_TYPE_OPACITY] = IOpacityTextCallback,
@@ -1921,9 +1921,9 @@ Static UICallback ColorPickerTextCallback[] =
 };
 
 
-Static IColorPickerLine
+private IColorPickerLine
 IColorPickerCreateLine(
-	const char* Name,
+	const char* name,
 	const char* ShortName,
 	UISliderType SliderType,
 	IHandle* ContentContainer
@@ -1932,7 +1932,7 @@ IColorPickerCreateLine(
 	IHandle C = ICreateContainer(
 		&((IElement)
 		{
-			.W = 410.0f,
+			.w = 410.0f,
 
 			.MarginTop = 4.0f,
 			.MarginLeft = 4.0f,
@@ -1945,7 +1945,7 @@ IColorPickerCreateLine(
 			.BorderBottom = 6.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0x20FFFFFF },
+			.BorderColor = (color_argb_t){ 0x20FFFFFF },
 
 			.AlignX = UI_ALIGN_CENTER,
 			.AlignY = UI_ALIGN_TOP
@@ -1956,8 +1956,8 @@ IColorPickerCreateLine(
 
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0x20FFFFFF },
-			.Texture = TEXTURE_RECT
+			.white_color = (color_argb_t){ 0x20FFFFFF },
+			.tex = TEXTURE_RECT
 		})
 	);
 
@@ -1972,21 +1972,21 @@ IColorPickerCreateLine(
 		NULL,
 		&((IText)
 		{
-			.Str = Name,
+			.Str = name,
 			.FontSize = 18,
 			.AlignX = UI_ALIGN_CENTER,
 
-			.Stroke = (ARGB){ 0xFF000000 },
-			.Fill = (ARGB){ 0xFFFFFFFF }
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.Fill = (color_argb_t){ 0xFFFFFFFF }
 		})
 	);
 
-	UIElement* S = UIGetElement();
-	*S =
+	UIElement* s = UIGetElement();
+	*s =
 	(UIElement)
 	{
-		.W = 256.0f + SLIDER_SIZE * 2,
-		.H = SLIDER_SIZE,
+		.w = 256.0f + SLIDER_SIZE * 2,
+		.h = SLIDER_SIZE,
 
 		.MarginRight = 4.0f,
 
@@ -1997,29 +1997,29 @@ IColorPickerCreateLine(
 
 		.Callback = ColorPickerSliderCallback[SliderType],
 
-		.Type = UI_TYPE_SLIDER,
+		.type = UI_TYPE_SLIDER,
 		.Slider =
 		(UISlider)
 		{
 			.Axis = UI_AXIS_HORIZONTAL,
 			.Sections = 256,
-			.Value = 0,
+			.value = 0,
 
-			.Type = SliderType
+			.type = SliderType
 		}
 	};
 
-	UIInitialize(S);
+	UIInitialize(s);
 
-	IHandle V = ICreateText(
+	IHandle v = ICreateText(
 		&((IElement)
 		{
-			.W = 30.0f,
+			.w = 30.0f,
 
 			.BorderBottom = 2.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFFFFFFFF },
+			.BorderColor = (color_argb_t){ 0xFFFFFFFF },
 
 			.AlignX = UI_ALIGN_RIGHT,
 			.AlignY = UI_ALIGN_MIDDLE,
@@ -2033,44 +2033,44 @@ IColorPickerCreateLine(
 		&((IText)
 		{
 			.Placeholder = ShortName,
-			.MaxLength = 3,
+			.max_len = 3,
 
 			.FontSize = 18,
 
 			.Selectable = true,
 			.Editable = true,
 
-			.Stroke = (ARGB){ 0xFF000000 },
-			.InverseStroke = (ARGB){ 0xFFFFFFFF },
-			.Fill = (ARGB){ 0xFFFFFFFF },
-			.InverseFill = (ARGB){ 0xFF000000 },
-			.Background = (ARGB){ 0xA0000000 },
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.InverseStroke = (color_argb_t){ 0xFFFFFFFF },
+			.Fill = (color_argb_t){ 0xFFFFFFFF },
+			.InverseFill = (color_argb_t){ 0xFF000000 },
+			.Background = (color_argb_t){ 0xA0000000 },
 
-			.Type = I_TEXT_TYPE_INTEGER,
-			.Data =
+			.type = I_TEXT_TYPE_INTEGER,
+			.data =
 			(ITextData)
 			{
 				.Integer =
 				(ITextInteger)
 				{
-					.Min = 0,
-					.Max = 255
+					.min = 0,
+					.max = 255
 				}
 			}
 		})
 	);
 
 	IAddElementLast(&T, &C);
-	IAddElementLast(&V, &C);
-	UIAddElementLast(S, C.Destination);
+	IAddElementLast(&v, &C);
+	UIAddElementLast(s, C.Destination);
 
 	IAddElementLast(&C, ContentContainer);
 
-	return (IColorPickerLine) { .Slider = &S->Slider, .Value = V };
+	return (IColorPickerLine) { .Slider = &s->Slider, .value = v };
 }
 
 
-Static void
+private void
 IColorPickerCreate(
 	void
 	)
@@ -2086,15 +2086,15 @@ IColorPickerCreate(
 			.BorderBottom = 6.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFF000000 }
+			.BorderColor = (color_argb_t){ 0xFF000000 }
 		}),
 		&((IContainer)
 		{
 			.AutoW = true,
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0xFFFFFFFF },
-			.Texture = TEXTURE_RECT128_T
+			.white_color = (color_argb_t){ 0xFFFFFFFF },
+			.tex = TEXTURE_RECT128_T
 		})
 	);
 
@@ -2108,7 +2108,7 @@ IColorPickerCreate(
 			.AutoW = true,
 			.AutoH = true,
 
-			.Texture = TEXTURE_RECT
+			.tex = TEXTURE_RECT
 		})
 	);
 
@@ -2126,7 +2126,7 @@ IColorPickerCreate(
 			.MarginBottom = 64.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xA0000000 },
+			.BorderColor = (color_argb_t){ 0xA0000000 },
 
 			.AlignX = UI_ALIGN_CENTER,
 			.AlignY = UI_ALIGN_MIDDLE
@@ -2138,8 +2138,8 @@ IColorPickerCreate(
 			.AutoW = true,
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0xA0000000 },
-			.Texture = TEXTURE_RECT
+			.white_color = (color_argb_t){ 0xA0000000 },
+			.tex = TEXTURE_RECT
 		})
 	);
 
@@ -2147,8 +2147,8 @@ IColorPickerCreate(
 	*ColorPicker =
 	(UIElement)
 	{
-		.W = 420.0f,
-		.H = 420.0f,
+		.w = 420.0f,
+		.h = 420.0f,
 
 		.Opacity = 0xFF,
 
@@ -2157,7 +2157,7 @@ IColorPickerCreate(
 
 		.Callback = IColorPickerCallback,
 
-		.Type = UI_TYPE_COLOR_PICKER
+		.type = UI_TYPE_COLOR_PICKER
 	};
 
 	UIInitialize(ColorPicker);
@@ -2165,7 +2165,7 @@ IColorPickerCreate(
 	IHandle HexContainer = ICreateContainer(
 		&((IElement)
 		{
-			// .W = 100.0f,
+			// .w = 100.0f,
 
 			.MarginTop = 4.0f,
 			.MarginLeft = 4.0f,
@@ -2178,7 +2178,7 @@ IColorPickerCreate(
 			.BorderBottom = 6.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0x20FFFFFF },
+			.BorderColor = (color_argb_t){ 0x20FFFFFF },
 
 			.AlignX = UI_ALIGN_CENTER,
 			.AlignY = UI_ALIGN_TOP
@@ -2190,20 +2190,20 @@ IColorPickerCreate(
 			.AutoW = true,
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0x20FFFFFF },
-			.Texture = TEXTURE_RECT
+			.white_color = (color_argb_t){ 0x20FFFFFF },
+			.tex = TEXTURE_RECT
 		})
 	);
 
 	IHandle HexText = ICreateText(
 		&((IElement)
 		{
-			.W = 108.0f,
+			.w = 108.0f,
 
 			.BorderBottom = 2.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFFFFFFFF },
+			.BorderColor = (color_argb_t){ 0xFFFFFFFF },
 
 			.AlignX = UI_ALIGN_CENTER,
 			.AlignY = UI_ALIGN_TOP,
@@ -2217,20 +2217,20 @@ IColorPickerCreate(
 		&((IText)
 		{
 			.Placeholder = "#RRGGBBAA",
-			.MaxLength = 9,
+			.max_len = 9,
 
 			.FontSize = 18,
 
 			.Selectable = true,
 			.Editable = true,
 
-			.Stroke = (ARGB){ 0xFF000000 },
-			.InverseStroke = (ARGB){ 0xFFFFFFFF },
-			.Fill = (ARGB){ 0xFFFFFFFF },
-			.InverseFill = (ARGB){ 0xFF000000 },
-			.Background = (ARGB){ 0xA0000000 },
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.InverseStroke = (color_argb_t){ 0xFFFFFFFF },
+			.Fill = (color_argb_t){ 0xFFFFFFFF },
+			.InverseFill = (color_argb_t){ 0xFF000000 },
+			.Background = (color_argb_t){ 0xA0000000 },
 
-			.Type = I_TEXT_TYPE_HEX_COLOR
+			.type = I_TEXT_TYPE_HEX_COLOR
 		})
 	);
 
@@ -2240,20 +2240,20 @@ IColorPickerCreate(
 	IAddElementLast(&HexContainer, &ContentContainer);
 	IAddElementLast(&HexText, &HexContainer);
 
-	ColorPickerContainer	= ParentContainer.Source;
-	ColorPickerBackground	= ColorContainer.Source;
+	ColorPickerContainer	= ParentContainer.source;
+	ColorPickerBackground	= ColorContainer.source;
 	ColorPickerElement		= ColorPicker;
 	ColorPickerHexText		= HexText;
 
-	ColorPickerBrightness	= IColorPickerCreateLine("Brightness", "V", UI_SLIDER_TYPE_BRIGHTNESS, &ContentContainer);
-	ColorPickerOpacity		= IColorPickerCreateLine("Opacity", "A", UI_SLIDER_TYPE_OPACITY, &ContentContainer);
-	ColorPickerRed			= IColorPickerCreateLine("Red", "R", UI_SLIDER_TYPE_RED, &ContentContainer);
-	ColorPickerGreen		= IColorPickerCreateLine("Green", "G", UI_SLIDER_TYPE_GREEN, &ContentContainer);
-	ColorPickerBlue			= IColorPickerCreateLine("Blue", "B", UI_SLIDER_TYPE_BLUE, &ContentContainer);
+	ColorPickerBrightness	= IColorPickerCreateLine("Brightness", "v", UI_SLIDER_TYPE_BRIGHTNESS, &ContentContainer);
+	ColorPickerOpacity		= IColorPickerCreateLine("Opacity", "a", UI_SLIDER_TYPE_OPACITY, &ContentContainer);
+	ColorPickerRed			= IColorPickerCreateLine("Red", "r", UI_SLIDER_TYPE_RED, &ContentContainer);
+	ColorPickerGreen		= IColorPickerCreateLine("Green", "g", UI_SLIDER_TYPE_GREEN, &ContentContainer);
+	ColorPickerBlue			= IColorPickerCreateLine("Blue", "b", UI_SLIDER_TYPE_BLUE, &ContentContainer);
 }
 
 
-Static void
+private void
 IColorContainerCallback(
 	UIElement* Element,
 	UIEvent Event
@@ -2277,7 +2277,7 @@ IColorContainerCallback(
 	if(CurrentColorContainer != Element)
 	{
 		CurrentColorContainer = Element;
-		IColorPickerUpdate(Element->Container.WhiteColor);
+		IColorPickerUpdate(Element->Container.white_color);
 		UIAddElementAfter(ColorPickerContainer, Element->Parent);
 	}
 	else
@@ -2310,7 +2310,7 @@ ICreateColorPicker(
 
 			.AlignX = Element->AlignX,
 			.AlignY = Element->AlignY,
-			.Position = Element->Position,
+			.pos = Element->pos,
 			.RelativeAlignX = Element->RelativeAlignX,
 			.RelativeAlignY = Element->RelativeAlignY
 		}),
@@ -2332,7 +2332,7 @@ ICreateColorPicker(
 			.BorderBottom = 6.0f,
 
 			.Opacity = Element->Opacity,
-			.BorderColor = (ARGB){ 0xFF000000 },
+			.BorderColor = (color_argb_t){ 0xFF000000 },
 
 			.AlignX = UI_ALIGN_LEFT,
 			.AlignY = UI_ALIGN_MIDDLE
@@ -2342,16 +2342,16 @@ ICreateColorPicker(
 			.AutoW = true,
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0xFFFFFFFF },
-			.Texture = TEXTURE_RECT8_T
+			.white_color = (color_argb_t){ 0xFFFFFFFF },
+			.tex = TEXTURE_RECT8_T
 		})
 	);
 
 	IHandle ColorContainer = ICreateContainer(
 		&((IElement)
 		{
-			.W = 32.0f,
-			.H = 32.0f,
+			.w = 32.0f,
+			.h = 32.0f,
 
 			.Opacity = 0xFF,
 
@@ -2361,25 +2361,25 @@ ICreateColorPicker(
 		{
 			.Clickable = true,
 
-			.WhiteColor = ColorPicker->Color,
-			.Texture = TEXTURE_RECT
+			.white_color = ColorPicker->color,
+			.tex = TEXTURE_RECT
 		})
 	);
 
 	IAddElementLast(&TransparencyContainer, &ParentContainer);
 	IAddElementLast(&ColorContainer, &TransparencyContainer);
 
-	return (IHandle){ .Source = ParentContainer.Source, .Destination = NULL };
+	return (IHandle){ .source = ParentContainer.source, .Destination = NULL };
 }
 
 
-Static void
+private void
 IDropdownOptionCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_CONTAINER);
+	assert_eq(Element->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &Element->Container;
 
 
@@ -2388,13 +2388,13 @@ IDropdownOptionCallback(
 
 	case UI_EVENT_MOUSE_IN:
 	{
-		Container->WhiteColor = (ARGB){ 0xFF717171 };
+		Container->white_color = (color_argb_t){ 0xFF717171 };
 		break;
 	}
 
 	case UI_EVENT_MOUSE_OUT:
 	{
-		Container->WhiteColor = (ARGB){ 0xFFAAAAAA };
+		Container->white_color = (color_argb_t){ 0xFFAAAAAA };
 		break;
 	}
 
@@ -2405,17 +2405,17 @@ IDropdownOptionCallback(
 			break;
 		}
 
-		UIElement* Chosen = CurrentDropdown->Container.Head;
-		AssertEQ(Chosen->Type, UI_TYPE_TEXT);
+		UIElement* Chosen = CurrentDropdown->Container.head;
+		assert_eq(Chosen->type, UI_TYPE_TEXT);
 
-		UIText* OwnText = &Container->Head->Text;
+		UIText* OwnText = &Container->head->Text;
 		UIText* Text = &Chosen->Text;
 
-		Text->Str = realloc(Text->Str, OwnText->Length + 1);
-		AssertNotNull(Text->Str);
+		Text->Str = realloc(Text->Str, OwnText->len + 1);
+		assert_not_null(Text->Str);
 
-		memcpy(Text->Str, OwnText->Str, OwnText->Length + 1);
-		Text->Length = OwnText->Length;
+		memcpy(Text->Str, OwnText->Str, OwnText->len + 1);
+		Text->len = OwnText->len;
 
 		UIUpdateElement(Chosen);
 
@@ -2428,7 +2428,7 @@ IDropdownOptionCallback(
 }
 
 
-Static IHandle
+private IHandle
 ICreateDropdownOption(
 	const IElement* Element,
 	const IDropdown* Dropdown,
@@ -2438,12 +2438,12 @@ ICreateDropdownOption(
 	IHandle Container = ICreateContainer(
 		&((IElement)
 		{
-			.W = Element->W,
+			.w = Element->w,
 
 			.BorderTop = 2.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFF000000 },
+			.BorderColor = (color_argb_t){ 0xFF000000 },
 
 			.Callback = IDropdownOptionCallback
 		}),
@@ -2451,15 +2451,15 @@ ICreateDropdownOption(
 		{
 			.AutoH = true,
 
-			.WhiteColor = Dropdown->BgColor,
-			.Texture = TEXTURE_RECT
+			.white_color = Dropdown->BgColor,
+			.tex = TEXTURE_RECT
 		})
 	);
 
 	IHandle Text = ICreateText(
 		&((IElement)
 		{
-			.W = Element->W - 4.0f,
+			.w = Element->w - 4.0f,
 
 			.MarginTop = 4.0f,
 			.MarginLeft = 4.0f,
@@ -2484,17 +2484,17 @@ ICreateDropdownOption(
 
 	IAddElementLast(&Text, &Container);
 
-	return (IHandle){ .Source = Container.Source, .Destination = NULL };
+	return (IHandle){ .source = Container.source, .Destination = NULL };
 }
 
 
-Static void
+private void
 IDropdownCallback(
 	UIElement* Element,
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_CONTAINER);
+	assert_eq(Element->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &Element->Container;
 
 
@@ -2503,13 +2503,13 @@ IDropdownCallback(
 
 	case UI_EVENT_MOUSE_IN:
 	{
-		Container->WhiteColor = (ARGB){ 0xFF717171 };
+		Container->white_color = (color_argb_t){ 0xFF717171 };
 		break;
 	}
 
 	case UI_EVENT_MOUSE_OUT:
 	{
-		Container->WhiteColor = (ARGB){ 0xFFAAAAAA };
+		Container->white_color = (color_argb_t){ 0xFFAAAAAA };
 		break;
 	}
 
@@ -2523,18 +2523,18 @@ IDropdownCallback(
 		UIElement* Dropdown = CurrentDropdown;
 		if(CurrentDropdown)
 		{
-			UIUnlinkElement(CurrentDropdown->Data);
+			UIUnlinkElement(CurrentDropdown->data);
 			CurrentDropdown = NULL;
 
-			Dropdown->Container.Tail->Texture.Texture = TEXTURE_TRIANGLE_DOWN;
+			Dropdown->Container.tail->tex.tex = TEXTURE_TRIANGLE_DOWN;
 		}
 
 		if(Dropdown != Element)
 		{
 			CurrentDropdown = Element;
-			UIAddElementAfter(Element->Data, Element);
+			UIAddElementAfter(Element->data, Element);
 
-			CurrentDropdown->Container.Tail->Texture.Texture = TEXTURE_TRIANGLE_UP;
+			CurrentDropdown->Container.tail->tex.tex = TEXTURE_TRIANGLE_UP;
 		}
 
 		break;
@@ -2566,7 +2566,7 @@ ICreateDropdown(
 
 			.AlignX = Element->AlignX,
 			.AlignY = Element->AlignY,
-			.Position = Element->Position,
+			.pos = Element->pos,
 			.RelativeAlignX = Element->RelativeAlignX,
 			.RelativeAlignY = Element->RelativeAlignY,
 
@@ -2584,7 +2584,7 @@ ICreateDropdown(
 	IHandle Container = ICreateContainer(
 		&((IElement)
 		{
-			.W = Element->W,
+			.w = Element->w,
 
 			.Opacity = 0xFF,
 
@@ -2596,15 +2596,15 @@ ICreateDropdown(
 
 			.AutoH = true,
 
-			.WhiteColor = Dropdown->BgColor,
-			.Texture = TEXTURE_RECT
+			.white_color = Dropdown->BgColor,
+			.tex = TEXTURE_RECT
 		})
 	);
 
 	IHandle Text = ICreateText(
 		&((IElement)
 		{
-			.W = Element->W - 32.0f,
+			.w = Element->w - 32.0f,
 
 			.MarginTop = 4.0f,
 			.MarginLeft = 4.0f,
@@ -2628,11 +2628,11 @@ ICreateDropdown(
 		})
 	);
 
-	IHandle Texture = ICreateTexture(
+	IHandle tex = ICreateTexture(
 		&((IElement)
 		{
-			.W = 16.0f,
-			.H = 16.0f,
+			.w = 16.0f,
+			.h = 16.0f,
 
 			.MarginRight = 6.0f,
 
@@ -2643,13 +2643,13 @@ ICreateDropdown(
 		}),
 		&((ITexture)
 		{
-			.WhiteColor = (ARGB){ 0xFF000000 },
-			.Texture = TEXTURE_TRIANGLE_DOWN
+			.white_color = (color_argb_t){ 0xFF000000 },
+			.tex = TEXTURE_TRIANGLE_DOWN
 		})
 	);
 
 	IAddElementLast(&Text, &Container);
-	IAddElementLast(&Texture, &Container);
+	IAddElementLast(&tex, &Container);
 	IAddElementLast(&Container, &ParentContainer);
 
 	IHandle DummyContainer = ICreateContainer(
@@ -2664,40 +2664,40 @@ ICreateDropdown(
 		})
 	);
 
-	for(uint32_t i = 0; i < Dropdown->Count; ++i)
+	for(uint32_t i = 0; i < Dropdown->count; ++i)
 	{
-		IHandle Handle = ICreateDropdownOption(Element, Dropdown, Dropdown->Options + i);
-		IAddElementLast(&Handle, &DummyContainer);
+		IHandle handle = ICreateDropdownOption(Element, Dropdown, Dropdown->Options + i);
+		IAddElementLast(&handle, &DummyContainer);
 	}
 
-	Container.Source->Data = DummyContainer.Source;
+	Container.source->data = DummyContainer.source;
 
-	return (IHandle){ .Source = ParentContainer.Source, .Destination = NULL };
+	return (IHandle){ .source = ParentContainer.source, .Destination = NULL };
 }
 
 
 IHandle
 ICreateTexture(
 	const IElement* Element,
-	const ITexture* Texture
+	const ITexture* tex
 	)
 {
 	UITexture Tex;
 
-	if(Texture->UseExplicit)
+	if(tex->UseExplicit)
 	{
 		Tex =
 		(UITexture)
 		{
-			.SW = Texture->SW,
-			.SH = Texture->SH,
-			.OX = Texture->OX,
-			.OY = Texture->OY,
+			.SW = tex->SW,
+			.SH = tex->SH,
+			.OX = tex->OX,
+			.OY = tex->OY,
 
-			.WhiteColor = Texture->WhiteColor,
-			.BlackColor = Texture->BlackColor,
-			.Texture = Texture->Texture,
-			.Rotation = Texture->Rotation
+			.white_color = tex->white_color,
+			.black_color = tex->black_color,
+			.tex = tex->tex,
+			.angle = tex->angle
 		};
 	}
 	else
@@ -2710,10 +2710,10 @@ ICreateTexture(
 			.OX = 0.5f,
 			.OY = 0.5f,
 
-			.WhiteColor = Texture->WhiteColor,
-			.BlackColor = Texture->BlackColor,
-			.Texture = Texture->Texture,
-			.Rotation = Texture->Rotation
+			.white_color = tex->white_color,
+			.black_color = tex->black_color,
+			.tex = tex->tex,
+			.angle = tex->angle
 		};
 	}
 
@@ -2721,10 +2721,10 @@ ICreateTexture(
 	*T =
 	(UIElement)
 	{
-		.X = Element->X,
-		.Y = Element->Y,
-		.W = Element->W,
-		.H = Element->H,
+		.x = Element->x,
+		.y = Element->y,
+		.w = Element->w,
+		.h = Element->h,
 
 		.MarginTop = Element->MarginTop,
 		.MarginLeft = Element->MarginLeft,
@@ -2741,22 +2741,22 @@ ICreateTexture(
 
 		.AlignX = Element->AlignX,
 		.AlignY = Element->AlignY,
-		.Position = Element->Position,
+		.pos = Element->pos,
 		.RelativeAlignX = Element->RelativeAlignX,
 		.RelativeAlignY = Element->RelativeAlignY,
 
 		.InteractiveBorder = Element->InteractiveBorder,
 
-		.Relative = Element->Relative ? Element->Relative->Source : NULL,
+		.Relative = Element->Relative ? Element->Relative->source : NULL,
 
 		.Callback = Element->Callback,
-		.Data = Element->Data,
+		.data = Element->data,
 
-		.Type = UI_TYPE_TEXTURE,
-		.Texture = Tex
+		.type = UI_TYPE_TEXTURE,
+		.tex = Tex
 	};
 
 	UIInitialize(T);
 
-	return (IHandle){ .Source = T, .Destination = NULL };
+	return (IHandle){ .source = T, .Destination = NULL };
 }

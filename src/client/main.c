@@ -1,3 +1,19 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 // #include <DiepDesktop/socket.h>
 
 #include <DiepDesktop/shared/base.h>
@@ -24,30 +40,30 @@
 #include <string.h>
 
 
-#define INTERPOLATED(Value) Value[2]
+#define INTERPOLATED(value) value[2]
 
 typedef struct GameEntity
 {
-	EntityType Type;
+	EntityType type;
 	uint32_t Subtype;
 
-	INTERPOLATED(float X);
-	INTERPOLATED(float Y);
+	INTERPOLATED(float x);
+	INTERPOLATED(float y);
 	union
 	{
-		INTERPOLATED(float W);
-		INTERPOLATED(float R);
+		INTERPOLATED(float w);
+		INTERPOLATED(float r);
 	};
-	INTERPOLATED(float H);
+	INTERPOLATED(float h);
 
-	INTERPOLATED(float Rotation);
+	INTERPOLATED(float angle);
 
 	uint32_t MaxHP;
 	uint32_t HPBits;
 	INTERPOLATED(uint32_t HP);
 	INTERPOLATED(float OpacityHP);
 
-	float RotationDir;
+	float angleDir;
 
 	INTERPOLATED(float Damageness);
 }
@@ -69,31 +85,31 @@ GameState;
 #undef INTERPOLATED
 
 
-Static GameState States[GAME_CONST_BUFFERED_STATES];
-Static Mutex StateMutex;
-Static uintptr_t CurrentStateIdx;
-Static uint64_t CompletedStates = -1;
-Static uint64_t CompletedTime;
+private GameState States[GAME_CONST_BUFFERED_STATES];
+private sync_mtx_t StateMutex;
+private uintptr_t CurrentStateIdx;
+private uint64_t CompletedStates = -1;
+private uint64_t CompletedTime;
 
 
-Static float
+private float
 LerpF(
-	float Old,
+	float old,
 	float New,
 	float By
 	)
 {
-	return Old + (New - Old) * By;
+	return old + (New - old) * By;
 }
 
 
-Static float
+private float
 ShortestAngleDifference(
 	float A,
-	float B
+	float b
 	)
 {
-	float Diff = B - A;
+	float Diff = b - A;
 
 	if(fabsf(Diff) > M_PI)
 	{
@@ -111,19 +127,19 @@ ShortestAngleDifference(
 }
 
 
-#define LERP(Value) LerpF(Value[0], Value[1], Scale)
+#define LERP(value) LerpF(value[0], value[1], Scale)
 
 #define OLD 0
 #define NEW 1
 
-#define NEW_VALUE(To, Value) NewState->To[NEW] = (Value)
-#define NEW_ENTITY_VALUE(To, Value) NewEntity->To[NEW] = (Value)
-#define COPY_OVER(To) NewState->To[OLD] = OldState->To[NEW]
+#define NEW_VALUE(To, value) new_state->To[NEW] = (value)
+#define NEW_ENTITY_VALUE(To, value) NewEntity->To[NEW] = (value)
+#define COPY_OVER(To) new_state->To[OLD] = old_state->To[NEW]
 #define SHIFT_OVER(To) NewEntity->To[OLD] = NewEntity->To[NEW]
 
-Static void
+private void
 OnPacket(
-	BitBuffer* Buffer,
+	bit_buffer_t* buffer,
 	ServerOpCode OpCode
 	)
 {
@@ -132,13 +148,13 @@ OnPacket(
 
 	case SERVER_OPCODE_UPDATE:
 	{
-		MutexLock(&StateMutex);
+		sync_mtx_lock(&StateMutex);
 
 		++CompletedStates;
 
-		GameState* OldState = States + CurrentStateIdx;
-		CurrentStateIdx = (CurrentStateIdx + 1) % ARRAYLEN(States);
-		GameState* NewState = States + CurrentStateIdx;
+		GameState* old_state = States + CurrentStateIdx;
+		CurrentStateIdx = (CurrentStateIdx + 1) % MACRO_ARRAY_LEN(States);
+		GameState* new_state = States + CurrentStateIdx;
 
 		if(!CompletedStates)
 		{
@@ -146,55 +162,55 @@ OnPacket(
 		}
 		else
 		{
-			CompletedTime += NewState->Duration;
+			CompletedTime += new_state->Duration;
 		}
 
-		OldState->Duration = BitBufferGetBits(Buffer, FIELD_SIZE_TICK_DURATION) * 10000;
-		NewState->Duration = OldState->Duration;
+		old_state->Duration = bit_buffer_get_bits(buffer, FIELD_SIZE_TICK_DURATION) * 10000;
+		new_state->Duration = old_state->Duration;
 
 		COPY_OVER(FoV);
-		NEW_VALUE(FoV, BitBufferGetFixedPoint(Buffer, FIXED_POINT(FOV)));
+		NEW_VALUE(FoV, bit_buffer_get_fixed_point(buffer, FIXED_POINT(FOV)));
 
 		COPY_OVER(CameraX);
-		NEW_VALUE(CameraX, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(POS)));
+		NEW_VALUE(CameraX, bit_buffer_get_signed_fixed_point(buffer, FIXED_POINT(POS)));
 
 		COPY_OVER(CameraY);
-		NEW_VALUE(CameraY, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(POS)));
+		NEW_VALUE(CameraY, bit_buffer_get_signed_fixed_point(buffer, FIXED_POINT(POS)));
 
-		uint16_t Count = BitBufferGetBits(Buffer, GAME_CONST_MAX_ENTITIES__BITS);
+		uint16_t count = bit_buffer_get_bits(buffer, GAME_CONST_MAX_ENTITIES__BITS);
 
-		GameEntity* NewEntities = malloc(sizeof(*NewEntities) * Count);
-		AssertNotNull(NewEntities);
+		GameEntity* NewEntities = malloc(sizeof(*NewEntities) * count);
+		assert_not_null(NewEntities);
 
-		GameEntity* OldEntity = OldState->Entities;
+		GameEntity* OldEntity = old_state->Entities;
 		GameEntity* NewEntity = NewEntities;
 
-		for(uint16_t i = 0; i < Count; ++i)
+		for(uint16_t i = 0; i < count; ++i)
 		{
-			uint8_t OldSet = BitBufferGetBits(Buffer, 1);
-			uint8_t NewSet = BitBufferGetBits(Buffer, 1);
+			uint8_t OldSet = bit_buffer_get_bits(buffer, 1);
+			uint8_t NewSet = bit_buffer_get_bits(buffer, 1);
 
 			if(!OldSet)
 			{
 				/* Creation */
 
-				NewEntity->Type = BitBufferGetBits(Buffer, ENTITY_TYPE__BITS);
-				NewEntity->Subtype = BitBufferGetBits(Buffer, TypeToSubtypeBits[NewEntity->Type]);
+				NewEntity->type = bit_buffer_get_bits(buffer, ENTITY_TYPE__BITS);
+				NewEntity->Subtype = bit_buffer_get_bits(buffer, TypeToSubtypeBits[NewEntity->type]);
 
-				NEW_ENTITY_VALUE(X, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
-				SHIFT_OVER(X);
+				NEW_ENTITY_VALUE(x, bit_buffer_get_signed_fixed_point(buffer, FIXED_POINT(SCREEN_POS)));
+				SHIFT_OVER(x);
 
-				NEW_ENTITY_VALUE(Y, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
-				SHIFT_OVER(Y);
+				NEW_ENTITY_VALUE(y, bit_buffer_get_signed_fixed_point(buffer, FIXED_POINT(SCREEN_POS)));
+				SHIFT_OVER(y);
 
 
-				switch(NewEntity->Type)
+				switch(NewEntity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
 				{
-					NEW_ENTITY_VALUE(R, BitBufferGetFixedPoint(Buffer, FIXED_POINT(RADIUS)));
-					SHIFT_OVER(R);
+					NEW_ENTITY_VALUE(r, bit_buffer_get_fixed_point(buffer, FIXED_POINT(RADIUS)));
+					SHIFT_OVER(r);
 
 					NewEntity->MaxHP = 1000;
 					NewEntity->HPBits = 10;
@@ -204,13 +220,13 @@ OnPacket(
 
 				case ENTITY_TYPE_SHAPE:
 				{
-					NEW_ENTITY_VALUE(R, ShapeRadius[NewEntity->Subtype]);
-					SHIFT_OVER(R);
+					NEW_ENTITY_VALUE(r, ShapeRadius[NewEntity->Subtype]);
+					SHIFT_OVER(r);
 
-					NEW_ENTITY_VALUE(Rotation, RandAngle());
-					SHIFT_OVER(Rotation);
+					NEW_ENTITY_VALUE(angle, rand_angle());
+					SHIFT_OVER(angle);
 
-					NewEntity->RotationDir = RandBit() ? 1 : -1;
+					NewEntity->angleDir = rand_bool() ? 1 : -1;
 
 					NewEntity->MaxHP = ShapeMaxHP[NewEntity->Subtype];
 					NewEntity->HPBits = ShapeHPBits[NewEntity->Subtype];
@@ -223,15 +239,15 @@ OnPacket(
 				}
 
 
-				switch(NewEntity->Type)
+				switch(NewEntity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					uintptr_t WroteHP = BitBufferGetBits(Buffer, 1);
+					uintptr_t WroteHP = bit_buffer_get_bits(buffer, 1);
 
-					if(BitBufferGetBits(Buffer, 1))
+					if(bit_buffer_get_bits(buffer, 1))
 					{
 						NEW_ENTITY_VALUE(Damageness, 0.1666f);
 					}
@@ -244,7 +260,7 @@ OnPacket(
 
 					if(WroteHP)
 					{
-						NEW_ENTITY_VALUE(HP, BitBufferGetBits(Buffer, NewEntity->HPBits));
+						NEW_ENTITY_VALUE(HP, bit_buffer_get_bits(buffer, NewEntity->HPBits));
 						NEW_ENTITY_VALUE(OpacityHP, 1.0f);
 					}
 					else
@@ -272,24 +288,24 @@ OnPacket(
 
 				*NewEntity = *OldEntity;
 
-				SHIFT_OVER(X);
-				SHIFT_OVER(Y);
-				SHIFT_OVER(W);
-				SHIFT_OVER(H);
-				SHIFT_OVER(Rotation);
+				SHIFT_OVER(x);
+				SHIFT_OVER(y);
+				SHIFT_OVER(w);
+				SHIFT_OVER(h);
+				SHIFT_OVER(angle);
 				SHIFT_OVER(HP);
 				SHIFT_OVER(OpacityHP);
 				SHIFT_OVER(Damageness);
 
 
-				switch(NewEntity->Type)
+				switch(NewEntity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					NEW_ENTITY_VALUE(X, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
-					NEW_ENTITY_VALUE(Y, BitBufferGetSignedFixedPoint(Buffer, FIXED_POINT(SCREEN_POS)));
+					NEW_ENTITY_VALUE(x, bit_buffer_get_signed_fixed_point(buffer, FIXED_POINT(SCREEN_POS)));
+					NEW_ENTITY_VALUE(y, bit_buffer_get_signed_fixed_point(buffer, FIXED_POINT(SCREEN_POS)));
 
 					break;
 				}
@@ -299,26 +315,26 @@ OnPacket(
 				}
 
 
-				switch(NewEntity->Type)
+				switch(NewEntity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
 				case ENTITY_TYPE_SHAPE:
 				{
-					uintptr_t WroteHP = BitBufferGetBits(Buffer, 1);
+					uintptr_t WroteHP = bit_buffer_get_bits(buffer, 1);
 
-					if(BitBufferGetBits(Buffer, 1))
+					if(bit_buffer_get_bits(buffer, 1))
 					{
-						NEW_ENTITY_VALUE(Damageness, MIN(0.5f, NewEntity->Damageness[OLD] + 0.1666f));
+						NEW_ENTITY_VALUE(Damageness, MACRO_MIN(0.5f, NewEntity->Damageness[OLD] + 0.1666f));
 					}
 					else
 					{
-						NEW_ENTITY_VALUE(Damageness, MAX(0.0f, NewEntity->Damageness[OLD] - 0.1666f));
+						NEW_ENTITY_VALUE(Damageness, MACRO_MAX(0.0f, NewEntity->Damageness[OLD] - 0.1666f));
 					}
 
 					if(WroteHP)
 					{
-						NEW_ENTITY_VALUE(HP, BitBufferGetBits(Buffer, NewEntity->HPBits));
+						NEW_ENTITY_VALUE(HP, bit_buffer_get_bits(buffer, NewEntity->HPBits));
 					}
 
 					break;
@@ -329,7 +345,7 @@ OnPacket(
 				}
 
 
-				switch(NewEntity->Type)
+				switch(NewEntity->type)
 				{
 
 				case ENTITY_TYPE_TANK:
@@ -339,8 +355,8 @@ OnPacket(
 
 				case ENTITY_TYPE_SHAPE:
 				{
-					float Rotation = 0.001f * NewEntity->RotationDir * (250.0f / NewEntity->R[NEW]);
-					NEW_ENTITY_VALUE(Rotation, NewEntity->Rotation[OLD] + Rotation);
+					float angle = 0.001f * NewEntity->angleDir * (250.0f / NewEntity->r[NEW]);
+					NEW_ENTITY_VALUE(angle, NewEntity->angle[OLD] + angle);
 
 					break;
 				}
@@ -352,11 +368,11 @@ OnPacket(
 
 				if(NewEntity->HP[NEW] != NewEntity->MaxHP)
 				{
-					NEW_ENTITY_VALUE(OpacityHP, MIN(1.0f, NewEntity->OpacityHP[OLD] + 0.15f));
+					NEW_ENTITY_VALUE(OpacityHP, MACRO_MIN(1.0f, NewEntity->OpacityHP[OLD] + 0.15f));
 				}
 				else
 				{
-					NEW_ENTITY_VALUE(OpacityHP, MAX(0.0f, NewEntity->OpacityHP[OLD] - 0.15f));
+					NEW_ENTITY_VALUE(OpacityHP, MACRO_MAX(0.0f, NewEntity->OpacityHP[OLD] - 0.15f));
 				}
 
 				++OldEntity;
@@ -370,13 +386,13 @@ OnPacket(
 			}
 		}
 
-		AssertEQ(BitBufferGetConsumed(Buffer), Buffer->Length);
+		assert_eq(BitBufferConsumed(buffer), buffer->len);
 
-		free(NewState->Entities);
-		NewState->Entities = NewEntities;
-		NewState->EntityCount = NewEntity - NewEntities;
+		free(new_state->Entities);
+		new_state->Entities = NewEntities;
+		new_state->EntityCount = NewEntity - NewEntities;
 
-		MutexUnlock(&StateMutex);
+		sync_mtx_unlock(&StateMutex);
 
 		break;
 	}
@@ -403,41 +419,41 @@ SocketOnOpen(
 
 uint32_t
 SocketOnData(
-	uint8_t* Data,
-	uint32_t Length
+	uint8_t* data,
+	uint32_t len
 	)
 {
-	BitBuffer Buffer = {0};
-	Buffer.Buffer = Data;
-	Buffer.At = Buffer.Buffer;
-	Buffer.Length = Length;
+	bit_buffer_t buffer = {0};
+	buffer.buffer = data;
+	buffer.at = buffer.buffer;
+	buffer.len = len;
 
-	if(BitBufferGetAvailableBits(&Buffer) < SERVER_OPCODE__BITS)
+	if(bit_buffer_available_bits(&buffer) < SERVER_OPCODE__BITS)
 	{
 		return 0;
 	}
 
-	ServerOpCode OpCode = BitBufferGetBits(&Buffer, SERVER_OPCODE__BITS);
+	ServerOpCode OpCode = bit_buffer_get_bits(&buffer, SERVER_OPCODE__BITS);
 
 	switch(OpCode)
 	{
 
 	case SERVER_OPCODE_UPDATE:
 	{
-		if(BitBufferGetAvailableBits(&Buffer) < GAME_CONST_SERVER_PACKET_SIZE__BITS)
+		if(bit_buffer_available_bits(&buffer) < GAME_CONST_SERVER_PACKET_SIZE__BITS)
 		{
 			return 0;
 		}
 
-		uintptr_t Size = BitBufferGetBits(&Buffer, GAME_CONST_SERVER_PACKET_SIZE__BITS);
+		uintptr_t size = bit_buffer_get_bits(&buffer, GAME_CONST_SERVER_PACKET_SIZE__BITS);
 
-		if(Size <= Length)
+		if(size <= len)
 		{
-			Buffer.Length = Size;
+			buffer.len = size;
 
-			OnPacket(&Buffer, OpCode);
+			OnPacket(&buffer, OpCode);
 
-			return Size;
+			return size;
 		}
 
 		return 0;
@@ -458,52 +474,52 @@ SocketOnClose(
 }
 
 /*
-Static VkVertexInstanceInput* DrawInput;
-Static uint32_t DrawCount;
+private VkVertexInstanceInput* DrawInput;
+private uint32_t DrawCount;
 
 
-Static void
+private void
 DrawBar(
-	float X,
-	float Y,
-	float W,
+	float x,
+	float y,
+	float w,
 	float Scale,
 	float Opacity,
-	DrawDepth Depth
+	DrawDepth depth
 	)
 {
-	float BlackBarHalfHeight = W * 0.125f;
-	float BlackBarHalfWidth = W - BlackBarHalfHeight;
+	float BlackBarHalfHeight = w * 0.125f;
+	float BlackBarHalfWidth = w - BlackBarHalfHeight;
 	float BlackBarHeight = BlackBarHalfHeight * 2.0f;
-	float BlackBarLeft = X - BlackBarHalfWidth;
-	float BlackBarRight = X + BlackBarHalfWidth;
+	float BlackBarLeft = x - BlackBarHalfWidth;
+	float BlackBarRight = x + BlackBarHalfWidth;
 	float BlackBarMiddle = (BlackBarLeft + BlackBarRight) * 0.5f;
 
-	float Y_Pos = Y + BlackBarHalfHeight;
+	float Y_Pos = y + BlackBarHalfHeight;
 
 	float HPBarScale = 0.75f;
 	float HPBarPadding = BlackBarHalfHeight * HPBarScale;
 	float HPBarHalfHeight = BlackBarHalfHeight - HPBarPadding;
 	float HPBarHalfWidth = BlackBarHalfWidth - HPBarPadding * (1.0f - HPBarScale);
 	float HPBarHeight = HPBarHalfHeight * 2.0f;
-	float HPBarLeft = X - HPBarHalfWidth;
+	float HPBarLeft = x - HPBarHalfWidth;
 	float HPBarRight = HPBarLeft + HPBarHalfWidth * 2.0f * Scale;
 	float HPBarMiddle = (HPBarLeft + HPBarRight) * 0.5f;
 
-	float R = MIN(1.000f, (1.000f - Scale) * 2.0f);
-	float G = MIN(1.000f, Scale * 2.0f);
-	float B = 0.000f;
+	float r = MACRO_MIN(1.000f, (1.000f - Scale) * 2.0f);
+	float g = MACRO_MIN(1.000f, Scale * 2.0f);
+	float b = 0.000f;
 
 
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { HPBarMiddle, Y_Pos, DRAW_DEPTH(Depth + 4) },
-		.Color = { R, G, B, Opacity },
-		.Dimensions = { HPBarRight - HPBarLeft, HPBarHeight },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { HPBarMiddle, Y_Pos, DRAW_DEPTH(depth + 4) },
+		.color = { r, g, b, Opacity },
+		.size = { HPBarRight - HPBarLeft, HPBarHeight },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_RECT,
 		.TexIndex = TEXTURE_RECT
 	};
@@ -511,12 +527,12 @@ DrawBar(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { HPBarLeft, Y_Pos, DRAW_DEPTH(Depth + 3) },
-		.Color = { R, G, B, Opacity },
-		.Dimensions = { HPBarHeight, HPBarHeight },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { HPBarLeft, Y_Pos, DRAW_DEPTH(depth + 3) },
+		.color = { r, g, b, Opacity },
+		.size = { HPBarHeight, HPBarHeight },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
@@ -524,12 +540,12 @@ DrawBar(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { HPBarRight, Y_Pos, DRAW_DEPTH(Depth + 3) },
-		.Color = { R, G, B, Opacity },
-		.Dimensions = { HPBarHeight, HPBarHeight },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { HPBarRight, Y_Pos, DRAW_DEPTH(depth + 3) },
+		.color = { r, g, b, Opacity },
+		.size = { HPBarHeight, HPBarHeight },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
@@ -538,12 +554,12 @@ DrawBar(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { BlackBarMiddle, Y_Pos, DRAW_DEPTH(Depth + 2) },
-		.Color = { 0.000f, 0.000f, 0.000f, Opacity },
-		.Dimensions = { BlackBarRight - BlackBarLeft, BlackBarHeight },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { BlackBarMiddle, Y_Pos, DRAW_DEPTH(depth + 2) },
+		.color = { 0.000f, 0.000f, 0.000f, Opacity },
+		.size = { BlackBarRight - BlackBarLeft, BlackBarHeight },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_RECT,
 		.TexIndex = TEXTURE_RECT
 	};
@@ -551,12 +567,12 @@ DrawBar(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { BlackBarLeft, Y_Pos, DRAW_DEPTH(Depth + 1) },
-		.Color = { 0.000f, 0.000f, 0.000f, Opacity },
-		.Dimensions = { BlackBarHeight, BlackBarHeight },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { BlackBarLeft, Y_Pos, DRAW_DEPTH(depth + 1) },
+		.color = { 0.000f, 0.000f, 0.000f, Opacity },
+		.size = { BlackBarHeight, BlackBarHeight },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
@@ -564,34 +580,34 @@ DrawBar(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { BlackBarRight, Y_Pos, DRAW_DEPTH(Depth + 1) },
-		.Color = { 0.000f, 0.000f, 0.000f, Opacity },
-		.Dimensions = { BlackBarHeight, BlackBarHeight },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { BlackBarRight, Y_Pos, DRAW_DEPTH(depth + 1) },
+		.color = { 0.000f, 0.000f, 0.000f, Opacity },
+		.size = { BlackBarHeight, BlackBarHeight },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
 }
 
 
-Static float
+private float
 TextWidth(
 	const char* Text,
 	uint32_t FontSize
 	)
 {
 	const char* Char = Text;
-	uint32_t Width = 0;
+	uint32_t width = 0;
 
 	while(*Char)
 	{
-		Width += FontData[*(Char++) - ' '].Stride;
+		width += FontData[*(Char++) - ' '].Stride;
 	}
 
 	float Scale = (float) FontSize / FONT_SIZE;
-	return Width * Scale / 64.0f;
+	return width * Scale / 64.0f;
 }
 
 
@@ -611,48 +627,48 @@ typedef enum TextBaseline
 }
 TextBaseline;
 
-Static void
+private void
 DrawAText(
 	const char* Text,
-	float X,
-	float Y,
+	float x,
+	float y,
 	float Opacity,
 	uint32_t FontSize,
 	TextAlign Align,
 	TextBaseline Baseline,
-	DrawDepth Depth
+	DrawDepth depth
 	)
 {
-	X -= TextWidth(Text, FontSize) * Align * 0.5f;
-	Y += FontSize * Baseline * 0.3333f;
+	x -= TextWidth(Text, FontSize) * Align * 0.5f;
+	y += FontSize * Baseline * 0.3333f;
 
 	float Scale = (float) FontSize / FONT_SIZE;
 
 
 	const char* Char = Text;
-	float CurrentDepth = DRAW_DEPTH(Depth - 1);
-	float CurrentX = X;
+	float CurrentDepth = DRAW_DEPTH(depth - 1);
+	float CurrentX = x;
 
 	while(*Char)
 	{
-		const FontDrawData* Data = FontData + (*(Char++) - ' ');
+		const FontDrawData* data = FontData + (*(Char++) - ' ');
 
-		float Top = Data->Top  * Scale;
-		float Left = Data->Left * Scale;
-		float Stride = Data->Stride * Scale / 64.0f;
-		float Size = Data->Size * Scale;
+		float top = data->top  * Scale;
+		float left = data->left * Scale;
+		float Stride = data->Stride * Scale / 64.0f;
+		float size = data->size * Scale;
 
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { CurrentX + Size / 2 + Left, Y + Size / 2 - Top, CurrentDepth },
-			.Color = { 1.000f, 1.000f, 1.000f, Opacity },
-			.Dimensions = { Size, Size },
-			.Rotation = 0.0f,
-			.TexScale = { 1.0f, 1.0f },
-			.TexOffset = { 0.5f, 0.5f },
-			.TexRes = Data->BgTexRes,
-			.TexIndex = Data->BgTexIndex
+			.pos = { CurrentX + size / 2 + left, y + size / 2 - top, CurrentDepth },
+			.color = { 1.000f, 1.000f, 1.000f, Opacity },
+			.size = { size, size },
+			.angle = 0.0f,
+			.tex_scale = { 1.0f, 1.0f },
+			.tex_offset = { 0.5f, 0.5f },
+			.TexRes = data->BgTexRes,
+			.TexIndex = data->BgTexIndex
 		};
 
 		CurrentX += Stride;
@@ -660,29 +676,29 @@ DrawAText(
 
 
 	Char = Text;
-	CurrentDepth = DRAW_DEPTH(Depth);
-	CurrentX = X;
+	CurrentDepth = DRAW_DEPTH(depth);
+	CurrentX = x;
 
 	while(*Char)
 	{
-		const FontDrawData* Data = FontData + (*(Char++) - ' ');
+		const FontDrawData* data = FontData + (*(Char++) - ' ');
 
-		float Top = Data->Top  * Scale;
-		float Left = Data->Left * Scale;
-		float Stride = Data->Stride * Scale / 64.0f;
-		float Size = Data->Size * Scale;
+		float top = data->top  * Scale;
+		float left = data->left * Scale;
+		float Stride = data->Stride * Scale / 64.0f;
+		float size = data->size * Scale;
 
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { CurrentX + Size / 2 + Left, Y + Size / 2 - Top, CurrentDepth },
-			.Color = { 1.000f, 1.000f, 1.000f, Opacity },
-			.Dimensions = { Size, Size },
-			.Rotation = 0.0f,
-			.TexScale = { 1.0f, 1.0f },
-			.TexOffset = { 0.5f, 0.5f },
-			.TexRes = Data->TexRes,
-			.TexIndex = Data->TexIndex
+			.pos = { CurrentX + size / 2 + left, y + size / 2 - top, CurrentDepth },
+			.color = { 1.000f, 1.000f, 1.000f, Opacity },
+			.size = { size, size },
+			.angle = 0.0f,
+			.tex_scale = { 1.0f, 1.0f },
+			.tex_offset = { 0.5f, 0.5f },
+			.TexRes = data->TexRes,
+			.TexIndex = data->TexIndex
 		};
 
 		CurrentX += Stride;
@@ -690,38 +706,38 @@ DrawAText(
 }
 
 
-DrawData
+window_draw_event_data_t
 VulkanGetDrawData___(
 	void
 	)
 {
 	DrawCount = 0;
 
-	if(CompletedStates == -1 || CompletedStates < ARRAYLEN(States))
+	if(CompletedStates == -1 || CompletedStates < MACRO_ARRAY_LEN(States))
 	{
 		return
-		(DrawData)
+		(window_draw_event_data_t)
 		{
 			.Input = DrawInput,
-			.Count = DrawCount
+			.count = DrawCount
 		};
 	}
 
-	MutexLock(&StateMutex);
+	sync_mtx_lock(&StateMutex);
 
-	uintptr_t OldestStateIdx = (CurrentStateIdx + 1) % ARRAYLEN(States);
+	uintptr_t OldestStateIdx = (CurrentStateIdx + 1) % MACRO_ARRAY_LEN(States);
 	GameState* OldestState = States + OldestStateIdx;
 
 	uint64_t TotalTime = 0;
 
-	GameState* State = States;
-	GameState* StateEnd = State + ARRAYLEN(States);
+	GameState* state = States;
+	GameState* StateEnd = state + MACRO_ARRAY_LEN(States);
 
 	do
 	{
-		TotalTime += State->Duration;
+		TotalTime += state->Duration;
 	}
-	while(++State != StateEnd);
+	while(++state != StateEnd);
 
 	static uint64_t DrawAt = 0;
 	static uint64_t LastDrawAt = 0;
@@ -736,34 +752,34 @@ VulkanGetDrawData___(
 	DrawAt += Now - LastDrawAt;
 	LastDrawAt = Now;
 
-	DrawAt = MAX(MIN(DrawAt, CompletedTime + TotalTime), CompletedTime);
+	DrawAt = MACRO_MAX(MACRO_MIN(DrawAt, CompletedTime + TotalTime), CompletedTime);
 	uint64_t StepAt = DrawAt - CompletedTime;
 
 	uintptr_t StateIdx = OldestStateIdx;
-	State = OldestState;
+	state = OldestState;
 
-	while(StepAt > State->Duration)
+	while(StepAt > state->Duration)
 	{
-		StepAt -= State->Duration;
-		StateIdx = (StateIdx + 1) % ARRAYLEN(States);
-		State = States + StateIdx;
+		StepAt -= state->Duration;
+		StateIdx = (StateIdx + 1) % MACRO_ARRAY_LEN(States);
+		state = States + StateIdx;
 	}
 
-	float Scale = (float)((double) StepAt / (double) State->Duration);
+	float Scale = (float)((double) StepAt / (double) state->Duration);
 
-	float FoV = LERP(State->FoV);
-	float CameraX = LERP(State->CameraX);
-	float CameraY = LERP(State->CameraY);
+	float FoV = LERP(state->FoV);
+	float CameraX = LERP(state->CameraX);
+	float CameraY = LERP(state->CameraY);
 
 	float TileSize = GAME_CONST_TILE_SIZE;
 	float ScaledTileSize = TileSize * FoV;
 	float XMod = fmodf(CameraX, TileSize) / TileSize;
 	float YMod = fmodf(CameraY, TileSize) / TileSize;
 
-	float ArenaMinX = MAX(-960.0f, (-GAME_CONST_HALF_ARENA_SIZE - CameraX) * FoV);
-	float ArenaMinY = MAX(-540.0f, (-GAME_CONST_HALF_ARENA_SIZE - CameraY) * FoV);
-	float ArenaMaxX = MIN(960.0f, (GAME_CONST_HALF_ARENA_SIZE - CameraX) * FoV);
-	float ArenaMaxY = MIN(540.0f, (GAME_CONST_HALF_ARENA_SIZE - CameraY) * FoV);
+	float ArenaMinX = MACRO_MAX(-960.0f, (-GAME_CONST_HALF_ARENA_SIZE - CameraX) * FoV);
+	float ArenaMinY = MACRO_MAX(-540.0f, (-GAME_CONST_HALF_ARENA_SIZE - CameraY) * FoV);
+	float ArenaMaxX = MACRO_MIN(960.0f, (GAME_CONST_HALF_ARENA_SIZE - CameraX) * FoV);
+	float ArenaMaxY = MACRO_MIN(540.0f, (GAME_CONST_HALF_ARENA_SIZE - CameraY) * FoV);
 
 	if(ArenaMinX != ArenaMaxX && ArenaMinY != ArenaMaxY)
 	{
@@ -777,12 +793,12 @@ VulkanGetDrawData___(
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { ArenaX, ArenaY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
-			.Color = { 1.0f, 1.0f, 1.0f, 1.0f },
-			.Dimensions = { ArenaWidth, ArenaHeight },
-			.Rotation = 0,
-			.TexScale = { ArenaWidth / ScaledTileSize, ArenaHeight / ScaledTileSize },
-			.TexOffset = { ScaledXMod, ScaledYMod },
+			.pos = { ArenaX, ArenaY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
+			.color = { 1.0f, 1.0f, 1.0f, 1.0f },
+			.size = { ArenaWidth, ArenaHeight },
+			.angle = 0,
+			.tex_scale = { ArenaWidth / ScaledTileSize, ArenaHeight / ScaledTileSize },
+			.tex_offset = { ScaledXMod, ScaledYMod },
 			.TexRes = TEXTURE_RESOLUTION_BG_LIGHT,
 			.TexIndex = TEXTURE_BG_LIGHT
 		};
@@ -805,12 +821,12 @@ VulkanGetDrawData___(
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
-			.Color = { 1.0f, 1.0f, 1.0f, 1.0f },
-			.Dimensions = { BorderWidth, BorderHeight },
-			.Rotation = 0,
-			.TexScale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
-			.TexOffset = { ScaledXMod, ScaledYMod },
+			.pos = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
+			.color = { 1.0f, 1.0f, 1.0f, 1.0f },
+			.size = { BorderWidth, BorderHeight },
+			.angle = 0,
+			.tex_scale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
+			.tex_offset = { ScaledXMod, ScaledYMod },
 			.TexRes = TEXTURE_RESOLUTION_BG_DARK,
 			.TexIndex = TEXTURE_BG_DARK
 		};
@@ -833,12 +849,12 @@ VulkanGetDrawData___(
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
-			.Color = { 1.0f, 1.0f, 1.0f, 1.0f },
-			.Dimensions = { BorderWidth, BorderHeight },
-			.Rotation = 0,
-			.TexScale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
-			.TexOffset = { ScaledXMod, ScaledYMod },
+			.pos = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
+			.color = { 1.0f, 1.0f, 1.0f, 1.0f },
+			.size = { BorderWidth, BorderHeight },
+			.angle = 0,
+			.tex_scale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
+			.tex_offset = { ScaledXMod, ScaledYMod },
 			.TexRes = TEXTURE_RESOLUTION_BG_DARK,
 			.TexIndex = TEXTURE_BG_DARK
 		};
@@ -861,12 +877,12 @@ VulkanGetDrawData___(
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
-			.Color = { 1.0f, 1.0f, 1.0f, 1.0f },
-			.Dimensions = { BorderWidth, BorderHeight },
-			.Rotation = 0,
-			.TexScale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
-			.TexOffset = { ScaledXMod, ScaledYMod },
+			.pos = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
+			.color = { 1.0f, 1.0f, 1.0f, 1.0f },
+			.size = { BorderWidth, BorderHeight },
+			.angle = 0,
+			.tex_scale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
+			.tex_offset = { ScaledXMod, ScaledYMod },
 			.TexRes = TEXTURE_RESOLUTION_BG_DARK,
 			.TexIndex = TEXTURE_BG_DARK
 		};
@@ -889,30 +905,30 @@ VulkanGetDrawData___(
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
-			.Color = { 1.0f, 1.0f, 1.0f, 1.0f },
-			.Dimensions = { BorderWidth, BorderHeight },
-			.Rotation = 0,
-			.TexScale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
-			.TexOffset = { ScaledXMod, ScaledYMod },
+			.pos = { BorderX, BorderY, DRAW_DEPTH(DRAW_DEPTH_BACKGROUND) },
+			.color = { 1.0f, 1.0f, 1.0f, 1.0f },
+			.size = { BorderWidth, BorderHeight },
+			.angle = 0,
+			.tex_scale = { BorderWidth / ScaledTileSize, BorderHeight / ScaledTileSize },
+			.tex_offset = { ScaledXMod, ScaledYMod },
 			.TexRes = TEXTURE_RESOLUTION_BG_DARK,
 			.TexIndex = TEXTURE_BG_DARK
 		};
 	}
 
-	GameEntity* Entity = State->Entities;
-	GameEntity* EntityEnd = Entity + State->EntityCount;
+	GameEntity* Entity = state->Entities;
+	GameEntity* EntityEnd = Entity + state->EntityCount;
 
 	typedef struct EntityDrawData
 	{
-		float X;
-		float Y;
-		float W;
-		float H;
+		float x;
+		float y;
+		float w;
+		float h;
 
-		DrawDepth Depth;
+		DrawDepth depth;
 
-		float Rotation;
+		float angle;
 
 		float HPScale;
 		float OpacityHP;
@@ -922,29 +938,29 @@ VulkanGetDrawData___(
 		uint32_t TexRes;
 		uint32_t TexIndex;
 
-		float R;
-		float G;
-		float B;
+		float r;
+		float g;
+		float b;
 		float A;
 	}
 	EntityDrawData;
 
-	EntityDrawData EntityData[State->EntityCount];
-	EntityDrawData* Data = EntityData;
+	EntityDrawData EntityData[state->EntityCount];
+	EntityDrawData* data = EntityData;
 
 	while(Entity != EntityEnd)
 	{
-		Data->X = LERP(Entity->X);
-		Data->Y = LERP(Entity->Y);
-		Data->W = LERP(Entity->W);
+		data->x = LERP(Entity->x);
+		data->y = LERP(Entity->y);
+		data->w = LERP(Entity->w);
 
-		switch(Entity->Type)
+		switch(Entity->type)
 		{
 
 		case ENTITY_TYPE_TANK:
 		case ENTITY_TYPE_SHAPE:
 		{
-			Data->H = Data->W;
+			data->h = data->w;
 
 			break;
 		}
@@ -954,37 +970,37 @@ VulkanGetDrawData___(
 		}
 
 
-		Data->W *= FoV;
-		Data->H *= FoV;
+		data->w *= FoV;
+		data->h *= FoV;
 
-		Data->Rotation =
-			Entity->Rotation[OLD] + ShortestAngleDifference(Entity->Rotation[OLD], Entity->Rotation[NEW]) * Scale;
+		data->angle =
+			Entity->angle[OLD] + ShortestAngleDifference(Entity->angle[OLD], Entity->angle[NEW]) * Scale;
 
-		Data->HPScale = LERP(Entity->HP) / Entity->MaxHP;
-		Data->OpacityHP = LERP(Entity->OpacityHP);
+		data->HPScale = LERP(Entity->HP) / Entity->MaxHP;
+		data->OpacityHP = LERP(Entity->OpacityHP);
 
-		Data->Damageness = LERP(Entity->Damageness);
+		data->Damageness = LERP(Entity->Damageness);
 
-		Data->A = 1.000f;
+		data->A = 1.000f;
 
 
-		switch(Entity->Type)
+		switch(Entity->type)
 		{
 
 		case ENTITY_TYPE_TANK:
 		{
-			Data->Depth = DRAW_DEPTH_TANK;
+			data->depth = DRAW_DEPTH_TANK;
 
-			Data->R = 0.000f;
-			Data->G = 0.450f;
-			Data->B = 0.750f;
+			data->r = 0.000f;
+			data->g = 0.450f;
+			data->b = 0.750f;
 
-			Data->TexRes = TEXTURE_RESOLUTION_TANK;
-			Data->TexIndex = TEXTURE_TANK;
+			data->TexRes = TEXTURE_RESOLUTION_TANK;
+			data->TexIndex = TEXTURE_TANK;
 
 			DrawAText("23.5k",
-				Data->X,
-				Data->Y - Data->H - 4,
+				data->x,
+				data->y - data->h - 4,
 				1.0f,
 				16,
 				TEXT_ALIGN_CENTER,
@@ -992,8 +1008,8 @@ VulkanGetDrawData___(
 				DRAW_DEPTH_TEST1);
 
 			DrawAText("Shadam",
-				Data->X,
-				Data->Y - Data->H - 20,
+				data->x,
+				data->y - data->h - 20,
 				1.0f,
 				32,
 				TEXT_ALIGN_CENTER,
@@ -1005,43 +1021,43 @@ VulkanGetDrawData___(
 
 		case ENTITY_TYPE_SHAPE:
 		{
-			Data->Depth = DRAW_DEPTH_SHAPE;
+			data->depth = DRAW_DEPTH_SHAPE;
 
 			switch(Entity->Subtype)
 			{
 
 			case SHAPE_SQUARE:
 			{
-				Data->TexRes = TEXTURE_RESOLUTION_SQUARE;
-				Data->TexIndex = TEXTURE_SQUARE;
+				data->TexRes = TEXTURE_RESOLUTION_SQUARE;
+				data->TexIndex = TEXTURE_SQUARE;
 
-				Data->R = 1.000f;
-				Data->G = 0.800f;
-				Data->B = 0.200f;
+				data->r = 1.000f;
+				data->g = 0.800f;
+				data->b = 0.200f;
 
 				break;
 			}
 
 			case SHAPE_TRIANGLE:
 			{
-				Data->TexRes = TEXTURE_RESOLUTION_TRIANGLE;
-				Data->TexIndex = TEXTURE_TRIANGLE;
+				data->TexRes = TEXTURE_RESOLUTION_TRIANGLE;
+				data->TexIndex = TEXTURE_TRIANGLE;
 
-				Data->R = 1.000f;
-				Data->G = 0.250f;
-				Data->B = 0.250f;
+				data->r = 1.000f;
+				data->g = 0.250f;
+				data->b = 0.250f;
 
 				break;
 			}
 
 			case SHAPE_PENTAGON:
 			{
-				Data->TexRes = TEXTURE_RESOLUTION_PENTAGON;
-				Data->TexIndex = TEXTURE_PENTAGON;
+				data->TexRes = TEXTURE_RESOLUTION_PENTAGON;
+				data->TexIndex = TEXTURE_PENTAGON;
 
-				Data->R = 0.150f;
-				Data->G = 0.200f;
-				Data->B = 1.000f;
+				data->r = 0.150f;
+				data->g = 0.200f;
+				data->b = 1.000f;
 
 				break;
 			}
@@ -1058,41 +1074,41 @@ VulkanGetDrawData___(
 		}
 
 
-		Data->R = LerpF(Data->R, 1.000f, Data->Damageness);
-		Data->B = LerpF(Data->B, 0.000f, Data->Damageness);
-		Data->G = LerpF(Data->G, 0.000f, Data->Damageness);
+		data->r = LerpF(data->r, 1.000f, data->Damageness);
+		data->b = LerpF(data->b, 0.000f, data->Damageness);
+		data->g = LerpF(data->g, 0.000f, data->Damageness);
 
 
 		DrawInput[DrawCount++] =
 		(VkVertexInstanceInput)
 		{
-			.Position = { Data->X, Data->Y, DRAW_DEPTH(Data->Depth) },
-			.Color = { Data->R, Data->G, Data->B, Data->A },
-			.Dimensions = { Data->W * 2.0f, Data->H * 2.0f },
-			.Rotation = Data->Rotation,
-			.TexScale = { 1.0f, 1.0f },
-			.TexOffset = { 0.5f, 0.5f },
-			.TexRes = Data->TexRes,
-			.TexIndex = Data->TexIndex
+			.pos = { data->x, data->y, DRAW_DEPTH(data->depth) },
+			.color = { data->r, data->g, data->b, data->A },
+			.size = { data->w * 2.0f, data->h * 2.0f },
+			.angle = data->angle,
+			.tex_scale = { 1.0f, 1.0f },
+			.tex_offset = { 0.5f, 0.5f },
+			.TexRes = data->TexRes,
+			.TexIndex = data->TexIndex
 		};
 
 
 		++Entity;
-		++Data;
+		++data;
 	}
 
-	Data = EntityData;
-	EntityDrawData* DataEnd = EntityData + ARRAYLEN(EntityData);
+	data = EntityData;
+	EntityDrawData* data_end = EntityData + MACRO_ARRAY_LEN(EntityData);
 
-	while(Data != DataEnd)
+	while(data != data_end)
 	{
-		if(Data->OpacityHP != 0.0f)
+		if(data->OpacityHP != 0.0f)
 		{
-			AssertEQ(Data->W, Data->H);
-			DrawBar(Data->X, Data->Y + Data->H + 1.0f, Data->W, Data->HPScale, Data->OpacityHP, Data->Depth);
+			assert_eq(data->w, data->h);
+			DrawBar(data->x, data->y + data->h + 1.0f, data->w, data->HPScale, data->OpacityHP, data->depth);
 		}
 
-		++Data;
+		++data;
 	}
 
 
@@ -1108,12 +1124,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX, MinimapY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_RECT) },
-		.Color = { 1.000f, 1.000f, 1.000f, 0.1f },
-		.Dimensions = { MinimapSize, MinimapSize },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX, MinimapY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_RECT) },
+		.color = { 1.000f, 1.000f, 1.000f, 0.1f },
+		.size = { MinimapSize, MinimapSize },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_RECT,
 		.TexIndex = TEXTURE_RECT
 	};
@@ -1122,12 +1138,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX - MinimapHalfSize, MinimapY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapBorder, MinimapSize },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX - MinimapHalfSize, MinimapY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapBorder, MinimapSize },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_RECT,
 		.TexIndex = TEXTURE_RECT
 	};
@@ -1135,12 +1151,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX + MinimapHalfSize, MinimapY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapBorder, MinimapSize },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX + MinimapHalfSize, MinimapY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapBorder, MinimapSize },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_RECT,
 		.TexIndex = TEXTURE_RECT
 	};
@@ -1148,12 +1164,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX, MinimapY - MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapSize, MinimapBorder },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX, MinimapY - MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapSize, MinimapBorder },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_RECT,
 		.TexIndex = TEXTURE_RECT
 	};
@@ -1161,12 +1177,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX, MinimapY + MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapSize, MinimapBorder },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX, MinimapY + MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_BORDER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapSize, MinimapBorder },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_RECT,
 		.TexIndex = TEXTURE_RECT
 	};
@@ -1175,12 +1191,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX - MinimapHalfSize, MinimapY - MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapBorder, MinimapBorder },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX - MinimapHalfSize, MinimapY - MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapBorder, MinimapBorder },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
@@ -1188,12 +1204,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX + MinimapHalfSize, MinimapY - MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapBorder, MinimapBorder },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX + MinimapHalfSize, MinimapY - MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapBorder, MinimapBorder },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
@@ -1201,12 +1217,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX - MinimapHalfSize, MinimapY + MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapBorder, MinimapBorder },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX - MinimapHalfSize, MinimapY + MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapBorder, MinimapBorder },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
@@ -1214,12 +1230,12 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX + MinimapHalfSize, MinimapY + MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
-		.Color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
-		.Dimensions = { MinimapBorder, MinimapBorder },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX + MinimapHalfSize, MinimapY + MinimapHalfSize, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_CORNER) },
+		.color = { MinimapColor, MinimapColor, MinimapColor, 1.0f },
+		.size = { MinimapBorder, MinimapBorder },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
@@ -1231,24 +1247,24 @@ VulkanGetDrawData___(
 	DrawInput[DrawCount++] =
 	(VkVertexInstanceInput)
 	{
-		.Position = { MinimapX + MinimapCameraX, MinimapY + MinimapCameraY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_INDICATOR) },
-		.Color = { 0.100f, 0.100f, 0.100f, 1.0f },
-		.Dimensions = { 6.0f, 6.0f },
-		.Rotation = 0.0f,
-		.TexScale = { 1.0f, 1.0f },
-		.TexOffset = { 0.5f, 0.5f },
+		.pos = { MinimapX + MinimapCameraX, MinimapY + MinimapCameraY, DRAW_DEPTH(DRAW_DEPTH_MINIMAP_INDICATOR) },
+		.color = { 0.100f, 0.100f, 0.100f, 1.0f },
+		.size = { 6.0f, 6.0f },
+		.angle = 0.0f,
+		.tex_scale = { 1.0f, 1.0f },
+		.tex_offset = { 0.5f, 0.5f },
 		.TexRes = TEXTURE_RESOLUTION_CIRCLE,
 		.TexIndex = TEXTURE_CIRCLE
 	};
 
 
-	MutexUnlock(&StateMutex);
+	sync_mtx_unlock(&StateMutex);
 
 	return
-	(DrawData)
+	(window_draw_event_data_t)
 	{
 		.Input = DrawInput,
-		.Count = DrawCount
+		.count = DrawCount
 	};
 }
 
@@ -1258,66 +1274,66 @@ VulkanGetDrawData___(
 /*
 void
 UIOnKeyDown(
-	UIKey Key
+	UIKey key
 	)
 {
-	(void) Key;
+	(void) key;
 }
 
 
 void
 UIOnKeyUp(
-	UIKey Key
+	UIKey key
 	)
 {
-	(void) Key;
+	(void) key;
 }
 
 
 void
 UIOnMouseDown(
-	UIMouseDownEventData* Data
+	UIMouseDownEventData* data
 	)
 {
-	(void) Data;
+	(void) data;
 }
 
 
 void
 UIOnMouseUp(
-	UIMouseUpEventData* Data
+	UIMouseUpEventData* data
 	)
 {
-	(void) Data;
+	(void) data;
 }
 
 
 void
 UIOnMouseMove(
-	UIMouseMoveEventData* Data
+	UIMouseMoveEventData* data
 	)
 {
-	//printf("game mousemove %f %f\n", X, Y);
+	//printf("game mousemove %f %f\n", x, y);
 }
 
 
 void
 UIOnMouseScroll(
-	UIMouseScrollEventData* Data
+	UIMouseScrollEventData* data
 	)
 {
-	printf("game mousescroll %f\n", Data->OffsetY);
+	printf("game mousescroll %f\n", data->offset_y);
 }
 */
 
 
 void
 WindowOnResize(
-	float Width,
-	float Height
+	float width,
+	float height
 	)
 {
-	printf("window resize %f %f\n", Width, Height);
+	printf("window resize %f %f\n", width, height);
 }
 
 
@@ -1341,22 +1357,22 @@ WindowOnBlur(
 
 void
 WindowOnKeyDown(
-	int Key,
-	int Mods,
-	int Repeat
+	int key,
+	int mods,
+	int repeat
 	)
 {
-	printf("window keydown %d %d %d\n", Key, Mods, Repeat);
+	printf("window keydown %d %d %d\n", key, mods, repeat);
 }
 
 
 void
 WindowOnKeyUp(
-	int Key,
-	int Mods
+	int key,
+	int mods
 	)
 {
-	printf("window keyup %d %d\n", Key, Mods);
+	printf("window keyup %d %d\n", key, mods);
 }
 
 
@@ -1371,113 +1387,113 @@ WindowOnText(
 
 void
 WindowOnMouseDown(
-	int Button
+	int button
 	)
 {
-	printf("window mousedown %d\n", Button);
+	printf("window mousedown %d\n", button);
 }
 
 
 void
 lmfao(
 	void* null,
-	WindowMouseDownData* Data
+	window_mouse_down_event_data_t* data
 	)
 {
-	printf("window mousedown %d %.02f %.02f %hhu\n", Data->Button, Data->Position.X, Data->Position.Y, Data->Clicks);
+	printf("window mousedown %d %.02f %.02f %hhu\n", data->button, data->pos.x, data->pos.y, data->clicks);
 }
 
 void
 lol(
 	void* null,
-	WindowMouseMoveData* Data
+	window_mouse_move_event_data_t* data
 	)
 {
-	// printf("window mousemove old %.02f %.02f new %.02f %.02f\n", Data->OldPosition.X, Data->OldPosition.Y, Data->NewPosition.X, Data->NewPosition.Y);
+	// printf("window mousemove old %.02f %.02f new %.02f %.02f\n", data->old_pos.x, data->old_pos.y, data->new_pos.x, data->new_pos.y);
 }
 
 void
 hehe(
 	void* null,
-	WindowResizeData* Data
+	window_resize_event_data_t* data
 	)
 {
-	printf("window resize old %.02f %.02f new %.02f %.02f\n", Data->OldSize.W, Data->OldSize.H, Data->NewSize.W, Data->NewSize.H);
+	printf("window resize old %.02f %.02f new %.02f %.02f\n", data->old_size.w, data->old_size.h, data->new_size.w, data->new_size.h);
 }
 
 
 void
 hihi(
 	void* null,
-	UIResizeData* Data
+	UIResizeData* data
 	)
 {
-	printf("    ui resize old %.02f %.02f new %.02f %.02f\n", Data->OldSize.W, Data->OldSize.H, Data->NewSize.W, Data->NewSize.H);
+	printf("    ui resize old %.02f %.02f new %.02f %.02f\n", data->old_size.w, data->old_size.h, data->new_size.w, data->new_size.h);
 }
 
 
 void
 WindowOnMouseUp(
-	int Button
+	int button
 	)
 {
-	printf("window mouseup %d\n", Button);
+	printf("window mouseup %d\n", button);
 }
 
 
 void
 WindowOnMouseMove(
-	float X,
-	float Y
+	float x,
+	float y
 	)
 {
-	printf("window mousemove %f %f\n", X, Y);
+	printf("window mousemove %f %f\n", x, y);
 }
 
 
 void
 WindowOnMouseScroll(
-	float OffsetY
+	float offset_y
 	)
 {
-	printf("window mousescroll %f\n", OffsetY);
+	printf("window mousescroll %f\n", offset_y);
 }
 
 
-DrawData
+window_draw_event_data_t
 VulkanGetDrawData(
 	void
 	)
 {
-	return (DrawData){0};
+	return (window_draw_event_data_t){0};
 }
 
 
-Static void
+private void
 GameInit(
 	void
 	)
 {
-	MutexInit(&StateMutex);
+	sync_mtx_init(&StateMutex);
 
-	SeedRand(WindowGetTime());
+	rand_set_seed(WindowGetTime());
 
-	EventListen(&WindowMouseDownTarget, (void*) lmfao, NULL);
-	EventListen(&WindowMouseMoveTarget, (void*) lol, NULL);
-	EventListen(&WindowResizeTarget, (void*) hehe, NULL);
+	event_target_add(&window_mouse_down_target, (void*) lmfao, NULL);
+	event_target_add(&window_mouse_move_target, (void*) lol, NULL);
+	event_target_add(&window_resize_target, (void*) hehe, NULL);
 }
 
 
-Static void
+private void
 GameFree(
 	void
 	)
 {
-	MutexDestroy(&StateMutex);
+	sync_mtx_free(&StateMutex);
 }
 
 
-Static void
+private void
 CreateUI(
 	void
 	)
@@ -1501,7 +1517,7 @@ CreateUI(
 		(UIElementInfo)
 		{
 			.BorderRadius = 10.0f,
-			.BorderColor = (ARGB){ 0x80D0D0D0 },
+			.BorderColor = (color_argb_t){ 0x80D0D0D0 },
 			.Opacity = 0xFF,
 
 			.AlignX = UI_ALIGN_CENTER,
@@ -1514,8 +1530,8 @@ CreateUI(
 			.AutoW = true,
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0x80D0D0D0 },
-			.Texture = TEXTURE_RECT
+			.white_color = (color_argb_t){ 0x80D0D0D0 },
+			.tex = TEXTURE_RECT
 		}
 		);
 
@@ -1525,16 +1541,16 @@ CreateUI(
 		(UIElementInfo)
 		{
 			.Margin =
-			(HalfExtent)
+			(half_extent_t)
 			{
-				.Top = 5.0f,
-				.Left = 5.0f,
-				.Right = 5.0f,
-				.Bottom = 5.0f
+				.top = 5.0f,
+				.left = 5.0f,
+				.right = 5.0f,
+				.bottom = 5.0f
 			},
 
 			.BorderRadius = 5.0f,
-			.BorderColor = (ARGB){ 0xFFFF1080 },
+			.BorderColor = (color_argb_t){ 0xFFFF1080 },
 			.Opacity = 0xFF,
 
 			.AlignX = UI_ALIGN_LEFT,
@@ -1547,8 +1563,8 @@ CreateUI(
 			.AutoW = true,
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0xFFFF1080 },
-			.Texture = TEXTURE_RECT
+			.white_color = (color_argb_t){ 0xFFFF1080 },
+			.tex = TEXTURE_RECT
 		}
 		);
 
@@ -1577,18 +1593,18 @@ CreateUI(
 		(UIElementInfo)
 		{
 			.Extent =
-			(HalfExtent)
+			(half_extent_t)
 			{
-				.W = 10.0f,
-				.H = 10.0f
+				.w = 10.0f,
+				.h = 10.0f
 			},
 			.Margin =
-			(HalfExtent)
+			(half_extent_t)
 			{
-				.Top = 5.0f,
-				.Left = 5.0f,
-				.Right = 5.0f,
-				.Bottom = 5.0f
+				.top = 5.0f,
+				.left = 5.0f,
+				.right = 5.0f,
+				.bottom = 5.0f
 			},
 
 			.BorderRadius = 10.0f,
@@ -1601,11 +1617,11 @@ CreateUI(
 		{
 			.Checked = true,
 
-			.CheckYes = (ARGB){ 0xFF00FF00 },
-			.CheckYesBackground = (ARGB){ 0xFFFFFFFF },
+			.CheckYes = (color_argb_t){ 0xFF00FF00 },
+			.CheckYesBackground = (color_argb_t){ 0xFFFFFFFF },
 
-			.CheckNo = (ARGB){ 0xFFFF0000 },
-			.CheckNoBackground = (ARGB){ 0xFFFFFFFF }
+			.CheckNo = (color_argb_t){ 0xFFFF0000 },
+			.CheckNoBackground = (color_argb_t){ 0xFFFFFFFF }
 		}
 		);
 
@@ -1615,18 +1631,18 @@ CreateUI(
 		(UIElementInfo)
 		{
 			.Extent =
-			(HalfExtent)
+			(half_extent_t)
 			{
-				.W = 0.0f,
-				.H = 0.0f
+				.w = 0.0f,
+				.h = 0.0f
 			},
 			.Margin =
-			(HalfExtent)
+			(half_extent_t)
 			{
-				.Top = 5.0f,
-				.Left = 5.0f,
-				.Right = 5.0f,
-				.Bottom = 5.0f
+				.top = 5.0f,
+				.left = 5.0f,
+				.right = 5.0f,
+				.bottom = 5.0f
 			},
 
 			.BorderRadius = 15.0f,
@@ -1639,11 +1655,11 @@ CreateUI(
 		{
 			.Checked = true,
 
-			.CheckYes = (ARGB){ 0xFF00FF00 },
-			.CheckYesBackground = (ARGB){ 0xFFFFFFFF },
+			.CheckYes = (color_argb_t){ 0xFF00FF00 },
+			.CheckYesBackground = (color_argb_t){ 0xFFFFFFFF },
 
-			.CheckNo = (ARGB){ 0xFFFF0000 },
-			.CheckNoBackground = (ARGB){ 0xFFFFFFFF }
+			.CheckNo = (color_argb_t){ 0xFFFF0000 },
+			.CheckNoBackground = (color_argb_t){ 0xFFFFFFFF }
 		}
 		);
 
@@ -1654,12 +1670,12 @@ CreateUI(
 	UIElement* T = UIGetElement();
 	*T = (UIElement)
 	{
-		.Type = UI_TYPE_TEXT,
+		.type = UI_TYPE_TEXT,
 		.Text =
 		(UIText)
 		{
 			.Codepoints = Codes,
-			.Length = ARRAYLEN(Codes),
+			.len = MACRO_ARRAY_LEN(Codes),
 			.MaxWidth = 120.0f,
 			.FontSize = 100.0f
 		}
@@ -1674,13 +1690,13 @@ CreateUI(
 	for(uint32_t i = 0; i < T->Text.LineCount; ++i)
 	{
 		UITextLine* Line = T->Text.Lines[i];
-		printf("line #%u: %u glyphs\n", i + 1, Line->Length);
+		printf("line #%u: %u glyphs\n", i + 1, Line->len);
 
-		for(uint32_t j = 0; j < Line->Length; ++j)
+		for(uint32_t j = 0; j < Line->len; ++j)
 		{
 			UITextGlyph* Glyph = Line->Glyphs + j;
-			printf("glyph #%u: { Top: %.02f, Left: %.02f, Stride: %.02f, Size: %.02f, Texture: { Index: %hu, Layer: %hu } }\n",
-				j + 1, Glyph->Top, Glyph->Left, Glyph->Stride, Glyph->Size, Glyph->Texture.Index, Glyph->Texture.Layer);
+			printf("glyph #%u: { top: %.02f, left: %.02f, Stride: %.02f, size: %.02f, tex: { idx: %hu, layer: %hu } }\n",
+				j + 1, Glyph->top, Glyph->left, Glyph->Stride, Glyph->size, Glyph->tex.idx, Glyph->tex.layer);
 		}
 
 		puts("");
@@ -1691,7 +1707,7 @@ CreateUI(
 	/*IHandle m1 = ICreateContainer(
 		&((IElement)
 		{
-			.H = 300.0f,
+			.h = 300.0f,
 
 			.BorderTop = 10.0f,
 			.BorderLeft = 10.0f,
@@ -1699,7 +1715,7 @@ CreateUI(
 			.BorderBottom = 10.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0x333333FF },
+			.BorderColor = (color_argb_t){ 0x333333FF },
 
 			.AlignX = UI_ALIGN_CENTER,
 			.AlignY = UI_ALIGN_MIDDLE,
@@ -1713,17 +1729,17 @@ CreateUI(
 			.AutoW = true,
 			.Scrollable = true,
 
-			.WhiteColor = (ARGB){ 0x333333FF },
-			.Texture = TEXTURE_RECT,
-			.ScrollbarColor = (ARGB){ 0xFFAAAAAA },
-			.ScrollbarAltColor = (ARGB){ 0xFF717171 },
+			.white_color = (color_argb_t){ 0x333333FF },
+			.tex = TEXTURE_RECT,
+			.ScrollbarColor = (color_argb_t){ 0xFFAAAAAA },
+			.ScrollbarAltColor = (color_argb_t){ 0xFF717171 },
 		})
 	);
 
 	IHandle t1 = ICreateText(
 		&((IElement)
 		{
-			.W = 1900.0f,
+			.w = 1900.0f,
 
 			.MarginTop = 5.0f,
 			.MarginLeft = 10.0f,
@@ -1739,8 +1755,8 @@ CreateUI(
 		{
 			.AutoH = true,
 
-			.WhiteColor = (ARGB){ 0xFFDDDDDD },
-			.Texture = TEXTURE_RECT
+			.white_color = (color_argb_t){ 0xFFDDDDDD },
+			.tex = TEXTURE_RECT
 		}),
 		&((IText)
 		{
@@ -1752,20 +1768,20 @@ CreateUI(
 			.Selectable = true,
 			.Editable = true,
 
-			.Stroke = (ARGB){ 0xFF000000 },
-			.InverseStroke = (ARGB){ 0xFFFFFFFF },
-			.Fill = (ARGB){ 0xFFFFFFFF },
-			.InverseFill = (ARGB){ 0xFF000000 },
-			.Background = (ARGB){ 0xA0000000 },
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.InverseStroke = (color_argb_t){ 0xFFFFFFFF },
+			.Fill = (color_argb_t){ 0xFFFFFFFF },
+			.InverseFill = (color_argb_t){ 0xFF000000 },
+			.Background = (color_argb_t){ 0xA0000000 },
 
-			.Type = I_TEXT_TYPE_MULTILINE_TEXT,
-			.Data =
+			.type = I_TEXT_TYPE_MULTILINE_TEXT,
+			.data =
 			(ITextData)
 			{
 				.HexColor =
 				(ITextHexColor)
 				{
-					{ .ARGB = 0x87654321 }
+					{ .color_argb_t = 0x87654321 }
 				}
 			}
 		})
@@ -1795,19 +1811,19 @@ CreateUI(
 			.Selectable = true,
 			.Editable = true,
 
-			.Stroke = (ARGB){ 0xFF000000 },
-			.InverseStroke = (ARGB){ 0xFFFFFFFF },
-			.Fill = (ARGB){ 0xFFFFFF20 },
-			.InverseFill = (ARGB){ 0xFF000020 },
-			.Background = (ARGB){ 0xA0000000 }
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.InverseStroke = (color_argb_t){ 0xFFFFFFFF },
+			.Fill = (color_argb_t){ 0xFFFFFF20 },
+			.InverseFill = (color_argb_t){ 0xFF000020 },
+			.Background = (color_argb_t){ 0xA0000000 }
 		})
 	);
 
 	IHandle s1 = ICreateSlider(
 		&((IElement)
 		{
-			.W = 200.0f,
-			.H = 20.0f,
+			.w = 200.0f,
+			.h = 20.0f,
 
 			.MarginTop = 5.0f,
 			.MarginLeft = 10.0f,
@@ -1823,10 +1839,10 @@ CreateUI(
 		{
 			.Axis = UI_AXIS_HORIZONTAL,
 			.Sections = 9,
-			.Value = 4,
+			.value = 4,
 
-			.Color = (ARGB){ 0xFF4C99E5 },
-			.BgColor =(ARGB){ 0xFFFFFFFF }
+			.color = (color_argb_t){ 0xFF4C99E5 },
+			.BgColor =(color_argb_t){ 0xFFFFFFFF }
 		})
 	);
 
@@ -1845,7 +1861,7 @@ CreateUI(
 		}),
 		&((IColorPicker)
 		{
-			.Color = (ARGB){ 0x802288FF }
+			.color = (color_argb_t){ 0x802288FF }
 		})
 	);
 
@@ -1864,14 +1880,14 @@ CreateUI(
 		}),
 		&((IColorPicker)
 		{
-			.Color = (ARGB){ 0x80FF8822 }
+			.color = (color_argb_t){ 0x80FF8822 }
 		})
 	);
 
 	IHandle d1 = ICreateDropdown(
 		&((IElement)
 		{
-			.W = 130.0f,
+			.w = 130.0f,
 
 			.MarginTop = 5.0f,
 			.MarginLeft = 10.0f,
@@ -1884,18 +1900,18 @@ CreateUI(
 			.BorderBottom = 5.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFF000000 },
+			.BorderColor = (color_argb_t){ 0xFF000000 },
 
 			.AlignX = UI_ALIGN_LEFT,
 			.AlignY = UI_ALIGN_TOP
 		}),
 		&((IDropdown)
 		{
-			.BgColor = (ARGB){ 0xFFAAAAAA },
+			.BgColor = (color_argb_t){ 0xFFAAAAAA },
 
 			.FontSize = 24,
-			.Stroke = (ARGB){ 0xFF000000 },
-			.Fill = (ARGB){ 0xFFFFFFFF },
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.Fill = (color_argb_t){ 0xFFFFFFFF },
 
 			.Options =
 			(IDropdownOption[])
@@ -1913,7 +1929,7 @@ CreateUI(
 					.Text = "Onion"
 				}
 			},
-			.Count = 4,
+			.count = 4,
 			.Chosen = 2
 		})
 	);
@@ -1921,7 +1937,7 @@ CreateUI(
 	IHandle d2 = ICreateDropdown(
 		&((IElement)
 		{
-			.W = 240.0f,
+			.w = 240.0f,
 
 			.MarginTop = 5.0f,
 			.MarginLeft = 10.0f,
@@ -1934,18 +1950,18 @@ CreateUI(
 			.BorderBottom = 5.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFF000000 },
+			.BorderColor = (color_argb_t){ 0xFF000000 },
 
 			.AlignX = UI_ALIGN_LEFT,
 			.AlignY = UI_ALIGN_TOP
 		}),
 		&((IDropdown)
 		{
-			.BgColor = (ARGB){ 0xFFAAAAAA },
+			.BgColor = (color_argb_t){ 0xFFAAAAAA },
 
 			.FontSize = 24,
-			.Stroke = (ARGB){ 0xFF000000 },
-			.Fill = (ARGB){ 0xFFFFFFFF },
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.Fill = (color_argb_t){ 0xFFFFFFFF },
 
 			.Options =
 			(IDropdownOption[])
@@ -1963,7 +1979,7 @@ CreateUI(
 					.Text = "but for now it is what it is"
 				}
 			},
-			.Count = 4,
+			.count = 4,
 			.Chosen = 0
 		})
 	);
@@ -1982,11 +1998,11 @@ CreateUI(
 			.BorderBottom = 5.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFF4C00FF },
+			.BorderColor = (color_argb_t){ 0xFF4C00FF },
 
 			.AlignX = UI_ALIGN_CENTER,
 			.AlignY = UI_ALIGN_TOP,
-			.Position = UI_POSITION_RELATIVE,
+			.pos = UI_POSITION_RELATIVE,
 			.RelativeAlignX = UI_ALIGN_CENTER,
 			.RelativeAlignY = UI_ALIGN_TOP,
 
@@ -1999,16 +2015,16 @@ CreateUI(
 			.AutoW = true,
 			.AutoH = true,
 
-			.Color = (ARGB){ 0xFF804CB2 },
-			.Texture = TEXTURE_RECT
+			.color = (color_argb_t){ 0xFF804CB2 },
+			.tex = TEXTURE_RECT
 		})
 	);
 
 	IHandle c1 = ICreateCheckbox(
 		&((IElement)
 		{
-			.W = 32.0f,
-			.H = 32.0f,
+			.w = 32.0f,
+			.h = 32.0f,
 
 			.Opacity = 0xFF,
 
@@ -2019,9 +2035,9 @@ CreateUI(
 		{
 			.Checked = 1,
 
-			.CheckYes = (ARGB){ 0xFF00FF00 },
-			.CheckNo = (ARGB){ 0xFFFF0000 },
-			.Background = (ARGB){ 0xFFFFFFFF }
+			.CheckYes = (color_argb_t){ 0xFF00FF00 },
+			.CheckNo = (color_argb_t){ 0xFFFF0000 },
+			.Background = (color_argb_t){ 0xFFFFFFFF }
 		})
 	);
 
@@ -2044,15 +2060,15 @@ CreateUI(
 			.FontSize = 24,
 			.AlignX = UI_ALIGN_CENTER,
 
-			.Stroke = (ARGB){ 0xFFFFFFFF },
-			.Fill = (ARGB){ 0xFF000000 }
+			.Stroke = (color_argb_t){ 0xFFFFFFFF },
+			.Fill = (color_argb_t){ 0xFF000000 }
 		})
 	);
 
 	IHandle b1 = ICreateText(
 		&((IElement)
 		{
-			.W = 150.0f,
+			.w = 150.0f,
 
 			.MarginTop = 10.0f,
 			.MarginLeft = 10.0f,
@@ -2065,11 +2081,11 @@ CreateUI(
 			.BorderBottom = 5.0f,
 
 			.Opacity = 0xFF,
-			.BorderColor = (ARGB){ 0xFF4C00FF },
+			.BorderColor = (color_argb_t){ 0xFF4C00FF },
 
 			.AlignX = UI_ALIGN_CENTER,
 			.AlignY = UI_ALIGN_TOP,
-			.Position = UI_POSITION_RELATIVE,
+			.pos = UI_POSITION_RELATIVE,
 			.RelativeAlignX = UI_ALIGN_CENTER,
 			.RelativeAlignY = UI_ALIGN_TOP,
 
@@ -2082,10 +2098,10 @@ CreateUI(
 			.AutoH = true,
 			.Scrollable = true,
 
-			.Color = (ARGB){ 0xFFFFFFFF },
-			.Texture = TEXTURE_RECT,
-			.ScrollbarColor = (ARGB){ 0xFFAAAAAA },
-			.ScrollbarAltColor = (ARGB){ 0xFF717171 },
+			.color = (color_argb_t){ 0xFFFFFFFF },
+			.tex = TEXTURE_RECT,
+			.ScrollbarColor = (color_argb_t){ 0xFFAAAAAA },
+			.ScrollbarAltColor = (color_argb_t){ 0xFF717171 },
 		}),
 		&((IText)
 		{
@@ -2098,13 +2114,13 @@ CreateUI(
 			.Selectable = true,
 			.Editable = true,
 
-			.Stroke = (ARGB){ 0xFF000000 },
-			.InverseStroke = (ARGB){ 0xFFFFFFFF },
-			.Fill = (ARGB){ 0xFFFFFFFF },
-			.InverseFill = (ARGB){ 0xFF000000 },
-			.Background = (ARGB){ 0xA0000000 },
+			.Stroke = (color_argb_t){ 0xFF000000 },
+			.InverseStroke = (color_argb_t){ 0xFFFFFFFF },
+			.Fill = (color_argb_t){ 0xFFFFFFFF },
+			.InverseFill = (color_argb_t){ 0xFF000000 },
+			.Background = (color_argb_t){ 0xA0000000 },
 
-			.Type = I_TEXT_TYPE_SINGLELINE_TEXT
+			.type = I_TEXT_TYPE_SINGLELINE_TEXT
 		})
 	);
 
@@ -2139,19 +2155,19 @@ main(
 {
 	CreateUI();
 
-	WindowInit();
+	window_init();
 
 	//SocketInit();
 
 	GameInit();
 
-	WindowRun();
+	window_run();
 
 	//SocketFree();
 
 	GameFree();
 
-	WindowFree();
+	window_free();
 
 	UIFree();
 

@@ -1,30 +1,46 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/client/ui/checkbox.h>
 #include <DiepDesktop/client/ui/container.h>
 
 
-Static void
+private void
 UICheckboxBubbleDown(
 	UIElement* Element,
 	UIBubbleCallback Callback,
-	void* Data
+	void* data
 	)
 {
 }
 
 
-Static void
+private void
 UICheckboxPropagateSize(
 	UIElement* Element,
 	UIElement* Child,
-	Pair Delta
+	pair_t delta
 	)
 {
 }
 
 
-Static void
+private void
 UICheckboxPreClip(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -34,10 +50,10 @@ UICheckboxPreClip(
 }
 
 
-Static void
+private void
 UICheckboxPostClip(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	)
@@ -48,7 +64,7 @@ UICheckboxPostClip(
 }
 
 
-Static bool
+private bool
 UICheckboxMouseOver(
 	UIElement* Element
 	)
@@ -57,38 +73,38 @@ UICheckboxMouseOver(
 }
 
 
-Static void
+private void
 UICheckboxDrawDetail(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	)
 {
-	AssertEQ(Element->Extent.W, Element->Extent.H);
+	assert_eq(Element->Extent.w, Element->Extent.h);
 
 	UICheckbox* Checkbox = Element->TypeData;
 
-	UIClipTexture(Element->EndExtent.X, Element->EndExtent.Y, Element->Extent.W, Element->Extent.H,
-		.WhiteColor = RGBmulA(Checkbox->Checked ? Checkbox->CheckYesBackground : Checkbox->CheckNoBackground, Opacity),
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_RECT
+	UIClipTexture(Element->EndExtent.x, Element->EndExtent.y, Element->Extent.w, Element->Extent.h,
+		.white_color = color_argb_mul_a(Checkbox->Checked ? Checkbox->CheckYesBackground : Checkbox->CheckNoBackground, Opacity),
+		.white_depth = depth,
+		.tex = TEXTURE_RECT
 		);
 
-	float Size = (Element->Extent.W * 0.66666f + Element->BorderRadius * 1.33333f) * 1.1f;
+	float size = (Element->Extent.w * 0.66666f + Element->BorderRadius * 1.33333f) * 1.1f;
 
-	UIClipTexture(Element->EndExtent.X, Element->EndExtent.Y, Size, Size,
-		.WhiteColor = RGBmulA(Checkbox->Checked ? Checkbox->CheckYes : Checkbox->CheckNo, Opacity),
-		.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-		.Texture = Checkbox->Checked ? TEXTURE_CHECK_YES : TEXTURE_CHECK_NO
+	UIClipTexture(Element->EndExtent.x, Element->EndExtent.y, size, size,
+		.white_color = color_argb_mul_a(Checkbox->Checked ? Checkbox->CheckYes : Checkbox->CheckNo, Opacity),
+		.white_depth = depth + DRAW_DEPTH_JIFFIE,
+		.tex = Checkbox->Checked ? TEXTURE_CHECK_YES : TEXTURE_CHECK_NO
 		);
 }
 
 
-Static void
+private void
 UICheckboxDrawChildren(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	)
@@ -96,7 +112,7 @@ UICheckboxDrawChildren(
 }
 
 
-Static UIVirtualTable CheckboxVirtualTable =
+private UIVirtualTable CheckboxVirtualTable =
 {
 	.BubbleDown = UICheckboxBubbleDown,
 	.PropagateSize = UICheckboxPropagateSize,
@@ -117,33 +133,33 @@ UIElementIsCheckbox(
 }
 
 
-Static UICheckbox*
+private UICheckbox*
 UIAllocCheckboxData(
 	void
 	)
 {
-	void* Checkbox = AllocMalloc(sizeof(UICheckbox));
-	AssertNotNull(Checkbox);
+	void* Checkbox = alloc_malloc(sizeof(UICheckbox));
+	assert_not_null(Checkbox);
 
 	return Checkbox;
 }
 
 
-Static void
+private void
 UIFreeCheckboxData(
 	UICheckbox* Checkbox,
 	void* _
 	)
 {
-	AssertNotNull(Checkbox);
-	AllocFree(sizeof(UICheckbox), Checkbox);
+	assert_not_null(Checkbox);
+	alloc_free(sizeof(UICheckbox), Checkbox);
 }
 
 
-Static void
+private void
 UICheckboxMouseUpCallback(
 	UICheckbox* Checkbox,
-	UIMouseUpData* Data
+	UIMouseUpData* data
 	)
 {
 	if(!UISameElement)
@@ -158,7 +174,7 @@ UICheckboxMouseUpCallback(
 UIElement*
 UIAllocCheckbox(
 	UIElementInfo ElementInfo,
-	UICheckboxInfo Info
+	UICheckboxInfo info
 	)
 {
 	ElementInfo.Clickable = true;
@@ -166,26 +182,26 @@ UIAllocCheckbox(
 	ElementInfo.ClipToBorder = true;
 
 	UIElement* Element = UIAllocElement(ElementInfo);
-	AssertNotNull(Element);
+	assert_not_null(Element);
 
 	UICheckbox* Checkbox = UIAllocCheckboxData();
 	*Checkbox =
 	(UICheckbox)
 	{
-		.Checked = Info.Checked,
+		.Checked = info.Checked,
 
-		.CheckYes = Info.CheckYes,
-		.CheckYesBackground = Info.CheckYesBackground,
+		.CheckYes = info.CheckYes,
+		.CheckYesBackground = info.CheckYesBackground,
 
-		.CheckNo = Info.CheckNo,
-		.CheckNoBackground = Info.CheckNoBackground
+		.CheckNo = info.CheckNo,
+		.CheckNoBackground = info.CheckNoBackground
 	};
 
 	Element->VirtualTable = &CheckboxVirtualTable;
 	Element->TypeData = Checkbox;
 
-	EventListen(&Element->MouseUpTarget, (void*) UICheckboxMouseUpCallback, Checkbox);
-	EventListen(&Element->FreeTarget, (void*) UIFreeCheckboxData, Checkbox);
+	event_target_add(&Element->MouseUpTarget, (void*) UICheckboxMouseUpCallback, Checkbox);
+	event_target_add(&Element->FreeTarget, (void*) UIFreeCheckboxData, Checkbox);
 
 	return Element;
 }
@@ -196,7 +212,7 @@ UICheckboxGetChecked(
 	UIElement* Element
 	)
 {
-	AssertTrue(UIElementIsCheckbox(Element));
+	assert_true(UIElementIsCheckbox(Element));
 	UICheckbox* Checkbox = Element->TypeData;
 
 	return Checkbox->Checked;
@@ -209,7 +225,7 @@ UICheckboxSetChecked(
 	bool Checked
 	)
 {
-	AssertTrue(UIElementIsCheckbox(Element));
+	assert_true(UIElementIsCheckbox(Element));
 	UICheckbox* Checkbox = Element->TypeData;
 
 	Checkbox->Checked = Checked;

@@ -1,3 +1,19 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #pragma once
 
 #include <stdint.h>
@@ -24,20 +40,20 @@ typedef void
 
 typedef uint32_t
 (*SocketReadCallback)(
-	uint8_t* Data,
-	uint32_t Length
+	uint8_t* data,
+	uint32_t len
 	);
 
 
 typedef struct TcpSocket
 {
-	_Atomic SocketID ID;
+	_Atomic SocketID id;
 	const char* Host;
-	uint8_t* Buffer;
+	uint8_t* buffer;
 	SocketCallback Open;
 	SocketReadCallback Read;
 	SocketCallback Close;
-	ThreadID Thread;
+	ThreadID thread;
 	uint16_t Port;
 	uint16_t Secure;
 	uint32_t BufferUsed;
@@ -61,8 +77,8 @@ SocketFree(
 extern void
 SocketSendData(
 	void* Socket,
-	const void* Data,
-	uint32_t Length
+	const void* data,
+	uint32_t len
 	);
 
 

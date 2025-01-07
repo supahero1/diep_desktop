@@ -20,10 +20,10 @@
 #define COLOR_PICKER_HANDLE_SIZE 0.0625f
 
 
-Static UIElement Elements[GAME_CONST_MAX_UI_ELEMENTS] =
-	{ { .Callback = UIEmptyCallback, .Type = UI_TYPE_CONTAINER } };
-Static UIElement* FreeElement;
-Static uint32_t ElementsCount = 1;
+private UIElement Elements[GAME_CONST_MAX_UI_ELEMENTS] =
+	{ { .Callback = UIEmptyCallback, .type = UI_TYPE_CONTAINER } };
+private UIElement* FreeElement;
+private uint32_t ElementsCount = 1;
 
 UIElement* UIWindow = Elements;
 float MouseX;
@@ -31,45 +31,45 @@ float MouseY;
 float ScrollOffset;
 bool SameElement;
 
-Static VkVertexInstanceInput DrawInput[GAME_CONST_MAX_TEXTURES];
-Static uint32_t DrawIndex;
-Static float DeltaTime;
-Static float Depth;
+private VkVertexInstanceInput DrawInput[GAME_CONST_MAX_TEXTURES];
+private uint32_t DrawIndex;
+private float DeltaTime;
+private float depth;
 
-Static UIElement* ElementUnderMouse;
-Static UIElement* ClickableUnderMouse;
-Static UIElement* ScrollableUnderMouse;
+private UIElement* ElementUnderMouse;
+private UIElement* ClickableUnderMouse;
+private UIElement* ScrollableUnderMouse;
 
-Static UIElement* SelectedElement;
-Static UIElement* SelectedTextElement;
+private UIElement* SelectedElement;
+private UIElement* SelectedTextElement;
 
-Static UIElement* LastScrollable;
+private UIElement* LastScrollable;
 
-Static UITextOffset SelectionHead;
-Static UITextOffset SelectionTail;
-Static UITextOffset SelectionStart;
-Static UITextOffset SelectionEnd;
-Static UITextOffset LastSelection;
+private UITextOffset SelectionHead;
+private UITextOffset SelectionTail;
+private UITextOffset SelectionStart;
+private UITextOffset SelectionEnd;
+private UITextOffset LastSelection;
 
-Static float DeltaW;
-Static float DeltaH;
+private float DeltaW;
+private float DeltaH;
 
-Static uint64_t LastDrawAt;
-Static uint64_t LastCursorSetAt;
+private uint64_t LastDrawAt;
+private uint64_t LastCursorSetAt;
 
-Static bool KeyState[kUI_KEY] = {0};
-Static bool ButtonState[kUI_BUTTON] = {0};
+private bool KeyState[UI_KEY__COUNT] = {0};
+private bool buttonState[UI_BUTTON__COUNT] = {0};
 
-Static FT_Library FreeTypeLibrary;
-Static FT_Face FreeTypeFace;
-Static hb_font_t* HarfBuzzFont;
-Static hb_feature_t HarfBuzzFeatures[] =
+private FT_Library FreeTypeLibrary;
+private FT_Face FreeTypeFace;
+private hb_font_t* HarfBuzzFont;
+private hb_feature_t HarfBuzzFeatures[] =
 {
 	{ HB_TAG('l', 'i', 'g', 'a'), 0, 0, -1 }, /* Ligatures suck */
 };
 
 
-Static uint32_t
+private uint32_t
 DefaultFilter(
 	uint32_t Codepoint
 	)
@@ -238,11 +238,11 @@ UIInit(
 	void
 	)
 {
-	int Status = FT_Init_FreeType(&FreeTypeLibrary);
-	AssertEQ(Status, 0);
+	int status = FT_Init_FreeType(&FreeTypeLibrary);
+	assert_eq(status, 0);
 
-	Status = FT_New_Face(FreeTypeLibrary, "Ubuntu.ttf", 0, &FreeTypeFace);
-	AssertEQ(Status, 0);
+	status = FT_New_Face(FreeTypeLibrary, "Ubuntu.ttf", 0, &FreeTypeFace);
+	assert_eq(status, 0);
 
 	FT_Set_Pixel_Sizes(FreeTypeFace, 0, FONT_AVG_SIZE);
 
@@ -275,7 +275,7 @@ UIFree(
 }
 
 
-Static void
+private void
 UITextFreeLines(
 	UIText* Text
 	)
@@ -289,7 +289,7 @@ UITextFreeLines(
 }
 
 
-Static void
+private void
 UITextFreeMod(
 	UITextMod* Mod
 	)
@@ -299,20 +299,20 @@ UITextFreeMod(
 }
 
 
-Static void
-UITextFreeMods(
+private void
+UITextFreemods(
 	UIText* Text
 	)
 {
-	UITextMod* Mod = Text->Mods;
-	UITextMod* ModEnd = Text->Mods + Text->ModCount;
+	UITextMod* Mod = Text->mods;
+	UITextMod* ModEnd = Text->mods + Text->ModCount;
 
 	while(Mod != ModEnd)
 	{
 		UITextFreeMod(Mod++);
 	}
 
-	free(Text->Mods);
+	free(Text->mods);
 }
 
 
@@ -324,7 +324,7 @@ UITextOnFree(
 	UIText* Text = &Element->Text;
 
 	UITextFreeLines(Text);
-	UITextFreeMods(Text);
+	UITextFreemods(Text);
 }
 
 
@@ -338,20 +338,20 @@ typedef struct UITextParseState
 	float MaxLineWidth;
 
 	float Scale;
-	float Padding;
+	float padding;
 }
 UITextParseState;
 
 
-Static uint32_t
+private uint32_t
 UITextParse(
-	UITextParseState* State,
+	UITextParseState* state,
 	const uint32_t* Codepoints,
-	uint32_t Length
+	uint32_t len
 	)
 {
 	hb_buffer_t* HarfBuzzBuffer = hb_buffer_create();
-	AssertEQ(hb_buffer_allocation_successful(HarfBuzzBuffer), 1);
+	assert_eq(hb_buffer_allocation_successful(HarfBuzzBuffer), 1);
 
 	hb_buffer_set_direction(HarfBuzzBuffer, HB_DIRECTION_LTR);
 	hb_buffer_set_script(HarfBuzzBuffer, HB_SCRIPT_LATIN);
@@ -359,9 +359,9 @@ UITextParse(
 	hb_buffer_set_flags(HarfBuzzBuffer, HB_BUFFER_FLAG_REMOVE_DEFAULT_IGNORABLES);
 	hb_buffer_set_cluster_level(HarfBuzzBuffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
 
-	hb_buffer_add_codepoints(HarfBuzzBuffer, Codepoints, Length, 0, Length);
+	hb_buffer_add_codepoints(HarfBuzzBuffer, Codepoints, len, 0, len);
 
-	hb_shape(HarfBuzzFont, HarfBuzzBuffer, HarfBuzzFeatures, ARRAYLEN(HarfBuzzFeatures));
+	hb_shape(HarfBuzzFont, HarfBuzzBuffer, HarfBuzzFeatures, MACRO_ARRAY_LEN(HarfBuzzFeatures));
 
 	uint32_t HarfBuzzGlyphCount = hb_buffer_get_length(HarfBuzzBuffer);
 	hb_glyph_info_t* HarfBuzzGlyphInfo = hb_buffer_get_glyph_infos(HarfBuzzBuffer, NULL);
@@ -370,10 +370,10 @@ UITextParse(
 	typedef struct ValidGlyph
 	{
 		uint32_t GlyphIndex;
-		uint32_t Flags;
+		uint32_t flags;
 		int32_t Advance;
 		int32_t OffsetX;
-		int32_t OffsetY;
+		int32_t offset_y;
 	}
 	ValidGlyph;
 
@@ -382,33 +382,33 @@ UITextParse(
 
 	for(uint32_t i = 0; i < HarfBuzzGlyphCount; ++i)
 	{
-		hb_glyph_info_t* Info = HarfBuzzGlyphInfo + i;
+		hb_glyph_info_t* info = HarfBuzzGlyphInfo + i;
 		hb_glyph_position_t* Pos = HarfBuzzGlyphPos + i;
-		hb_glyph_flags_t Flags = hb_glyph_info_get_glyph_flags(Info);
+		hb_glyph_flags_t flags = hb_glyph_info_get_glyph_flags(info);
 
-		uint32_t GlyphCode = Info->codepoint;
-		AssertLT(GlyphCode, ARRAYLEN(GlyphMap));
+		uint32_t GlyphCode = info->codepoint;
+		assert_lt(GlyphCode, MACRO_ARRAY_LEN(GlyphMap));
 
 		uint32_t GlyphIndex = GlyphMap[GlyphCode];
-		AssertNEQ(GlyphIndex, 0);
+		assert_neq(GlyphIndex, 0);
 
-		AssertEQ(Info->cluster, i);
+		assert_eq(info->cluster, i);
 
 		ValidGlyphs[ValidGlyphCount++] =
 		(ValidGlyph)
 		{
 			.GlyphIndex = GlyphIndex,
-			.Flags = Flags,
+			.flags = flags,
 			.Advance = Pos->x_advance,
 			.OffsetX = Pos->x_offset,
-			.OffsetY = Pos->y_offset
+			.offset_y = Pos->y_offset
 		};
 	}
 
 	hb_buffer_destroy(HarfBuzzBuffer);
 
 
-	float Width = State->Padding;
+	float width = state->padding;
 
 	const ValidGlyph* LastSpace = NULL;
 	float WidthAtLastSpace;
@@ -432,43 +432,43 @@ printf("parsing codepoint %u\n", Codepoint);
 		{
 			printf("glyph is a space\n");
 			LastSpace = Glyph;
-			WidthAtLastSpace = Width;
+			WidthAtLastSpace = width;
 		}
 
-		float Stride = Glyph->Advance / 64.0f * State->Scale;
-printf("width: %f, stride: %f\n", Width, Stride);
-		Width += Stride;
+		float Stride = Glyph->Advance / 64.0f * state->Scale;
+printf("width: %f, stride: %f\n", width, Stride);
+		width += Stride;
 
-		if(Width > State->WidthLimit && CharIndex)
+		if(width > state->WidthLimit && CharIndex)
 		{
 			if(LastSpace)
 			{
 				Glyph = LastSpace;
-				Width = WidthAtLastSpace;
+				width = WidthAtLastSpace;
 			}
 			else
 			{
-				Width -= Stride;
+				width -= Stride;
 			}
 
 			printf("breaking line at char idx %u line len %lu\n", CharIndex, Glyph - ValidGlyphs);
 
-			if(!(Glyph->Flags & HB_GLYPH_FLAG_UNSAFE_TO_BREAK))
+			if(!(Glyph->flags & HB_GLYPH_FLAG_UNSAFE_TO_BREAK))
 			{
 				puts("safe to break");
 
 				goto_form_line:;
 
-				uint32_t Length = Glyph - ValidGlyphs;
-				UITextLine* Line = malloc(sizeof(UITextLine) + Length * sizeof(UITextGlyph));
-				AssertNotNull(Line);
+				uint32_t len = Glyph - ValidGlyphs;
+				UITextLine* Line = malloc(sizeof(UITextLine) + len * sizeof(UITextGlyph));
+				assert_not_null(Line);
 
-				Line->Width = Width;
+				Line->width = width;
 
 				Line->Separator = 0;
-				Line->Length = Length;
+				Line->len = len;
 
-				for(uint32_t i = 0; i < Length; ++i)
+				for(uint32_t i = 0; i < len; ++i)
 				{
 					const ValidGlyph* CharGlyph = ValidGlyphs + i;
 					const GlyphInfo* CharInfo = GlyphInfos + CharGlyph->GlyphIndex;
@@ -476,26 +476,26 @@ printf("width: %f, stride: %f\n", Width, Stride);
 					Line->Glyphs[i] =
 					(UITextGlyph)
 					{
-						.Top = (CharInfo->Top + CharGlyph->OffsetX / 64.0f) * State->Scale,
-						.Left = (CharInfo->Left + CharGlyph->OffsetY / 64.0f) * State->Scale,
-						.Stride = CharGlyph->Advance / 64.0f * State->Scale,
-						.Size = TEXSIZE(CharInfo->Texture) * State->Scale,
-						.Texture = CharInfo->Texture
+						.top = (CharInfo->top + CharGlyph->OffsetX / 64.0f) * state->Scale,
+						.left = (CharInfo->left + CharGlyph->offset_y / 64.0f) * state->Scale,
+						.Stride = CharGlyph->Advance / 64.0f * state->Scale,
+						.size = TEXSIZE(CharInfo->tex) * state->Scale,
+						.tex = CharInfo->tex
 					};
 				}
 
-				if(State->LinesUsed == State->LinesSize)
+				if(state->LinesUsed == state->LinesSize)
 				{
-					State->LinesSize <<= 1;
-					State->Lines = realloc(State->Lines, State->LinesSize * sizeof(UITextLine*));
-					AssertNotNull(State->Lines);
+					state->LinesSize <<= 1;
+					state->Lines = realloc(state->Lines, state->LinesSize * sizeof(UITextLine*));
+					assert_not_null(state->Lines);
 				}
 
-				State->Lines[State->LinesUsed++] = Line;
+				state->Lines[state->LinesUsed++] = Line;
 
-				if(Width > State->MaxLineWidth)
+				if(width > state->MaxLineWidth)
 				{
-					State->MaxLineWidth = Width;
+					state->MaxLineWidth = width;
 				}
 puts("nice return");
 				return CharIndex;
@@ -503,10 +503,10 @@ puts("nice return");
 			else
 			{
 				puts("unsafe to break :( not so cool return");
-				return UITextParse(State, Codepoints, CharIndex);
+				return UITextParse(state, Codepoints, CharIndex);
 			}
 
-			AssertUnreachable();
+			assert_unreachable();
 		}
 
 		++Glyph;
@@ -517,7 +517,7 @@ puts("nice return");
 }
 
 
-Static void
+private void
 UITextConfigure(
 	UIElement* Element
 	)
@@ -529,13 +529,13 @@ UITextConfigure(
 
 	UITextFreeLines(Text);
 
-	AssertLE(Text->Length, Text->MaxLength);
+	assert_le(Text->len, Text->max_len);
 
-	float Size = Text->FontSize;
-	float Scale = Size / FONT_SIZE;
-	float Padding = STROKE_THICKNESS * Scale * 2.0f;
+	float size = Text->FontSize;
+	float Scale = size / FONT_SIZE;
+	float padding = STROKE_THICKNESS * Scale * 2.0f;
 
-	UITextParseState State =
+	UITextParseState state =
 	{
 		.LinesUsed = 0,
 		.LinesSize = 1,
@@ -545,14 +545,14 @@ UITextConfigure(
 		.MaxLineWidth = 0.0f,
 
 		.Scale = Scale,
-		.Padding = Padding
+		.padding = padding
 	};
-	AssertNotNull(State.Lines);
+	assert_not_null(state.Lines);
 
 
 	uint32_t LineBegin = 0;
-printf("and so the parsing begins, text contains %u codepoints\n", Text->Length);
-	for(uint32_t i = 0; i < Text->Length; ++i)
+printf("and so the parsing begins, text contains %u codepoints\n", Text->len);
+	for(uint32_t i = 0; i < Text->len; ++i)
 	{
 		if(Text->Codepoints[i] != '\n')
 		{
@@ -564,53 +564,53 @@ printf("and so the parsing begins, text contains %u codepoints\n", Text->Length)
 		printf("breakpoint at char idx %u\n", i);
 
 		uint32_t Idx;
-		uint32_t Length;
+		uint32_t len;
 
 		do
 		{
 			printf("\nparsing line at idx %u\n", LineBegin);
-			Length = i - LineBegin;
-			Idx = UITextParse(&State, &Text->Codepoints[LineBegin], Length);
-			printf("after parsing line, got idx %u, we want to reach %u tho\n", Idx, Length);
+			len = i - LineBegin;
+			Idx = UITextParse(&state, &Text->Codepoints[LineBegin], len);
+			printf("after parsing line, got idx %u, we want to reach %u tho\n", Idx, len);
 			LineBegin += Idx;
 		}
-		while(Idx != Length);
+		while(Idx != len);
 
-		State.Lines[State.LinesUsed - 1]->Separator = 1;
+		state.Lines[state.LinesUsed - 1]->Separator = 1;
 
 		++LineBegin;
 	}
 
-	if(LineBegin <= Text->Length)
+	if(LineBegin <= Text->len)
 	{
 		puts("\nend thing goto thing");
 		goto goto_form_line;
 	}
 
-	State.Lines[State.LinesUsed - 1]->Separator = 0;
+	state.Lines[state.LinesUsed - 1]->Separator = 0;
 
 #ifndef NDEBUG
 	uint32_t CheckLength = 0;
 
-	for(uint32_t i = 0; i < State.LinesUsed; ++i)
+	for(uint32_t i = 0; i < state.LinesUsed; ++i)
 	{
-		CheckLength += State.Lines[i]->Length + State.Lines[i]->Separator;
+		CheckLength += state.Lines[i]->len + state.Lines[i]->Separator;
 	}
 
-	AssertEQ(CheckLength, Text->Length);
+	assert_eq(CheckLength, Text->len);
 #endif
 
-	Text->LineCount = State.LinesUsed;
-	Text->Lines = State.Lines;
+	Text->LineCount = state.LinesUsed;
+	Text->Lines = state.Lines;
 
-	Element->W = State.MaxLineWidth;
-	Element->H = Size * Text->LineCount;
+	Element->w = state.MaxLineWidth;
+	Element->h = size * Text->LineCount;
 
-	float HeightOffset = -(Element->H - Size) * 0.5f;
+	float HeightOffset = -(Element->h - size) * 0.5f;
 
-	for(uint32_t i = 0; i < State.LinesUsed; ++i)
+	for(uint32_t i = 0; i < state.LinesUsed; ++i)
 	{
-		UITextLine* Line = State.Lines[i];
+		UITextLine* Line = state.Lines[i];
 
 
 		switch(Text->AlignX)
@@ -618,28 +618,28 @@ printf("and so the parsing begins, text contains %u codepoints\n", Text->Length)
 
 		case UI_ALIGN_LEFT:
 		{
-			Line->X = -Element->W * 0.5f;
+			Line->x = -Element->w * 0.5f;
 			break;
 		}
 
 		case UI_ALIGN_CENTER:
 		{
-			Line->X = Line->Width * -0.5f;
+			Line->x = Line->width * -0.5f;
 			break;
 		}
 
 		case UI_ALIGN_RIGHT:
 		{
-			Line->X = Element->W - Line->Width;
+			Line->x = Element->w - Line->width;
 			break;
 		}
 
 		}
 
 
-		Line->Y = HeightOffset + FONT_ASCENDER * Scale;
-		Line->Width += Padding;
-		HeightOffset += Size;
+		Line->y = HeightOffset + FONT_ASCENDER * Scale;
+		Line->width += padding;
+		HeightOffset += size;
 	}
 }
 
@@ -658,7 +658,7 @@ UIInitialize(
 	Element->Callback = UIEmptyCallback;
 
 
-	switch(Element->Type)
+	switch(Element->type)
 	{
 
 	case UI_TYPE_TEXT:
@@ -672,9 +672,9 @@ UIInitialize(
 
 		Text->AllowNewline = !!Text->Filter('\n');
 
-		if(!Text->MaxLength)
+		if(!Text->max_len)
 		{
-			Text->MaxLength = 1000;
+			Text->max_len = 1000;
 		}
 
 		break;
@@ -689,12 +689,12 @@ UIInitialize(
 }
 
 
-Static bool
+private bool
 UIMouseOver(
 	UIElement* Element
 	)
 {
-	switch(Element->Type)
+	switch(Element->type)
 	{
 
 	case UI_TYPE_CONTAINER:
@@ -709,25 +709,25 @@ UIMouseOver(
 	{
 		UIText* Text = &Element->Text;
 
-		float Size = Text->FontSize;
-		float Scale = Size / FONT_SIZE;
+		float size = Text->FontSize;
+		float Scale = size / FONT_SIZE;
 		float HalfPadding = STROKE_THICKNESS * Scale;
 
-		float Top = Element->EndY - Element->H * 0.5f;
-		if(MouseY < Top)
+		float top = Element->EndY - Element->h * 0.5f;
+		if(MouseY < top)
 		{
 			return false;
 		}
 
-		uint32_t LineIdx = (MouseY - Top) / Text->FontSize;
+		uint32_t LineIdx = (MouseY - top) / Text->FontSize;
 		if(LineIdx >= Text->LineCount)
 		{
 			return false;
 		}
 
 		UITextLine* Line = Text->Lines[LineIdx];
-		float X = MouseX - (Element->EndX + Line->X) + HalfPadding;
-		if(X < 0.0f || X > Line->Width)
+		float x = MouseX - (Element->EndX + Line->x) + HalfPadding;
+		if(x < 0.0f || x > Line->width)
 		{
 			return false;
 		}
@@ -740,29 +740,29 @@ UIMouseOver(
 		return UIMouseOverSlider(
 			Element->Slider.Axis,
 			Element->EndX, Element->EndY,
-			Element->W, Element->H
+			Element->w, Element->h
 		);
 	}
 
 // TODO one function for sliders and borders and scrollbars that accepts width height and radius and mouse pos
 	case UI_TYPE_COLOR_PICKER:
 	{
-		AssertEQ(Element->W, Element->H);
+		assert_eq(Element->w, Element->h);
 
 		float DiffX = Element->EndX - MouseX;
 		float DiffY = Element->EndY - MouseY;
-		float R = Element->W * 0.5f;
+		float r = Element->w * 0.5f;
 
-		return DiffX * DiffX + DiffY * DiffY < R * R;
+		return DiffX * DiffX + DiffY * DiffY < r * r;
 	}
 
 	}
 
-	AssertUnreachable();
+	assert_unreachable();
 }
 
 
-Static void
+private void
 UIDrawElement(
 	UIElement* Element,
 	float ClipX,
@@ -774,14 +774,14 @@ UIDrawElement(
 	UIElement* Parent
 	)
 {
-	AssertEQ(Parent->Type, UI_TYPE_CONTAINER);
+	assert_eq(Parent->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &Parent->Container;
 
-	AssertNotNull(Element->Callback);
+	assert_not_null(Element->Callback);
 	Element->Callback(Element, UI_EVENT_BEFORE_UPDATE);
 
 
-	switch(Element->Position)
+	switch(Element->pos)
 	{
 
 	case UI_POSITION_INHERIT:
@@ -812,8 +812,8 @@ UIDrawElement(
 
 		case UI_ALIGN_LEFT:
 		{
-			Element->EndX = Parent->EndX - Parent->W * 0.5f
-				+ Element->W * 0.5f + Element->EndMarginLeft + OffsetMinX;
+			Element->EndX = Parent->EndX - Parent->w * 0.5f
+				+ Element->w * 0.5f + Element->EndMarginLeft + OffsetMinX;
 			OffsetMinX += Element->TotalW;
 			break;
 		}
@@ -826,8 +826,8 @@ UIDrawElement(
 
 		case UI_ALIGN_RIGHT:
 		{
-			Element->EndX = Parent->EndX + Parent->W * 0.5f
-				-(Element->W * 0.5f + Element->EndMarginRight + OffsetMaxX);
+			Element->EndX = Parent->EndX + Parent->w * 0.5f
+				-(Element->w * 0.5f + Element->EndMarginRight + OffsetMaxX);
 			OffsetMaxX += Element->TotalW;
 			break;
 		}
@@ -840,8 +840,8 @@ UIDrawElement(
 
 		case UI_ALIGN_TOP:
 		{
-			Element->EndY = Parent->EndY - Parent->H * 0.5f
-				+ Element->H * 0.5f + Element->EndMarginTop + OffsetMinY;
+			Element->EndY = Parent->EndY - Parent->h * 0.5f
+				+ Element->h * 0.5f + Element->EndMarginTop + OffsetMinY;
 			OffsetMinY += Element->TotalH;
 			break;
 		}
@@ -854,8 +854,8 @@ UIDrawElement(
 
 		case UI_ALIGN_BOTTOM:
 		{
-			Element->EndY = Parent->EndY + Parent->H * 0.5f
-				-(Element->H * 0.5f + Element->EndMarginBottom + OffsetMaxY);
+			Element->EndY = Parent->EndY + Parent->h * 0.5f
+				-(Element->h * 0.5f + Element->EndMarginBottom + OffsetMaxY);
 			OffsetMaxY += Element->TotalH;
 			break;
 		}
@@ -884,8 +884,8 @@ UIDrawElement(
 
 		case UI_ALIGN_LEFT:
 		{
-			Element->EndX = Parent->EndX - Parent->W * 0.5f
-				+ Element->W * 0.5f + Element->EndMarginLeft;
+			Element->EndX = Parent->EndX - Parent->w * 0.5f
+				+ Element->w * 0.5f + Element->EndMarginLeft;
 			break;
 		}
 
@@ -897,8 +897,8 @@ UIDrawElement(
 
 		case UI_ALIGN_RIGHT:
 		{
-			Element->EndX = Parent->EndX + Parent->W * 0.5f
-				-(Element->W * 0.5f + Element->EndMarginRight);
+			Element->EndX = Parent->EndX + Parent->w * 0.5f
+				-(Element->w * 0.5f + Element->EndMarginRight);
 			break;
 		}
 
@@ -910,8 +910,8 @@ UIDrawElement(
 
 		case UI_ALIGN_TOP:
 		{
-			Element->EndY = Parent->EndY - Parent->H * 0.5f
-				+ Element->H * 0.5f + Element->EndMarginTop;
+			Element->EndY = Parent->EndY - Parent->h * 0.5f
+				+ Element->h * 0.5f + Element->EndMarginTop;
 			break;
 		}
 
@@ -923,8 +923,8 @@ UIDrawElement(
 
 		case UI_ALIGN_BOTTOM:
 		{
-			Element->EndY = Parent->EndY + Parent->H * 0.5f
-				-(Element->H * 0.5f + Element->EndMarginBottom);
+			Element->EndY = Parent->EndY + Parent->h * 0.5f
+				-(Element->h * 0.5f + Element->EndMarginBottom);
 			break;
 		}
 
@@ -936,14 +936,14 @@ UIDrawElement(
 
 	case UI_POSITION_ABSOLUTE:
 	{
-		Element->EndX = Parent->EndX + Element->X;
-		Element->EndY = Parent->EndY + Element->Y;
+		Element->EndX = Parent->EndX + Element->x;
+		Element->EndY = Parent->EndY + Element->y;
 		break;
 	}
 
 	case UI_POSITION_RELATIVE:
 	{
-		AssertNotNull(Element->Relative);
+		assert_not_null(Element->Relative);
 		UIElement* Relative = Element->Relative;
 
 
@@ -954,13 +954,13 @@ UIDrawElement(
 
 		case UI_ALIGN_LEFT:
 		{
-			Element->EndX -= Element->W * 0.5f + Element->EndMarginRight;
+			Element->EndX -= Element->w * 0.5f + Element->EndMarginRight;
 			break;
 		}
 
 		case UI_ALIGN_RIGHT:
 		{
-			Element->EndX += Element->W * 0.5f + Element->EndMarginLeft;
+			Element->EndX += Element->w * 0.5f + Element->EndMarginLeft;
 			break;
 		}
 
@@ -973,13 +973,13 @@ UIDrawElement(
 
 		case UI_ALIGN_LEFT:
 		{
-			Element->EndX -= Relative->W * 0.5f;
+			Element->EndX -= Relative->w * 0.5f;
 			break;
 		}
 
 		case UI_ALIGN_RIGHT:
 		{
-			Element->EndX += Relative->W * 0.5f;
+			Element->EndX += Relative->w * 0.5f;
 			break;
 		}
 
@@ -995,13 +995,13 @@ UIDrawElement(
 
 		case UI_ALIGN_TOP:
 		{
-			Element->EndY -= Element->H * 0.5f + Element->EndMarginBottom;
+			Element->EndY -= Element->h * 0.5f + Element->EndMarginBottom;
 			break;
 		}
 
 		case UI_ALIGN_BOTTOM:
 		{
-			Element->EndY += Element->H * 0.5f + Element->EndMarginTop;
+			Element->EndY += Element->h * 0.5f + Element->EndMarginTop;
 			break;
 		}
 
@@ -1014,13 +1014,13 @@ UIDrawElement(
 
 		case UI_ALIGN_TOP:
 		{
-			Element->EndY -= Relative->H * 0.5f;
+			Element->EndY -= Relative->h * 0.5f;
 			break;
 		}
 
 		case UI_ALIGN_BOTTOM:
 		{
-			Element->EndY += Relative->H * 0.5f;
+			Element->EndY += Relative->h * 0.5f;
 			break;
 		}
 
@@ -1032,22 +1032,22 @@ UIDrawElement(
 		break;
 	}
 
-	default: AssertUnreachable();
+	default: assert_unreachable();
 
 	}
 
 
-	UIPreClipCalcFunctions[Element->Type](Element, Scrollable);
+	UIPreClipCalcFunctions[Element->type](Element, Scrollable);
 
 
 	Element->Callback(Element, UI_EVENT_DURING_UPDATE);
 
 
 	UIClipExplicit(
-		Element->EndX - Element->W * 0.5f - Element->BorderLeft,
-		Element->EndX + Element->W * 0.5f + Element->BorderRight,
-		Element->EndY - Element->H * 0.5f - Element->BorderTop,
-		Element->EndY + Element->H * 0.5f + Element->BorderBottom,
+		Element->EndX - Element->w * 0.5f - Element->BorderLeft,
+		Element->EndX + Element->w * 0.5f + Element->BorderRight,
+		Element->EndY - Element->h * 0.5f - Element->BorderTop,
+		Element->EndY + Element->h * 0.5f + Element->BorderBottom,
 		Border
 		);
 
@@ -1055,17 +1055,17 @@ UIDrawElement(
 
 
 	UIClipExplicit(
-		Element->EndX - Element->W * 0.5f,
-		Element->EndX + Element->W * 0.5f,
-		Element->EndY - Element->H * 0.5f,
-		Element->EndY + Element->H * 0.5f,
-		Content
+		Element->EndX - Element->w * 0.5f,
+		Element->EndX + Element->w * 0.5f,
+		Element->EndY - Element->h * 0.5f,
+		Element->EndY + Element->h * 0.5f,
+		content
 		);
 
-	UIAfterClip(Content);
+	UIAfterClip(content);
 
 
-	UIPostClipCalcFunctions[Element->Type](Element,
+	UIPostClipCalcFunctions[Element->type](Element,
 		ContentClipEndX, ContentClipEndY,
 		ContentClipEndW, ContentClipEndH,
 		Opacity, Scrollable
@@ -1152,7 +1152,7 @@ UIDrawElement(
 
 	if(ContentPass)
 	{
-		UIDrawFunctions[Element->Type](Element,
+		UIDrawFunctions[Element->type](Element,
 			ContentClipEndX, ContentClipEndY,
 			ContentClipEndW, ContentClipEndH,
 			Opacity, Scrollable
@@ -1164,7 +1164,7 @@ UIDrawElement(
 }
 
 
-Static void
+private void
 UIDrawChildren(
 	UIElement* Element,
 	float ClipX,
@@ -1176,7 +1176,7 @@ UIDrawChildren(
 	)
 {
 	UIContainer* Container = &Element->Container;
-	UIElement* Child = Container->Head;
+	UIElement* Child = Container->head;
 
 	Container->OffsetMin = 0.0f;
 	Container->OffsetMax = 0.0f;
@@ -1188,20 +1188,20 @@ UIDrawChildren(
 
 	while(Child)
 	{
-		uint32_t ChildOpacity = AmulA(Opacity, Child->Opacity);
+		uint32_t ChildOpacity = color_a_mul_a(Opacity, Child->Opacity);
 		if(ChildOpacity)
 		{
-			Depth += DRAW_DEPTH_LEAP;
+			depth += DRAW_DEPTH_LEAP;
 
 			UIDrawElement(Child, ClipX, ClipY, ClipW, ClipH, ChildOpacity, Scrollable, Element);
 		}
 
-		Child = Child->Next;
+		Child = Child->next;
 	}
 }
 
 
-Static void
+private void
 UIDrawContainer(
 	UIElement* Element,
 	float ClipX,
@@ -1214,25 +1214,25 @@ UIDrawContainer(
 {
 	UIContainer* Container = &Element->Container;
 
-	/* Note that there's no sense in adding WhiteDepthDelta or such,
-	 * because Depth is incremented on every element call, so two
+	/* Note that there's no sense in adding white_depthDelta or such,
+	 * because depth is incremented on every element call, so two
 	 * distinct containers will never have a chance for their colors
-	 * to depth blend. It only makes sense for a lot of textures in
+	 * to depth blend. It only makes sense for a lot of texs in
 	 * the bounds of a single element draw call, like UIText.     */
 
-	UIClipTexture(Element->EndX, Element->EndY, Element->W, Element->H,
-		.WhiteColor = RGBmulA(Container->WhiteColor, Opacity),
-		.WhiteDepth = Depth,
-		.BlackColor = RGBmulA(Container->BlackColor, Opacity),
-		.BlackDepth = Depth,
-		.Texture = Container->Texture
+	UIClipTexture(Element->EndX, Element->EndY, Element->w, Element->h,
+		.white_color = color_argb_mul_a(Container->white_color, Opacity),
+		.white_depth = depth,
+		.black_color = color_argb_mul_a(Container->black_color, Opacity),
+		.black_depth = depth,
+		.tex = Container->tex
 		);
 
 	UIDrawChildren(Element, ClipX, ClipY, ClipW, ClipH, Opacity, Scrollable);
 }
 
 
-Static void
+private void
 UIDrawText(
 	UIElement* Element,
 	float ClipX,
@@ -1248,44 +1248,44 @@ UIDrawText(
 	bool SelectionPossible = Element == SelectedTextElement;
 	bool TextCursorPossible = SelectionPossible && Text->Editable &&
 		(((LastDrawAt - LastCursorSetAt) / 500000000) & 1) == 0;
-	uint32_t Count = 0;
+	uint32_t count = 0;
 
-	ARGB Stroke			= RGBmulA(Text->Stroke			, Opacity);
-	ARGB InverseStroke	= RGBmulA(Text->InverseStroke	, Opacity);
-	ARGB Fill			= RGBmulA(Text->Fill			, Opacity);
-	ARGB InverseFill	= RGBmulA(Text->InverseFill		, Opacity);
-	ARGB Background		= RGBmulA(Text->Background		, Opacity);
+	color_argb_t Stroke			= color_argb_mul_a(Text->Stroke			, Opacity);
+	color_argb_t InverseStroke	= color_argb_mul_a(Text->InverseStroke	, Opacity);
+	color_argb_t Fill			= color_argb_mul_a(Text->Fill			, Opacity);
+	color_argb_t InverseFill	= color_argb_mul_a(Text->InverseFill		, Opacity);
+	color_argb_t Background		= color_argb_mul_a(Text->Background		, Opacity);
 
-	float X;
-	float Y;
+	float x;
+	float y;
 
 	for(uint32_t LineIdx = 0; LineIdx < Text->LineCount; ++LineIdx)
 	{
 		const UITextLine* Line = Text->Lines[LineIdx];
-		X = Element->EndX + Line->X;
-		Y = Element->EndY + Line->Y;
+		x = Element->EndX + Line->x;
+		y = Element->EndY + Line->y;
 
-		UIClip(X + Line->Width * 0.5f, Y - Text->FontSize * 0.3333f, Line->Width, Text->FontSize);
+		UIClip(x + Line->width * 0.5f, y - Text->FontSize * 0.3333f, Line->width, Text->FontSize);
 
 		if(Pass)
 		{
-			for(uint32_t i = 0; i < Line->Length; ++i)
+			for(uint32_t i = 0; i < Line->len; ++i)
 			{
-				const UITextGlyph* Data = &Line->Glyphs[i];
+				const UITextGlyph* data = &Line->Glyphs[i];
 
-				float Top = Data->Top;
-				float Left = Data->Left;
-				float Stride = Data->Stride;
-				float Size = Data->Size;
+				float top = data->top;
+				float left = data->left;
+				float Stride = data->Stride;
+				float size = data->size;
 
-				float TexX = X + Size / 2 + Left;
-				float TexY = Y + Size / 2 - Top;
+				float TexX = x + size / 2 + left;
+				float TexY = y + size / 2 - top;
 
-				ARGB ActualFill;
-				ARGB ActualStroke;
+				color_argb_t ActualFill;
+				color_argb_t ActualStroke;
 
-				bool Selected = SelectionPossible && Count >= SelectionStart.Idx && Count < SelectionEnd.Idx;
-				bool TextCursor = TextCursorPossible && Count == SelectionStart.Idx && Count == SelectionEnd.Idx;
+				bool Selected = SelectionPossible && count >= SelectionStart.Idx && count < SelectionEnd.Idx;
+				bool TextCursor = TextCursorPossible && count == SelectionStart.Idx && count == SelectionEnd.Idx;
 				if(Selected)
 				{
 					ActualFill = InverseFill;
@@ -1298,67 +1298,67 @@ UIDrawText(
 				}
 
 
-				Depth += DRAW_DEPTH_JIFFIE;
+				depth += DRAW_DEPTH_JIFFIE;
 
-				UIClipTexture(TexX, TexY, Size, Size,
-					.WhiteColor = ActualFill,
-					.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-					.BlackColor = ActualStroke,
-					.BlackDepth = Depth,
-					.Texture = Data->Texture
+				UIClipTexture(TexX, TexY, size, size,
+					.white_color = ActualFill,
+					.white_depth = depth + DRAW_DEPTH_JIFFIE,
+					.black_color = ActualStroke,
+					.black_depth = depth,
+					.tex = data->tex
 					);
 
-				Depth -= DRAW_DEPTH_JIFFIE;
+				depth -= DRAW_DEPTH_JIFFIE;
 
 
 				if(Selected)
 				{
-					UIClipTexture(X + Stride * 0.5f, Y - Text->FontSize * 0.3333f, Stride, Text->FontSize,
-						.WhiteColor = Background,
-						.WhiteDepth = Depth - DRAW_DEPTH_JIFFIE,
-						.Texture = TEXTURE_RECT
+					UIClipTexture(x + Stride * 0.5f, y - Text->FontSize * 0.3333f, Stride, Text->FontSize,
+						.white_color = Background,
+						.white_depth = depth - DRAW_DEPTH_JIFFIE,
+						.tex = TEXTURE_RECT
 						);
 				}
 				else if(TextCursor)
 				{
-					UIClipTexture(X, Y - Text->FontSize * 0.4f, Text->FontSize * 0.15, Text->FontSize * 0.9f,
-						.WhiteColor = Fill,
-						.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE * 2,
-						.BlackColor = Stroke,
-						.BlackDepth = Depth + DRAW_DEPTH_JIFFIE * 2,
-						.Texture = TEXTURE_TEXT_CURSOR
+					UIClipTexture(x, y - Text->FontSize * 0.4f, Text->FontSize * 0.15, Text->FontSize * 0.9f,
+						.white_color = Fill,
+						.white_depth = depth + DRAW_DEPTH_JIFFIE * 2,
+						.black_color = Stroke,
+						.black_depth = depth + DRAW_DEPTH_JIFFIE * 2,
+						.tex = TEXTURE_TEXT_CURSOR
 						);
 				}
 
-				X += Stride;
-				++Count;
+				x += Stride;
+				++count;
 
 				continue;
 			}
 
-			bool TextCursor = TextCursorPossible && Count == SelectionStart.Idx && Count == SelectionEnd.Idx;
+			bool TextCursor = TextCursorPossible && count == SelectionStart.Idx && count == SelectionEnd.Idx;
 			if(TextCursor)
 			{
-				UIClipTexture(X, Y - Text->FontSize * 0.4f, Text->FontSize * 0.15, Text->FontSize * 0.9f,
-					.WhiteColor = Fill,
-					.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE * 2,
-					.BlackColor = Stroke,
-					.BlackDepth = Depth + DRAW_DEPTH_JIFFIE * 2,
-					.Texture = TEXTURE_TEXT_CURSOR
+				UIClipTexture(x, y - Text->FontSize * 0.4f, Text->FontSize * 0.15, Text->FontSize * 0.9f,
+					.white_color = Fill,
+					.white_depth = depth + DRAW_DEPTH_JIFFIE * 2,
+					.black_color = Stroke,
+					.black_depth = depth + DRAW_DEPTH_JIFFIE * 2,
+					.tex = TEXTURE_TEXT_CURSOR
 					);
 			}
 		}
 		else
 		{
-			Count = Line->Idx + Line->Length;
+			count = Line->Idx + Line->len;
 		}
 
-		Count += Line->Separator;
+		count += Line->Separator;
 	}
 }
 
 
-Static void
+private void
 UIDrawCheckbox(
 	UIElement* Element,
 	float ClipX,
@@ -1369,25 +1369,25 @@ UIDrawCheckbox(
 	UIElement* Scrollable
 	)
 {
-	AssertEQ(Element->W, Element->H);
+	assert_eq(Element->w, Element->h);
 
 	UICheckbox* Checkbox = &Element->Checkbox;
 
-	UIClipTexture(Element->EndX, Element->EndY, Element->W, Element->H,
-		.WhiteColor = RGBmulA(Checkbox->Background, Opacity),
-		.WhiteDepth = Depth - DRAW_DEPTH_JIFFIE,
-		.Texture = TEXTURE_RECT
+	UIClipTexture(Element->EndX, Element->EndY, Element->w, Element->h,
+		.white_color = color_argb_mul_a(Checkbox->Background, Opacity),
+		.white_depth = depth - DRAW_DEPTH_JIFFIE,
+		.tex = TEXTURE_RECT
 		);
 
-	UIClipTexture(Element->EndX, Element->EndY, Element->W, Element->H,
-		.WhiteColor = RGBmulA(Checkbox->CheckYes, Opacity),
-		.WhiteDepth = Depth,
-		.Texture = Checkbox->Checked ? TEXTURE_CHECK_YES : TEXTURE_CHECK_NO
+	UIClipTexture(Element->EndX, Element->EndY, Element->w, Element->h,
+		.white_color = color_argb_mul_a(Checkbox->CheckYes, Opacity),
+		.white_depth = depth,
+		.tex = Checkbox->Checked ? TEXTURE_CHECK_YES : TEXTURE_CHECK_NO
 		);
 }
 
 
-Static void
+private void
 UIDrawSlider(
 	UIElement* Element,
 	float ClipX,
@@ -1400,7 +1400,7 @@ UIDrawSlider(
 {
 	UISlider* Slider = &Element->Slider;
 
-	float Percentage = Slider->Value / (Slider->Sections - 1);
+	float Percentage = Slider->value / (Slider->Sections - 1);
 
 	float BgWidth;
 	float BgHeight;
@@ -1421,8 +1421,8 @@ UIDrawSlider(
 
 	if(Slider->Axis == UI_AXIS_HORIZONTAL)
 	{
-		BgWidth = Element->W - Element->H;
-		BgHeight = Element->H;
+		BgWidth = Element->w - Element->h;
+		BgHeight = Element->h;
 
 		Diameter = BgHeight;
 
@@ -1442,8 +1442,8 @@ UIDrawSlider(
 	}
 	else
 	{
-		BgWidth = Element->W;
-		BgHeight = Element->H - Element->W;
+		BgWidth = Element->w;
+		BgHeight = Element->h - Element->w;
 
 		Diameter = BgWidth;
 
@@ -1462,37 +1462,37 @@ UIDrawSlider(
 		OY = 0.25f;
 	}
 
-	ARGB Color = RGBmulA(Slider->Color, Opacity);
-	ARGB BgColor = RGBmulA(Slider->BgColor, Opacity);
+	color_argb_t color = color_argb_mul_a(Slider->color, Opacity);
+	color_argb_t BgColor = color_argb_mul_a(Slider->BgColor, Opacity);
 
 
-	switch(Slider->Type)
+	switch(Slider->type)
 	{
 
 	case UI_SLIDER_TYPE_NORMAL:
 	{
 		UIClipTexture(Element->EndX, Element->EndY, BgWidth, BgHeight,
-			.WhiteColor = BgColor,
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_RECT
+			.white_color = BgColor,
+			.white_depth = depth,
+			.tex = TEXTURE_RECT
 			);
 
 		UIClipTextureExplicit(BgMinX, BgMinY, Diameter, Diameter, SW, SH, OX, OY,
-			.WhiteColor = BgColor,
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = BgColor,
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTextureExplicit(BgMaxX, BgMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-			.WhiteColor = BgColor,
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = BgColor,
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter, Diameter,
-			.WhiteColor = Color,
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = color,
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		break;
@@ -1500,36 +1500,36 @@ UIDrawSlider(
 
 	case UI_SLIDER_TYPE_BRIGHTNESS:
 	{
-		AssertEQ(Slider->Axis, UI_AXIS_HORIZONTAL);
+		assert_eq(Slider->Axis, UI_AXIS_HORIZONTAL);
 
 		UIClipTexture(Element->EndX, Element->EndY, BgWidth, BgHeight,
-			.WhiteColor = Color,
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CS_B
+			.white_color = color,
+			.white_depth = depth,
+			.tex = TEXTURE_CS_B
 			);
 
 		UIClipTextureExplicit(BgMinX, BgMinY, Diameter, Diameter, SW, SH, OX, OY,
-			.WhiteColor = (ARGB){ .R = 0x00, .G = 0x00, .B = 0x00, .A = Opacity },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0x00, .g = 0x00, .b = 0x00, .A = Opacity },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTextureExplicit(BgMaxX, BgMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-			.WhiteColor = Color,
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = color,
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter - 3.0f, Diameter - 3.0f,
-			.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter, Diameter,
-			.WhiteColor = (ARGB){ .R = 0x00, .G = 0x00, .B = 0x00, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0x00, .g = 0x00, .b = 0x00, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		break;
@@ -1537,51 +1537,51 @@ UIDrawSlider(
 
 	case UI_SLIDER_TYPE_OPACITY:
 	{
-		AssertEQ(Slider->Axis, UI_AXIS_HORIZONTAL);
+		assert_eq(Slider->Axis, UI_AXIS_HORIZONTAL);
 
 		UIClipTexture(Element->EndX, Element->EndY, BgWidth, BgHeight,
-			.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-			.WhiteDepth = Depth - DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CS_T
+			.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+			.white_depth = depth - DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CS_T
 			);
 
 		if(Opacity != 0xFF)
 		{
 			UIClipTextureExplicit(BgMaxX, BgMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-				.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-				.WhiteDepth = Depth - DRAW_DEPTH_JIFFIE,
-				.Texture = TEXTURE_CIRCLE_T
+				.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+				.white_depth = depth - DRAW_DEPTH_JIFFIE,
+				.tex = TEXTURE_CIRCLE_T
 				);
 		}
 
 		UIClipTexture(Element->EndX, Element->EndY, BgWidth, BgHeight,
-			.WhiteColor = Color,
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_T_MASK
+			.white_color = color,
+			.white_depth = depth,
+			.tex = TEXTURE_T_MASK
 			);
 
 		UIClipTextureExplicit(BgMinX, BgMinY, Diameter, Diameter, SW, SH, OX, OY,
-			.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE_T
+			.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE_T
 			);
 
 		UIClipTextureExplicit(BgMaxX, BgMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-			.WhiteColor = Color,
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = color,
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter - 3.0f, Diameter - 3.0f,
-			.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter, Diameter,
-			.WhiteColor = (ARGB){ .R = 0x00, .G = 0x00, .B = 0x00, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0x00, .g = 0x00, .b = 0x00, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		break;
@@ -1589,36 +1589,36 @@ UIDrawSlider(
 
 	case UI_SLIDER_TYPE_RED:
 	{
-		AssertEQ(Slider->Axis, UI_AXIS_HORIZONTAL);
+		assert_eq(Slider->Axis, UI_AXIS_HORIZONTAL);
 
 		UIClipTexture(Element->EndX, Element->EndY, BgWidth, BgHeight,
-			.WhiteColor = (ARGB){ Color.ARGB | 0x00FF0000 },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CS_RED
+			.white_color = (color_argb_t){ color.color_argb_t | 0x00FF0000 },
+			.white_depth = depth,
+			.tex = TEXTURE_CS_RED
 			);
 
 		UIClipTextureExplicit(BgMinX, BgMinY, Diameter, Diameter, SW, SH, OX, OY,
-			.WhiteColor = (ARGB){ Color.ARGB & 0xFF00FFFF },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ color.color_argb_t & 0xFF00FFFF },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTextureExplicit(BgMaxX, BgMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-			.WhiteColor = (ARGB){ Color.ARGB | 0x00FF0000 },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ color.color_argb_t | 0x00FF0000 },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter - 3.0f, Diameter - 3.0f,
-			.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter, Diameter,
-			.WhiteColor = (ARGB){ .R = 0x00, .G = 0x00, .B = 0x00, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0x00, .g = 0x00, .b = 0x00, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		break;
@@ -1626,36 +1626,36 @@ UIDrawSlider(
 
 	case UI_SLIDER_TYPE_GREEN:
 	{
-		AssertEQ(Slider->Axis, UI_AXIS_HORIZONTAL);
+		assert_eq(Slider->Axis, UI_AXIS_HORIZONTAL);
 
 		UIClipTexture(Element->EndX, Element->EndY, BgWidth, BgHeight,
-			.WhiteColor = (ARGB){ Color.ARGB | 0x0000FF00 },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CS_GREEN
+			.white_color = (color_argb_t){ color.color_argb_t | 0x0000FF00 },
+			.white_depth = depth,
+			.tex = TEXTURE_CS_GREEN
 			);
 
 		UIClipTextureExplicit(BgMinX, BgMinY, Diameter, Diameter, SW, SH, OX, OY,
-			.WhiteColor = (ARGB){ Color.ARGB & 0xFFFF00FF },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ color.color_argb_t & 0xFFFF00FF },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTextureExplicit(BgMaxX, BgMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-			.WhiteColor = (ARGB){ Color.ARGB | 0x0000FF00 },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ color.color_argb_t | 0x0000FF00 },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter - 3.0f, Diameter - 3.0f,
-			.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter, Diameter,
-			.WhiteColor = (ARGB){ .R = 0x00, .G = 0x00, .B = 0x00, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0x00, .g = 0x00, .b = 0x00, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		break;
@@ -1663,36 +1663,36 @@ UIDrawSlider(
 
 	case UI_SLIDER_TYPE_BLUE:
 	{
-		AssertEQ(Slider->Axis, UI_AXIS_HORIZONTAL);
+		assert_eq(Slider->Axis, UI_AXIS_HORIZONTAL);
 
 		UIClipTexture(Element->EndX, Element->EndY, BgWidth, BgHeight,
-			.WhiteColor = (ARGB){ Color.ARGB | 0x000000FF },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CS_BLUE
+			.white_color = (color_argb_t){ color.color_argb_t | 0x000000FF },
+			.white_depth = depth,
+			.tex = TEXTURE_CS_BLUE
 			);
 
 		UIClipTextureExplicit(BgMinX, BgMinY, Diameter, Diameter, SW, SH, OX, OY,
-			.WhiteColor = (ARGB){ Color.ARGB & 0xFFFFFF00 },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ color.color_argb_t & 0xFFFFFF00 },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTextureExplicit(BgMaxX, BgMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-			.WhiteColor = (ARGB){ Color.ARGB | 0x000000FF },
-			.WhiteDepth = Depth,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ color.color_argb_t | 0x000000FF },
+			.white_depth = depth,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter - 3.0f, Diameter - 3.0f,
-			.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		UIClipTexture(SliderX, SliderY, Diameter, Diameter,
-			.WhiteColor = (ARGB){ .R = 0x00, .G = 0x00, .B = 0x00, .A = Opacity },
-			.WhiteDepth = Depth + DRAW_DEPTH_JIFFIE,
-			.Texture = TEXTURE_CIRCLE
+			.white_color = (color_argb_t){ .r = 0x00, .g = 0x00, .b = 0x00, .A = Opacity },
+			.white_depth = depth + DRAW_DEPTH_JIFFIE,
+			.tex = TEXTURE_CIRCLE
 			);
 
 		break;
@@ -1702,7 +1702,7 @@ UIDrawSlider(
 }
 
 
-Static void
+private void
 UIDrawScrollbar(
 	UIElement* Element,
 	float ClipX,
@@ -1715,11 +1715,11 @@ UIDrawScrollbar(
 {
 	UIScrollbar* Scrollbar = &Element->Scrollbar;
 
-	UIElement* ScrollableElement = Element->Prev;
-	AssertEQ(ScrollableElement->Type, UI_TYPE_CONTAINER);
+	UIElement* ScrollableElement = Element->prev;
+	assert_eq(ScrollableElement->type, UI_TYPE_CONTAINER);
 
-	float Width;
-	float Height;
+	float width;
+	float height;
 	float Diameter;
 
 	float SliderWidth;
@@ -1740,19 +1740,19 @@ UIDrawScrollbar(
 
 	if(Scrollbar->Axis == UI_AXIS_HORIZONTAL)
 	{
-		float Total = 1.0f / ScrollableElement->W;
-		float ViewMin = MAX(0.0f, Scrollbar->ViewMin * Total);
-		float ViewMax = MIN(1.0f, Scrollbar->ViewMax * Total);
+		float Total = 1.0f / ScrollableElement->w;
+		float ViewMin = MACRO_MAX(0.0f, Scrollbar->ViewMin * Total);
+		float ViewMax = MACRO_MIN(1.0f, Scrollbar->ViewMax * Total);
 
-		float BgWidth = Element->W - Element->H;
-		float BgHeight = Element->H;
+		float BgWidth = Element->w - Element->h;
+		float BgHeight = Element->h;
 
-		Width = (ViewMax - ViewMin) * BgWidth;
-		Height = BgHeight;
+		width = (ViewMax - ViewMin) * BgWidth;
+		height = BgHeight;
 		Diameter = BgHeight;
 
-		SliderWidth = Width + BgHeight;
-		SliderHeight = Height;
+		SliderWidth = width + BgHeight;
+		SliderHeight = height;
 
 		SliderMinX = Element->EndX + BgWidth * (ViewMin - 0.5f);
 		SliderMaxX = Element->EndX + BgWidth * (ViewMax - 0.5f);
@@ -1769,19 +1769,19 @@ UIDrawScrollbar(
 	}
 	else
 	{
-		float Total = 1.0f / ScrollableElement->H;
-		float ViewMin = MAX(0.0f, Scrollbar->ViewMin * Total);
-		float ViewMax = MIN(1.0f, Scrollbar->ViewMax * Total);
+		float Total = 1.0f / ScrollableElement->h;
+		float ViewMin = MACRO_MAX(0.0f, Scrollbar->ViewMin * Total);
+		float ViewMax = MACRO_MIN(1.0f, Scrollbar->ViewMax * Total);
 
-		float BgWidth = Element->W;
-		float BgHeight = Element->H - Element->W;
+		float BgWidth = Element->w;
+		float BgHeight = Element->h - Element->w;
 
-		Width = BgWidth;
-		Height = (ViewMax - ViewMin) * BgHeight;
+		width = BgWidth;
+		height = (ViewMax - ViewMin) * BgHeight;
 		Diameter = BgWidth;
 
-		SliderWidth = Width;
-		SliderHeight = Height + BgWidth;
+		SliderWidth = width;
+		SliderHeight = height + BgWidth;
 
 		SliderMinX = Element->EndX;
 		SliderMaxX = Element->EndX;
@@ -1814,39 +1814,39 @@ UIDrawScrollbar(
 	}
 
 
-	ARGB Color;
+	color_argb_t color;
 
 	if(Scrollbar->Held || Scrollbar->Hovered)
 	{
-		Color = RGBmulA(Scrollbar->AltColor, Opacity);
+		color = color_argb_mul_a(Scrollbar->AltColor, Opacity);
 	}
 	else
 	{
-		Color = RGBmulA(Scrollbar->Color, Opacity);
+		color = color_argb_mul_a(Scrollbar->color, Opacity);
 	}
 
 
-	UIClipTexture(SliderX, SliderY, Width, Height,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_RECT
+	UIClipTexture(SliderX, SliderY, width, height,
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_RECT
 		);
 
 	UIClipTextureExplicit(SliderMinX, SliderMinY, Diameter, Diameter, SW, SH, OX, OY,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 
 	UIClipTextureExplicit(SliderMaxX, SliderMaxY, Diameter, Diameter, SW, SH, 1.0f - OX, 1.0f - OY,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 }
 
 
-Static void
+private void
 UIDrawColorPicker(
 	UIElement* Element,
 	float ClipX,
@@ -1857,40 +1857,40 @@ UIDrawColorPicker(
 	UIElement* Scrollable
 	)
 {
-	AssertEQ(Element->W, Element->H);
+	assert_eq(Element->w, Element->h);
 
 	UIColorPicker* ColorPicker = &Element->ColorPicker;
 
-	float TextureW = Element->W * (1.0f - COLOR_PICKER_HANDLE_SIZE);
-	float TextureH = Element->H * (1.0f - COLOR_PICKER_HANDLE_SIZE);
-	float HandleW = Element->W * COLOR_PICKER_HANDLE_SIZE;
-	float HandleH = Element->H * COLOR_PICKER_HANDLE_SIZE;
+	float TextureW = Element->w * (1.0f - COLOR_PICKER_HANDLE_SIZE);
+	float TextureH = Element->h * (1.0f - COLOR_PICKER_HANDLE_SIZE);
+	float HandleW = Element->w * COLOR_PICKER_HANDLE_SIZE;
+	float HandleH = Element->h * COLOR_PICKER_HANDLE_SIZE;
 
-	float X = Element->EndX + TextureW * ColorPicker->Position.X;
-	float Y = Element->EndY + TextureH * ColorPicker->Position.Y;
+	float x = Element->EndX + TextureW * ColorPicker->pos.x;
+	float y = Element->EndY + TextureH * ColorPicker->pos.y;
 
 	UIClipTexture(Element->EndX, Element->EndY, TextureW, TextureH,
-		.WhiteColor = (ARGB){ .R = 0xFF, .G = 0xFF, .B = 0xFF, .A = Opacity },
-		.WhiteDepth = Depth - DRAW_DEPTH_JIFFIE,
-		.Texture = TEXTURE_CS_HS
+		.white_color = (color_argb_t){ .r = 0xFF, .g = 0xFF, .b = 0xFF, .A = Opacity },
+		.white_depth = depth - DRAW_DEPTH_JIFFIE,
+		.tex = TEXTURE_CS_HS
 		);
 
-	ARGB Color = ColorPicker->ColorRGB;
-	UIClipTexture(X, Y, HandleW - 3.0f, HandleH - 3.0f,
-		.WhiteColor = (ARGB){ .R = Color.R, .G = Color.G, .B = Color.B, .A = Opacity },
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+	color_argb_t color = ColorPicker->ColorRGB;
+	UIClipTexture(x, y, HandleW - 3.0f, HandleH - 3.0f,
+		.white_color = (color_argb_t){ .r = color.r, .g = color.g, .b = color.b, .A = Opacity },
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 
-	UIClipTexture(X, Y, HandleW, HandleH,
-		.WhiteColor = (ARGB){ .R = 0x00, .G = 0x00, .B = 0x00, .A = Opacity },
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+	UIClipTexture(x, y, HandleW, HandleH,
+		.white_color = (color_argb_t){ .r = 0x00, .g = 0x00, .b = 0x00, .A = Opacity },
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 }
 
 
-Static void
+private void
 UIDrawTexture(
 	UIElement* Element,
 	float ClipX,
@@ -1901,21 +1901,21 @@ UIDrawTexture(
 	UIElement* Scrollable
 	)
 {
-	UITexture* Texture = &Element->Texture;
+	UITexture* tex = &Element->tex;
 
-	UIClipTextureExplicit(Element->EndX, Element->EndY, Element->W, Element->H,
-						  Texture->SW, Texture->SH, Texture->OX, Texture->OY,
-		.WhiteColor = RGBmulA(Texture->WhiteColor, Opacity),
-		.WhiteDepth = Depth,
-		.BlackColor = RGBmulA(Texture->BlackColor, Opacity),
-		.BlackDepth = Depth,
-		.Texture = Texture->Texture,
-		.Rotation = Texture->Rotation
+	UIClipTextureExplicit(Element->EndX, Element->EndY, Element->w, Element->h,
+						  tex->SW, tex->SH, tex->OX, tex->OY,
+		.white_color = color_argb_mul_a(tex->white_color, Opacity),
+		.white_depth = depth,
+		.black_color = color_argb_mul_a(tex->black_color, Opacity),
+		.black_depth = depth,
+		.tex = tex->tex,
+		.angle = tex->angle
 		);
 }
 
 
-Static void
+private void
 UIPreClipCalcContainer(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -1929,24 +1929,24 @@ UIPreClipCalcContainer(
 
 		if(Container->Axis == UI_AXIS_VERTICAL)
 		{
-			float ClampedGoalOffsetY = MIN(MAX(Container->GoalOffsetY, Parent->H - Element->H), 0);
+			float ClampedGoalOffsetY = MACRO_MIN(MACRO_MAX(Container->GoalOffsetY, Parent->h - Element->h), 0);
 			Container->GoalOffsetY = glm_lerpc(Container->GoalOffsetY, ClampedGoalOffsetY, 0.5f * DeltaTime);
-			Container->OffsetY     = glm_lerpc(Container->OffsetY, Container->GoalOffsetY, 0.2f * DeltaTime);
+			Container->offset_y     = glm_lerpc(Container->offset_y, Container->GoalOffsetY, 0.2f * DeltaTime);
 		}
 		else
 		{
-			float ClampedGoalOffsetX = MIN(MAX(Container->GoalOffsetX, Parent->W - Element->W), 0);
+			float ClampedGoalOffsetX = MACRO_MIN(MACRO_MAX(Container->GoalOffsetX, Parent->w - Element->w), 0);
 			Container->GoalOffsetX = glm_lerpc(Container->GoalOffsetX, ClampedGoalOffsetX, 0.5f * DeltaTime);
 			Container->OffsetX     = glm_lerpc(Container->OffsetX, Container->GoalOffsetX, 0.2f * DeltaTime);
 		}
 
 		Element->EndX += Container->OffsetX;
-		Element->EndY += Container->OffsetY;
+		Element->EndY += Container->offset_y;
 	}
 }
 
 
-Static void
+private void
 UIPreClipCalcText(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -1958,7 +1958,7 @@ UIPreClipCalcText(
 }
 
 
-Static void
+private void
 UIPreClipCalcCheckbox(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -1970,7 +1970,7 @@ UIPreClipCalcCheckbox(
 }
 
 
-Static void
+private void
 UIPreClipCalcSlider(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -1982,7 +1982,7 @@ UIPreClipCalcSlider(
 }
 
 
-Static void
+private void
 UIPreClipCalcScrollbar(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -1996,7 +1996,7 @@ UIPreClipCalcScrollbar(
 }
 
 
-Static void
+private void
 UIPreClipCalcColorPicker(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -2008,19 +2008,19 @@ UIPreClipCalcColorPicker(
 }
 
 
-Static void
+private void
 UIPreClipCalcTexture(
 	UIElement* Element,
 	UIElement* Scrollable
 	)
 {
-	UITexture* Texture = &Element->Texture;
+	UITexture* tex = &Element->tex;
 
-	(void) Texture;
+	(void) tex;
 }
 
 
-Static void
+private void
 UIPostClipCalcContainer(
 	UIElement* Element,
 	float ClipX,
@@ -2037,7 +2037,7 @@ UIPostClipCalcContainer(
 }
 
 
-Static void
+private void
 UIPostClipCalcText(
 	UIElement* Element,
 	float ClipX,
@@ -2057,17 +2057,17 @@ UIPostClipCalcText(
 
 		if(Container->Axis == UI_AXIS_VERTICAL)
 		{
-			float StartY = Element->EndY - Element->H * 0.5f;
-			float Y = StartY + SelectionTail.LineIdx * Text->FontSize;
-			float D = Y - (ClipY - ClipH * 0.5f);
+			float StartY = Element->EndY - Element->h * 0.5f;
+			float y = StartY + SelectionTail.LineIdx * Text->FontSize;
+			float D = y - (ClipY - ClipH * 0.5f);
 			if(D < 0)
 			{
 				Container->GoalOffsetY -= D * 0.33f;
 				Moved = true;
 			}
 
-			Y = StartY + (SelectionTail.LineIdx + 1) * Text->FontSize;
-			D = Y - (ClipY + ClipH * 0.5f);
+			y = StartY + (SelectionTail.LineIdx + 1) * Text->FontSize;
+			D = y - (ClipY + ClipH * 0.5f);
 			if(D > 0)
 			{
 				Container->GoalOffsetY -= D * 0.33f;
@@ -2077,16 +2077,16 @@ UIPostClipCalcText(
 		else
 		{
 			float Scale = Text->FontSize / FONT_SIZE;
-			float X = Element->EndX + Text->Lines[SelectionTail.LineIdx]->X + SelectionTail.Stride * Scale;
+			float x = Element->EndX + Text->Lines[SelectionTail.LineIdx]->x + SelectionTail.Stride * Scale;
 
-			float D = X - (ClipX - ClipW * 0.5f);
+			float D = x - (ClipX - ClipW * 0.5f);
 			if(D < 0)
 			{
 				Container->GoalOffsetX -= D * 0.33f;
 				Moved = true;
 			}
 
-			D = X - (ClipX + ClipW * 0.5f);
+			D = x - (ClipX + ClipW * 0.5f);
 			if(D > 0)
 			{
 				Container->GoalOffsetX -= D * 0.33f;
@@ -2096,14 +2096,14 @@ UIPostClipCalcText(
 
 		if(Moved && SelectedElement == Element)
 		{
-			/* Bit of a workaround, can't call UITextOnMouseMove because it's not defined here yet */
+			/* bit of a workaround, can't call UITextOnMouseMove because it's not defined here yet */
 			Element->Callback(Element, UI_EVENT_MOUSE_MOVE);
 		}
 	}
 }
 
 
-Static void
+private void
 UIPostClipCalcCheckbox(
 	UIElement* Element,
 	float ClipX,
@@ -2120,7 +2120,7 @@ UIPostClipCalcCheckbox(
 }
 
 
-Static void
+private void
 UIPostClipCalcSlider(
 	UIElement* Element,
 	float ClipX,
@@ -2137,7 +2137,7 @@ UIPostClipCalcSlider(
 }
 
 
-Static void
+private void
 UIPostClipCalcScrollbar(
 	UIElement* Element,
 	float ClipX,
@@ -2154,7 +2154,7 @@ UIPostClipCalcScrollbar(
 }
 
 
-Static void
+private void
 UIPostClipCalcColorPicker(
 	UIElement* Element,
 	float ClipX,
@@ -2171,7 +2171,7 @@ UIPostClipCalcColorPicker(
 }
 
 
-Static void
+private void
 UIPostClipCalcTexture(
 	UIElement* Element,
 	float ClipX,
@@ -2182,13 +2182,13 @@ UIPostClipCalcTexture(
 	UIElement* Scrollable
 	)
 {
-	UITexture* Texture = &Element->Texture;
+	UITexture* tex = &Element->tex;
 
-	(void) Texture;
+	(void) tex;
 }
 
 
-Static void
+private void
 UIDraw(
 	void
 	)
@@ -2197,23 +2197,23 @@ UIDraw(
 	ScrollableUnderMouse = NULL;
 
 	DrawIndex = 0;
-	Depth = DRAW_DEPTH_LEAP;
+	depth = DRAW_DEPTH_LEAP;
 
-	UIDrawChildren(Elements, Elements->X, Elements->Y, Elements->W, Elements->H, 0xFF, NULL);
+	UIDrawChildren(Elements, Elements->x, Elements->y, Elements->w, Elements->h, 0xFF, NULL);
 
-	AssertNotNull(ElementUnderMouse);
+	assert_not_null(ElementUnderMouse);
 
 	if(ElementUnderMouse->Selectable)
 	{
-		WindowSetCursor(WINDOW_CURSOR_TYPING);
+		window_set_cursor(WINDOW_CURSOR_TYPING);
 	}
 	else if(ElementUnderMouse->Clickable)
 	{
-		WindowSetCursor(WINDOW_CURSOR_POINTING);
+		window_set_cursor(WINDOW_CURSOR_POINTING);
 	}
 	else
 	{
-		WindowSetCursor(WINDOW_CURSOR_DEFAULT);
+		window_set_cursor(WINDOW_CURSOR_DEFAULT);
 	}
 }
 
@@ -2221,45 +2221,45 @@ UIDraw(
 
 
 
-Static UITextOffset
+private UITextOffset
 UITextCalculateOffset(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
 	float Scale = Text->FontSize / FONT_SIZE;
 	float HalfPadding = STROKE_THICKNESS * Scale;
 
-	float Top = Element->EndY - Element->H * 0.5f;
-	int32_t LineIdx = (MAX(MouseY, Top) - Top) / Text->FontSize;
-	LineIdx = MIN(MAX(LineIdx, 0), Text->LineCount - 1);
+	float top = Element->EndY - Element->h * 0.5f;
+	int32_t LineIdx = (MACRO_MAX(MouseY, top) - top) / Text->FontSize;
+	LineIdx = MACRO_MIN(MACRO_MAX(LineIdx, 0), Text->LineCount - 1);
 
 	UITextLine* Line = Text->Lines[LineIdx];
 	uint32_t Idx = Line->Idx;
-	float X = MouseX - (Element->EndX + Line->X) + HalfPadding;
-	X = MIN(MAX(X, 0.0f), Element->W - HalfPadding * 2.0f);
+	float x = MouseX - (Element->EndX + Line->x) + HalfPadding;
+	x = MACRO_MIN(MACRO_MAX(x, 0.0f), Element->w - HalfPadding * 2.0f);
 
-	uint32_t Total = X / Scale;
+	uint32_t Total = x / Scale;
 	uint32_t Original = Total;
 	uint32_t CharIdx = 0;
 
-	// for(uint32_t i = 0; i < Line->Length; ++i)
+	// for(uint32_t i = 0; i < Line->len; ++i)
 	// {
-	// 	unsigned char Index = *(Char++) - ' ';
-	// 	const FontDrawData* Data = FontData + Index;
+	// 	unsigned char idx = *(Char++) - ' ';
+	// 	const FontDrawData* data = FontData + idx;
 
-	// 	if(Total > Data->Stride)
+	// 	if(Total > data->Stride)
 	// 	{
-	// 		Total -= Data->Stride;
+	// 		Total -= data->Stride;
 	// 		++CharIdx;
 	// 	}
 	// 	else
 	// 	{
-	// 		if(Total * 2 >= Data->Stride)
+	// 		if(Total * 2 >= data->Stride)
 	// 		{
-	// 			Total -= Data->Stride;
+	// 			Total -= data->Stride;
 	// 			++CharIdx;
 	// 		}
 
@@ -2278,16 +2278,16 @@ UITextCalculateOffset(
 }
 
 
-Static void
+private void
 UITextRecalculateOffset(
 	UIElement* Element,
 	UITextOffset* Selection
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
-	uint32_t Offset = MIN(MAX(Selection->Idx, 0), Text->Length);
+	uint32_t Offset = MACRO_MIN(MACRO_MAX(Selection->Idx, 0), Text->len);
 	uint32_t LineIdx = 0;
 	UITextLine* Line;
 
@@ -2295,9 +2295,9 @@ UITextRecalculateOffset(
 	{
 		Line = Text->Lines[LineIdx];
 
-		if(Offset >= Line->Length + Line->Separator && LineIdx != Text->LineCount - 1)
+		if(Offset >= Line->len + Line->Separator && LineIdx != Text->LineCount - 1)
 		{
-			Offset -= Line->Length + Line->Separator;
+			Offset -= Line->len + Line->Separator;
 			++LineIdx;
 		}
 		else
@@ -2312,11 +2312,11 @@ UITextRecalculateOffset(
 
 	// while(CurIdx--)
 	// {
-	// 	AssertNEQ(*Char, 0);
-	// 	unsigned char Index = *(Char++) - ' ';
-	// 	const FontDrawData* Data = FontData + Index;
+	// 	assert_neq(*Char, 0);
+	// 	unsigned char idx = *(Char++) - ' ';
+	// 	const FontDrawData* data = FontData + idx;
 
-	// 	Stride += Data->Stride;
+	// 	Stride += data->Stride;
 	// }
 
 	Selection->LineIdx = LineIdx;
@@ -2325,20 +2325,20 @@ UITextRecalculateOffset(
 }
 
 
-Static void
+private void
 UITextAddMod(
 	uint32_t Start,
 	uint32_t End,
 	const char* Str,
-	uint32_t Length
+	uint32_t len
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Editable);
+	assert_true(Text->Editable);
 
 
-	UITextMod* Mod = Text->Mods + Text->CurrentMod;
-	UITextMod* ModEnd = Text->Mods + Text->ModCount;
+	UITextMod* Mod = Text->mods + Text->CurrentMod;
+	UITextMod* ModEnd = Text->mods + Text->ModCount;
 
 	while(Mod != ModEnd)
 	{
@@ -2348,23 +2348,23 @@ UITextAddMod(
 
 	/*uint32_t OldLength = End - Start;
 	char* OldStr = malloc(OldLength + 1);
-	AssertNotNull(OldStr);
+	assert_not_null(OldStr);
 
 	memcpy(OldStr, Text->Str + Start, OldLength);
 	OldStr[OldLength] = 0;
 
 
-	char* NewStr = malloc(Length + 1);
-	AssertNotNull(NewStr);
+	char* NewStr = malloc(len + 1);
+	assert_not_null(NewStr);
 
-	memcpy(NewStr, Str, Length);
-	NewStr[Length] = 0;
+	memcpy(NewStr, Str, len);
+	NewStr[len] = 0;
 
 
-	Text->Mods = realloc(Text->Mods, sizeof(*Text->Mods) * (Text->CurrentMod + 1));
-	AssertNotNull(Text->Mods);
+	Text->mods = realloc(Text->mods, sizeof(*Text->mods) * (Text->CurrentMod + 1));
+	assert_not_null(Text->mods);
 
-	Text->Mods[Text->CurrentMod++] =
+	Text->mods[Text->CurrentMod++] =
 	(UITextMod)
 	{
 		.Start = Start,
@@ -2373,39 +2373,39 @@ UITextAddMod(
 		.OldLength = OldLength,
 
 		.NewStr = NewStr,
-		.NewLength = Length
+		.NewLength = len
 	};
 
 	Text->ModCount = Text->CurrentMod;*/
 }
 
 
-Static void
+private void
 UITextCopy(
 	void
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Selectable);
+	assert_true(Text->Selectable);
 
 	/*char* EndChar = Text->Str + SelectionEnd.Idx;
 	const char Char = *EndChar;
 	*EndChar = 0;
 
-	int Status = SDL_SetClipboardText(Text->Str + SelectionStart.Idx);
-	AssertEQ(Status, 0);
+	int status = SDL_SetClipboardText(Text->Str + SelectionStart.Idx);
+	assert_eq(status, 0);
 
 	*EndChar = Char;*/
 }
 
 
-Static void
+private void
 UITextSelectAll(
 	void
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Selectable);
+	assert_true(Text->Selectable);
 
 	if(SelectionStart.Idx != 0)
 	{
@@ -2414,9 +2414,9 @@ UITextSelectAll(
 		SelectionHead = SelectionStart;
 	}
 
-	if(SelectionEnd.Idx != Text->Length)
+	if(SelectionEnd.Idx != Text->len)
 	{
-		SelectionEnd.Idx = Text->Length;
+		SelectionEnd.Idx = Text->len;
 		UITextRecalculateOffset(SelectedTextElement, &SelectionEnd);
 		SelectionTail = SelectionEnd;
 	}
@@ -2429,13 +2429,13 @@ UITextSelectAll(
 }
 
 
-Static void
+private void
 UITextDelete(
 	uint32_t Offset
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Editable);
+	assert_true(Text->Editable);
 
 	/*if(SelectionStart.Idx == SelectionEnd.Idx)
 	{
@@ -2454,7 +2454,7 @@ UITextDelete(
 		}
 		else
 		{
-			if(SelectionEnd.Idx == Text->Length)
+			if(SelectionEnd.Idx == Text->len)
 			{
 				return;
 			}
@@ -2472,14 +2472,14 @@ UITextDelete(
 		memmove(
 			Text->Str + Idx,
 			Text->Str + Idx + 1,
-			Text->Length - Idx
+			Text->len - Idx
 			);
 
-		--Text->Length;
+		--Text->len;
 	}
 	else
 	{
-		uint32_t Length = SelectionEnd.Idx - SelectionStart.Idx;
+		uint32_t len = SelectionEnd.Idx - SelectionStart.Idx;
 
 		UITextAddMod(
 			SelectionStart.Idx,
@@ -2488,18 +2488,18 @@ UITextDelete(
 			0
 			);
 
-		AssertEQ(Text->Str[Text->Length], 0);
+		assert_eq(Text->Str[Text->len], 0);
 
 		memmove(
 			Text->Str + SelectionStart.Idx,
 			Text->Str + SelectionEnd.Idx,
-			Text->Length - SelectionEnd.Idx + 1
+			Text->len - SelectionEnd.Idx + 1
 			);
 
-		Text->Length -= Length;
+		Text->len -= len;
 	}
 
-	AssertEQ(Text->Str[Text->Length], 0);
+	assert_eq(Text->Str[Text->len], 0);
 
 	UIUpdateElement(SelectedTextElement);
 	UITextRecalculateOffset(SelectedTextElement, &SelectionStart);
@@ -2507,53 +2507,53 @@ UITextDelete(
 }
 
 
-Static void
+private void
 UITextExecMod(
 	uint32_t Start,
 	uint32_t End,
 	const char* Str,
-	uint32_t Length
+	uint32_t len
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Editable);
+	assert_true(Text->Editable);
 
 	/*uint32_t CurLength = End - Start;
-	int32_t DiffLength = Length - CurLength;
+	int32_t DiffLength = len - CurLength;
 
 	if(DiffLength < 0)
 	{
 		memmove(
 			Text->Str + End + DiffLength,
 			Text->Str + End,
-			Text->Length - End + 1
+			Text->len - End + 1
 			);
 	}
 
-	Text->Str = realloc(Text->Str, Text->Length + DiffLength + 1);
-	AssertNotNull(Text->Str);
+	Text->Str = realloc(Text->Str, Text->len + DiffLength + 1);
+	assert_not_null(Text->Str);
 
 	if(DiffLength >= 0)
 	{
 		memmove(
 			Text->Str + End + DiffLength,
 			Text->Str + End,
-			Text->Length - End + 1
+			Text->len - End + 1
 			);
 	}
 
 	memcpy(
 		Text->Str + Start,
 		Str,
-		Length
+		len
 		);
 
-	Text->Length += DiffLength;
-	AssertEQ(Text->Str[Text->Length], 0);
+	Text->len += DiffLength;
+	assert_eq(Text->Str[Text->len], 0);
 
 	UIUpdateElement(SelectedTextElement);
 
-	uint32_t EndIdx = Start + Length;
+	uint32_t EndIdx = Start + len;
 	if(SelectionEnd.Idx != EndIdx)
 	{
 		SelectionEnd.Idx = EndIdx;
@@ -2565,20 +2565,20 @@ UITextExecMod(
 }
 
 
-Static void
+private void
 UITextExecPrevMod(
 	void
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Editable);
+	assert_true(Text->Editable);
 
 	if(!Text->CurrentMod)
 	{
 		return;
 	}
 
-	/*UITextMod* Mod = Text->Mods + --Text->CurrentMod;
+	/*UITextMod* Mod = Text->mods + --Text->CurrentMod;
 	UITextExecMod(
 		Mod->Start,
 		Mod->Start + Mod->NewLength,
@@ -2588,20 +2588,20 @@ UITextExecPrevMod(
 }
 
 
-Static void
+private void
 UITextExecNextMod(
 	void
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Editable);
+	assert_true(Text->Editable);
 
 	if(Text->CurrentMod == Text->ModCount)
 	{
 		return;
 	}
 
-	/*UITextMod* Mod = Text->Mods + Text->CurrentMod++;
+	/*UITextMod* Mod = Text->mods + Text->CurrentMod++;
 	UITextExecMod(
 		Mod->Start,
 		Mod->Start + Mod->OldLength,
@@ -2611,29 +2611,29 @@ UITextExecNextMod(
 }
 
 
-Static void
+private void
 UITextPasteExplicit(
 	const char* OriginalStr,
-	uint32_t Length
+	uint32_t len
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Editable);
+	assert_true(Text->Editable);
 
-	/*if(!Length)
+	/*if(!len)
 	{
 		return;
 	}
 
-	if(Length > 1024 * 1024)
+	if(len > 1024 * 1024)
 	{
-		Length = 1024 * 1024;
+		len = 1024 * 1024;
 	}
 
-	char Str[Length];
+	char Str[len];
 
 	const char* OriginalChar = OriginalStr;
-	const char* OriginalEnd = OriginalStr + Length;
+	const char* OriginalEnd = OriginalStr + len;
 	char* Char = Str;
 
 	while(OriginalChar < OriginalEnd)
@@ -2645,15 +2645,15 @@ UITextPasteExplicit(
 		}
 	}
 
-	Length = Char - Str;
+	len = Char - Str;
 
-	uint32_t AddedLength = Text->Length + Length - (SelectionEnd.Idx - SelectionStart.Idx);
-	int32_t DiffLength = AddedLength - Text->MaxLength;
+	uint32_t AddedLength = Text->len + len - (SelectionEnd.Idx - SelectionStart.Idx);
+	int32_t DiffLength = AddedLength - Text->max_len;
 	if(DiffLength > 0)
 	{
-		Length -= DiffLength;
+		len -= DiffLength;
 
-		if(!Length)
+		if(!len)
 		{
 			return;
 		}
@@ -2663,9 +2663,9 @@ UITextPasteExplicit(
 	{
 		UITextDelete(-1);
 	}
-	AssertEQ(SelectionStart.Idx, SelectionEnd.Idx);
+	assert_eq(SelectionStart.Idx, SelectionEnd.Idx);
 
-	void* New = realloc(Text->Str, Text->Length + Length + 1);
+	void* New = realloc(Text->Str, Text->len + len + 1);
 	if(!New)
 	{
 		return;
@@ -2677,19 +2677,19 @@ UITextPasteExplicit(
 		SelectionStart.Idx,
 		SelectionStart.Idx,
 		Str,
-		Length
+		len
 		);
 
 	memmove(
-		Text->Str + SelectionStart.Idx + Length,
+		Text->Str + SelectionStart.Idx + len,
 		Text->Str + SelectionStart.Idx,
-		Text->Length - SelectionStart.Idx + 1
+		Text->len - SelectionStart.Idx + 1
 		);
 
-	memcpy(Text->Str + SelectionStart.Idx, Str, Length);
+	memcpy(Text->Str + SelectionStart.Idx, Str, len);
 
-	Text->Length += Length;
-	SelectionStart.Idx += Length;
+	Text->len += len;
+	SelectionStart.Idx += len;
 
 	UIUpdateElement(SelectedTextElement);
 	UITextRecalculateOffset(SelectedTextElement, &SelectionStart);
@@ -2697,7 +2697,7 @@ UITextPasteExplicit(
 }
 
 
-Static void
+private void
 UITextPaste(
 	void
 	)
@@ -2708,26 +2708,26 @@ UITextPaste(
 	}
 
 	char* Str = SDL_GetClipboardText();
-	uint32_t Length = strlen(Str);
+	uint32_t len = strlen(Str);
 
 	if(!Str)
 	{
 		return;
 	}
 
-	UITextPasteExplicit(Str, Length);
+	UITextPasteExplicit(Str, len);
 
 	SDL_free(Str);
 }
 
 
-Static void
+private void
 UITextMoveSelectionHorizontallyWholeWord(
 	uint32_t Direction
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Selectable);
+	assert_true(Text->Selectable);
 
 	/*if(Direction == -1)
 	{
@@ -2769,13 +2769,13 @@ UITextMoveSelectionHorizontallyWholeWord(
 }
 
 
-Static void
+private void
 UITextMoveSelectionHorizontally(
 	uint32_t Direction
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Selectable);
+	assert_true(Text->Selectable);
 
 	if(Direction == -1)
 	{
@@ -2786,7 +2786,7 @@ UITextMoveSelectionHorizontally(
 	}
 	else
 	{
-		if(SelectionTail.Idx == Text->Length)
+		if(SelectionTail.Idx == Text->len)
 		{
 			return;
 		}
@@ -2797,7 +2797,7 @@ UITextMoveSelectionHorizontally(
 }
 
 
-Static void
+private void
 UITextMoveHorizontally(
 	uint32_t Direction,
 	int Select,
@@ -2805,7 +2805,7 @@ UITextMoveHorizontally(
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Selectable);
+	assert_true(Text->Selectable);
 
 	if(!Select && SelectionStart.Idx != SelectionEnd.Idx)
 	{
@@ -2858,13 +2858,13 @@ UITextMoveHorizontally(
 }
 
 
-Static void
+private void
 UITextMoveSelectionVertically(
 	uint32_t Direction
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Selectable);
+	assert_true(Text->Selectable);
 
 	if(Direction == -1)
 	{
@@ -2882,7 +2882,7 @@ UITextMoveSelectionVertically(
 		{
 			UITextLine* Line = Text->Lines[SelectionTail.LineIdx];
 			SelectionTail.Idx -= SelectionTail.Offset;
-			SelectionTail.Idx += Line->Length;
+			SelectionTail.Idx += Line->len;
 
 			UITextRecalculateOffset(SelectedTextElement, &SelectionTail);
 			LastSelection = SelectionTail;
@@ -2896,9 +2896,9 @@ UITextMoveSelectionVertically(
 	UITextLine* OriginLine = Text->Lines[LastSelection.LineIdx];
 	UITextLine* LastLine = Text->Lines[SelectionTail.LineIdx];
 	UITextLine* NewLine = Text->Lines[SelectionTail.LineIdx + Direction];
-	int32_t Target =
-		+ (uint32_t)(OriginLine->X / Scale)
-		- (uint32_t)(NewLine->X / Scale)
+	int32_t target =
+		+ (uint32_t)(OriginLine->x / Scale)
+		- (uint32_t)(NewLine->x / Scale)
 		+ LastSelection.Stride;
 	int32_t Total = 0;
 	uint32_t Offset = 0;
@@ -2906,18 +2906,18 @@ UITextMoveSelectionVertically(
 	// const char* Char = NewLine->Str;
 	// while(*Char)
 	// {
-	// 	unsigned char Index = *(Char++) - ' ';
-	// 	const FontDrawData* Data = FontData + Index;
+	// 	unsigned char idx = *(Char++) - ' ';
+	// 	const FontDrawData* data = FontData + idx;
 
-	// 	int32_t Old = Total;
-	// 	Total += Data->Stride;
+	// 	int32_t old = Total;
+	// 	Total += data->Stride;
 	// 	++Offset;
 
-	// 	if(Total >= Target)
+	// 	if(Total >= target)
 	// 	{
-	// 		if(abs(Target - Old) < abs(Total - Target))
+	// 		if(abs(target - old) < abs(Total - target))
 	// 		{
-	// 			Total = Old;
+	// 			Total = old;
 	// 			--Offset;
 	// 		}
 
@@ -2927,11 +2927,11 @@ UITextMoveSelectionVertically(
 
 	if(Direction == -1)
 	{
-		SelectionTail.Idx = SelectionTail.Idx - SelectionTail.Offset - (NewLine->Length + NewLine->Separator - Offset);
+		SelectionTail.Idx = SelectionTail.Idx - SelectionTail.Offset - (NewLine->len + NewLine->Separator - Offset);
 	}
 	else
 	{
-		SelectionTail.Idx = SelectionTail.Idx + (LastLine->Length + LastLine->Separator - SelectionTail.Offset) + Offset;
+		SelectionTail.Idx = SelectionTail.Idx + (LastLine->len + LastLine->Separator - SelectionTail.Offset) + Offset;
 	}
 
 	SelectionTail.LineIdx += Direction;
@@ -2941,14 +2941,14 @@ UITextMoveSelectionVertically(
 }
 
 
-Static void
+private void
 UITextMoveVertically(
 	uint32_t Direction,
 	int Select
 	)
 {
 	UIText* Text = &SelectedTextElement->Text;
-	AssertTrue(Text->Selectable);
+	assert_true(Text->Selectable);
 
 	if(!Select && SelectionStart.Idx != SelectionEnd.Idx)
 	{
@@ -2993,14 +2993,14 @@ UITextMoveVertically(
 }
 
 
-Static void
+private void
 UITextSubmit(
 	void
 	)
 {
 	SelectedTextElement->Callback(SelectedTextElement, UI_EVENT_SUBMIT);
 	SelectedTextElement = NULL;
-	WindowStopTyping();
+	window_stop_typing();
 }
 
 
@@ -3009,7 +3009,7 @@ UIFocusText(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 
 	if(SelectedTextElement == Element)
 	{
@@ -3030,11 +3030,11 @@ UIScrollbarUpdate(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SCROLLBAR);
+	assert_eq(Element->type, UI_TYPE_SCROLLBAR);
 	UIScrollbar* Scrollbar = &Element->Scrollbar;
 
-	UIElement* ScrollableElement = Element->Prev;
-	AssertEQ(ScrollableElement->Type, UI_TYPE_CONTAINER);
+	UIElement* ScrollableElement = Element->prev;
+	assert_eq(ScrollableElement->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &ScrollableElement->Container;
 
 	UIElement* Parent = Element->Parent;
@@ -3045,12 +3045,12 @@ UIScrollbarUpdate(
 	if(Container->Axis == UI_AXIS_HORIZONTAL)
 	{
 		Offset = -Container->OffsetX;
-		View = Parent->W;
+		View = Parent->w;
 	}
 	else
 	{
-		Offset = -Container->OffsetY;
-		View = Parent->H;
+		Offset = -Container->offset_y;
+		View = Parent->h;
 	}
 
 	Scrollbar->ViewMin = Offset;
@@ -3063,38 +3063,38 @@ UIColorPickerUpdate(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_COLOR_PICKER);
+	assert_eq(Element->type, UI_TYPE_COLOR_PICKER);
 	UIColorPicker* ColorPicker = &Element->ColorPicker;
 
-	ColorPicker->ColorHSV = RGBtoHSV(ColorPicker->ColorRGB);
-	float Value = ColorPicker->ColorHSV.V;
-	ColorPicker->ColorHSV.V = 1.0f;
-	ColorPicker->ColorRGB = HSVtoRGB(ColorPicker->ColorHSV);
-	ColorPicker->Position = HSVtoXOY(ColorPicker->ColorHSV);
+	ColorPicker->ColorHSV = color_argb_to_hsv(ColorPicker->ColorRGB);
+	float value = ColorPicker->ColorHSV.v;
+	ColorPicker->ColorHSV.v = 1.0f;
+	ColorPicker->ColorRGB = color_hsv_to_argb(ColorPicker->ColorHSV);
+	ColorPicker->pos = color_hsv_to_xy(ColorPicker->ColorHSV);
 
-	return Value;
+	return value;
 }
 
 
-Static void
+private void
 UIColorPickerUpdatePos(
 	UIColorPicker* ColorPicker
 	)
 {
-	ColorPicker->ColorHSV = XOYtoHSV(ColorPicker->Position);
-	ColorPicker->ColorRGB = HSVtoRGB(ColorPicker->ColorHSV);
+	ColorPicker->ColorHSV = color_xy_to_hsv(ColorPicker->pos);
+	ColorPicker->ColorRGB = color_hsv_to_argb(ColorPicker->ColorHSV);
 }
 
 
 
 
 
-Static void
+private void
 UITextOnMouseDown(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
 	if(!Text->Selectable)
@@ -3108,18 +3108,18 @@ UITextOnMouseDown(
 
 	if(Text->Editable)
 	{
-		WindowStartTyping();
+		window_start_typing();
 		LastCursorSetAt = GetTime();
 	}
 }
 
 
-Static void
+private void
 UITextOnMouseMove(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 	UIText* Text = &Element->Text;
 
 	if(!Text->Selectable)
@@ -3153,7 +3153,7 @@ UITextCallback(
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_TEXT);
+	assert_eq(Element->type, UI_TYPE_TEXT);
 
 
 	switch(Event)
@@ -3184,12 +3184,12 @@ UITextCallback(
 
 
 
-Static void
+private void
 UICheckboxOnMouseUp(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_CHECKBOX);
+	assert_eq(Element->type, UI_TYPE_CHECKBOX);
 	UICheckbox* Checkbox = &Element->Checkbox;
 
 	if(!SameElement)
@@ -3209,7 +3209,7 @@ UICheckboxCallback(
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_CHECKBOX);
+	assert_eq(Element->type, UI_TYPE_CHECKBOX);
 
 
 	switch(Event)
@@ -3228,41 +3228,41 @@ UICheckboxCallback(
 
 
 
-Static void
+private void
 UISliderOnMouseDown(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SLIDER);
+	assert_eq(Element->type, UI_TYPE_SLIDER);
 	UISlider* Slider = &Element->Slider;
 
-	float Min;
-	float Max;
+	float min;
+	float max;
 	float Mouse;
 
 	if(Slider->Axis == UI_AXIS_HORIZONTAL)
 	{
-		float HalfW = (Element->W - Element->H) * 0.5f;
-		Min = Element->EndX - HalfW;
-		Max = Element->EndX + HalfW;
+		float HalfW = (Element->w - Element->h) * 0.5f;
+		min = Element->EndX - HalfW;
+		max = Element->EndX + HalfW;
 		Mouse = MouseX;
 	}
 	else
 	{
-		float HalfH = (Element->H - Element->W) * 0.5f;
-		Min = Element->EndY - HalfH;
-		Max = Element->EndY + HalfH;
+		float HalfH = (Element->h - Element->w) * 0.5f;
+		min = Element->EndY - HalfH;
+		max = Element->EndY + HalfH;
 		Mouse = MouseY;
 	}
 
-	float Percentage = (MIN(MAX(Mouse, Min), Max) - Min) / (Max - Min);
-	Slider->Value = nearbyintf(Percentage * (Slider->Sections - 1));
+	float Percentage = (MACRO_MIN(MACRO_MAX(Mouse, min), max) - min) / (max - min);
+	Slider->value = nearbyintf(Percentage * (Slider->Sections - 1));
 
 	Element->Callback(Element, UI_EVENT_CHANGE);
 }
 
 
-Static void
+private void
 UISliderOnMouseMove(
 	UIElement* Element
 	)
@@ -3277,7 +3277,7 @@ UISliderCallback(
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SLIDER);
+	assert_eq(Element->type, UI_TYPE_SLIDER);
 
 
 	switch(Event)
@@ -3302,27 +3302,27 @@ UISliderCallback(
 
 
 
-Static void
+private void
 UIScrollbarOnMouseDown(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SCROLLBAR);
+	assert_eq(Element->type, UI_TYPE_SCROLLBAR);
 	UIScrollbar* Scrollbar = &Element->Scrollbar;
 
-	UIElement* ScrollableElement = Element->Prev;
-	AssertEQ(ScrollableElement->Type, UI_TYPE_CONTAINER);
+	UIElement* ScrollableElement = Element->prev;
+	assert_eq(ScrollableElement->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &ScrollableElement->Container;
 
 	float Offset;
 
 	if(Scrollbar->Axis == UI_AXIS_HORIZONTAL)
 	{
-		float Total = 1.0f / Element->W;
-		float ViewMin = MAX(0.0f, Scrollbar->ViewMin * Total);
-		float ViewMax = MIN(1.0f, Scrollbar->ViewMax * Total);
+		float Total = 1.0f / Element->w;
+		float ViewMin = MACRO_MAX(0.0f, Scrollbar->ViewMin * Total);
+		float ViewMax = MACRO_MIN(1.0f, Scrollbar->ViewMax * Total);
 
-		float BgWidth = Element->W - Element->H;
+		float BgWidth = Element->w - Element->h;
 
 		float SliderX = Element->EndX + BgWidth * ((ViewMax + ViewMin) * 0.5f - 0.5f);
 
@@ -3330,11 +3330,11 @@ UIScrollbarOnMouseDown(
 	}
 	else
 	{
-		float Total = 1.0f / Element->H;
-		float ViewMin = MAX(0.0f, Scrollbar->ViewMin * Total);
-		float ViewMax = MIN(1.0f, Scrollbar->ViewMax * Total);
+		float Total = 1.0f / Element->h;
+		float ViewMin = MACRO_MAX(0.0f, Scrollbar->ViewMin * Total);
+		float ViewMax = MACRO_MIN(1.0f, Scrollbar->ViewMax * Total);
 
-		float BgHeight = Element->H - Element->W;
+		float BgHeight = Element->h - Element->w;
 
 		float SliderY = Element->EndY + BgHeight * ((ViewMax + ViewMin) * 0.5f - 0.5f);
 
@@ -3370,28 +3370,28 @@ UIScrollbarOnMouseDown(
 }
 
 
-Static void
+private void
 UIScrollbarOnMouseUp(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SCROLLBAR);
+	assert_eq(Element->type, UI_TYPE_SCROLLBAR);
 	UIScrollbar* Scrollbar = &Element->Scrollbar;
 
 	Scrollbar->Held = false;
 }
 
 
-Static void
+private void
 UIScrollbarOnMouseMove(
 	UIElement* Element
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SCROLLBAR);
+	assert_eq(Element->type, UI_TYPE_SCROLLBAR);
 	UIScrollbar* Scrollbar = &Element->Scrollbar;
 
-	UIElement* ScrollableElement = Element->Prev;
-	AssertEQ(ScrollableElement->Type, UI_TYPE_CONTAINER);
+	UIElement* ScrollableElement = Element->prev;
+	assert_eq(ScrollableElement->type, UI_TYPE_CONTAINER);
 	UIContainer* Container = &ScrollableElement->Container;
 
 	UIElement* Parent = Element->Parent;
@@ -3403,17 +3403,17 @@ UIScrollbarOnMouseMove(
 
 	if(Container->Axis == UI_AXIS_HORIZONTAL)
 	{
-		float Scale = ScrollableElement->W / Parent->W;
-		float Delta = (Scrollbar->Mouse - MouseX) * Scale;
-		float Offset = -Scrollbar->Offset + Delta;
-		Container->GoalOffsetX = MIN(MAX(Offset, Parent->W - ScrollableElement->W), 0);
+		float Scale = ScrollableElement->w / Parent->w;
+		float delta = (Scrollbar->Mouse - MouseX) * Scale;
+		float Offset = -Scrollbar->Offset + delta;
+		Container->GoalOffsetX = MACRO_MIN(MACRO_MAX(Offset, Parent->w - ScrollableElement->w), 0);
 	}
 	else
 	{
-		float Scale = ScrollableElement->H / Parent->H;
-		float Delta = (Scrollbar->Mouse - MouseY) * Scale;
-		float Offset = -Scrollbar->Offset + Delta;
-		Container->GoalOffsetY = MIN(MAX(Offset, Parent->H - ScrollableElement->H), 0);
+		float Scale = ScrollableElement->h / Parent->h;
+		float delta = (Scrollbar->Mouse - MouseY) * Scale;
+		float Offset = -Scrollbar->Offset + delta;
+		Container->GoalOffsetY = MACRO_MIN(MACRO_MAX(Offset, Parent->h - ScrollableElement->h), 0);
 	}
 }
 
@@ -3424,7 +3424,7 @@ UIScrollbarCallback(
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_SCROLLBAR);
+	assert_eq(Element->type, UI_TYPE_SCROLLBAR);
 
 
 	switch(Event)
@@ -3455,39 +3455,39 @@ UIScrollbarCallback(
 
 
 
-Static void
+private void
 UIColorPickerOnMouseDown(
 	UIElement* Element
 	)
 {
 	UIColorPicker* ColorPicker = &Element->ColorPicker;
 
-	AssertEQ(Element->W, Element->H);
+	assert_eq(Element->w, Element->h);
 
 	float DiffX = MouseX - Element->EndX;
 	float DiffY = MouseY - Element->EndY;
-	float R = Element->W * 0.5f;
+	float r = Element->w * 0.5f;
 
-	float X;
-	float Y;
+	float x;
+	float y;
 
-	if(DiffX * DiffX + DiffY * DiffY > R * R)
+	if(DiffX * DiffX + DiffY * DiffY > r * r)
 	{
 		float Angle = atan2f(DiffY, DiffX);
-		X = Element->EndX + cosf(Angle) * R;
-		Y = Element->EndY + sinf(Angle) * R;
+		x = Element->EndX + cosf(Angle) * r;
+		y = Element->EndY + sinf(Angle) * r;
 	}
 	else
 	{
-		X = MouseX;
-		Y = MouseY;
+		x = MouseX;
+		y = MouseY;
 	}
 
-	X = (X - Element->EndX) / Element->W;
-	Y = (Y - Element->EndY) / Element->W;
+	x = (x - Element->EndX) / Element->w;
+	y = (y - Element->EndY) / Element->w;
 
-	ColorPicker->Position.X = MIN(MAX(X, -0.5f), 0.5f);
-	ColorPicker->Position.Y = MIN(MAX(Y, -0.5f), 0.5f);
+	ColorPicker->pos.x = MACRO_MIN(MACRO_MAX(x, -0.5f), 0.5f);
+	ColorPicker->pos.y = MACRO_MIN(MACRO_MAX(y, -0.5f), 0.5f);
 
 	UIColorPickerUpdatePos(ColorPicker);
 
@@ -3495,7 +3495,7 @@ UIColorPickerOnMouseDown(
 }
 
 
-Static void
+private void
 UIColorPickerOnMouseMove(
 	UIElement* Element
 	)
@@ -3510,7 +3510,7 @@ UIColorPickerCallback(
 	UIEvent Event
 	)
 {
-	AssertEQ(Element->Type, UI_TYPE_COLOR_PICKER);
+	assert_eq(Element->type, UI_TYPE_COLOR_PICKER);
 
 
 	switch(Event)
@@ -3539,12 +3539,12 @@ UIColorPickerCallback(
 
 void
 WindowOnResize(
-	float Width,
-	float Height
+	float width,
+	float height
 	)
 {
-	Elements->W = Width;
-	Elements->H = Height;
+	Elements->w = width;
+	Elements->h = height;
 }
 
 
@@ -3566,20 +3566,20 @@ WindowOnBlur(
 }
 
 
-Static bool
+private bool
 UIKeyDown(
-	int Key,
-	int Mods,
-	int Repeat
+	int key,
+	int mods,
+	int repeat
 	)
 {
 	if(SelectedTextElement != NULL)
 	{
 		UIText* Text = &SelectedTextElement->Text;
 
-		if(Mods & SDL_KMOD_CTRL)
+		if(mods & SDL_KMOD_CTRL)
 		{
-			switch(Key)
+			switch(key)
 			{
 
 			case SDLK_A:
@@ -3608,7 +3608,7 @@ UIKeyDown(
 			{
 				if(Text->Editable)
 				{
-					if(Mods & SDL_KMOD_SHIFT)
+					if(mods & SDL_KMOD_SHIFT)
 					{
 						UITextExecNextMod();
 					}
@@ -3623,13 +3623,13 @@ UIKeyDown(
 
 			case SDLK_LEFT:
 			{
-				UITextMoveHorizontally(-1, Mods & SDL_KMOD_SHIFT, 1);
+				UITextMoveHorizontally(-1, mods & SDL_KMOD_SHIFT, 1);
 				break;
 			}
 
 			case SDLK_RIGHT:
 			{
-				UITextMoveHorizontally(1, Mods & SDL_KMOD_SHIFT, 1);
+				UITextMoveHorizontally(1, mods & SDL_KMOD_SHIFT, 1);
 				break;
 			}
 
@@ -3638,7 +3638,7 @@ UIKeyDown(
 			}
 		}
 
-		switch(Key)
+		switch(key)
 		{
 			case SDLK_ESCAPE:
 			{
@@ -3651,7 +3651,7 @@ UIKeyDown(
 
 		if(Text->Editable)
 		{
-			switch(Key)
+			switch(key)
 			{
 
 			case SDLK_RETURN:
@@ -3683,25 +3683,25 @@ UIKeyDown(
 
 			case SDLK_LEFT:
 			{
-				UITextMoveHorizontally(-1, Mods & SDL_KMOD_SHIFT, 0);
+				UITextMoveHorizontally(-1, mods & SDL_KMOD_SHIFT, 0);
 				break;
 			}
 
 			case SDLK_RIGHT:
 			{
-				UITextMoveHorizontally(1, Mods & SDL_KMOD_SHIFT, 0);
+				UITextMoveHorizontally(1, mods & SDL_KMOD_SHIFT, 0);
 				break;
 			}
 
 			case SDLK_UP:
 			{
-				UITextMoveVertically(-1, Mods & SDL_KMOD_SHIFT);
+				UITextMoveVertically(-1, mods & SDL_KMOD_SHIFT);
 				break;
 			}
 
 			case SDLK_DOWN:
 			{
-				UITextMoveVertically(1, Mods & SDL_KMOD_SHIFT);
+				UITextMoveVertically(1, mods & SDL_KMOD_SHIFT);
 				break;
 			}
 
@@ -3711,7 +3711,7 @@ UIKeyDown(
 		}
 		else
 		{
-			switch(Key)
+			switch(key)
 			{
 
 			case SDLK_RETURN:
@@ -3722,25 +3722,25 @@ UIKeyDown(
 
 			case SDLK_LEFT:
 			{
-				UITextMoveHorizontally(-1, Mods & SDL_KMOD_SHIFT, 0);
+				UITextMoveHorizontally(-1, mods & SDL_KMOD_SHIFT, 0);
 				break;
 			}
 
 			case SDLK_RIGHT:
 			{
-				UITextMoveHorizontally(1, Mods & SDL_KMOD_SHIFT, 0);
+				UITextMoveHorizontally(1, mods & SDL_KMOD_SHIFT, 0);
 				break;
 			}
 
 			case SDLK_UP:
 			{
-				UITextMoveVertically(-1, Mods & SDL_KMOD_SHIFT);
+				UITextMoveVertically(-1, mods & SDL_KMOD_SHIFT);
 				break;
 			}
 
 			case SDLK_DOWN:
 			{
-				UITextMoveVertically(1, Mods & SDL_KMOD_SHIFT);
+				UITextMoveVertically(1, mods & SDL_KMOD_SHIFT);
 				break;
 			}
 
@@ -3752,7 +3752,7 @@ UIKeyDown(
 		return true;
 	}
 
-	if(Repeat)
+	if(repeat)
 	{
 		return true;
 	}
@@ -3761,12 +3761,12 @@ UIKeyDown(
 }
 
 
-Static UIKey
+private UIKey
 UIMapKey(
-	int Key
+	int key
 	)
 {
-	switch(Key)
+	switch(key)
 	{
 
 	case SDLK_UNKNOWN: return UI_KEY_UNKNOWN;
@@ -4026,14 +4026,14 @@ UIMapKey(
 
 void
 WindowOnKeyDown(
-	int Key,
-	int Mods,
-	int Repeat
+	int key,
+	int mods,
+	int repeat
 	)
 {
-	if(!UIKeyDown(Key, Mods, Repeat))
+	if(!UIKeyDown(key, mods, repeat))
 	{
-		UIKey MappedKey = UIMapKey(Key);
+		UIKey MappedKey = UIMapKey(key);
 		if(MappedKey != UI_KEY_UNKNOWN && !KeyState[MappedKey])
 		{
 			KeyState[MappedKey] = true;
@@ -4043,10 +4043,10 @@ WindowOnKeyDown(
 }
 
 
-Static void
+private void
 UIKeyUp(
-	int Key,
-	int Mods
+	int key,
+	int mods
 	)
 {
 	(void) 0;
@@ -4055,11 +4055,11 @@ UIKeyUp(
 
 void
 WindowOnKeyUp(
-	int Key,
-	int Mods
+	int key,
+	int mods
 	)
 {
-	UIKey MappedKey = UIMapKey(Key);
+	UIKey MappedKey = UIMapKey(key);
 	if(MappedKey != UI_KEY_UNKNOWN && KeyState[MappedKey])
 	{
 		KeyState[MappedKey] = false;
@@ -4067,7 +4067,7 @@ WindowOnKeyUp(
 	}
 	else
 	{
-		UIKeyUp(Key, Mods);
+		UIKeyUp(key, mods);
 	}
 }
 
@@ -4077,24 +4077,24 @@ WindowOnText(
 	const char* Text
 	)
 {
-	AssertNotNull(SelectedTextElement);
+	assert_not_null(SelectedTextElement);
 
-	int Length = strlen(Text);
-	if(!Length)
+	int len = strlen(Text);
+	if(!len)
 	{
 		return;
 	}
 
-	UITextPasteExplicit(Text, Length);
+	UITextPasteExplicit(Text, len);
 }
 
 
-Static UIButton
-UIMapButton(
-	int Button
+private UIbutton
+UIMapbutton(
+	int button
 	)
 {
-	switch(Button)
+	switch(button)
 	{
 
 	case SDL_BUTTON_LEFT: return UI_BUTTON_LEFT;
@@ -4108,12 +4108,12 @@ UIMapButton(
 }
 
 
-Static bool
+private bool
 UIMouseDown(
-	int Button
+	int button
 	)
 {
-	if(Button != SDL_BUTTON_LEFT)
+	if(button != SDL_BUTTON_LEFT)
 	{
 		return false;
 	}
@@ -4143,26 +4143,26 @@ UIMouseDown(
 
 void
 WindowOnMouseDown(
-	int Button
+	int button
 	)
 {
-	if(!UIMouseDown(Button)) {
-		UIButton MappedButton = UIMapButton(Button);
-		if(MappedButton != UI_BUTTON_UNKNOWN && !ButtonState[MappedButton])
+	if(!UIMouseDown(button)) {
+		UIbutton Mappedbutton = UIMapbutton(button);
+		if(Mappedbutton != UI_BUTTON_UNKNOWN && !buttonState[Mappedbutton])
 		{
-			ButtonState[MappedButton] = true;
-			UIOnMouseDown(MappedButton);
+			buttonState[Mappedbutton] = true;
+			UIOnMouseDown(Mappedbutton);
 		}
 	}
 }
 
 
-Static void
+private void
 UIMouseUp(
-	int Button
+	int button
 	)
 {
-	if(Button != SDL_BUTTON_LEFT)
+	if(button != SDL_BUTTON_LEFT)
 	{
 		return;
 	}
@@ -4180,30 +4180,30 @@ UIMouseUp(
 
 void
 WindowOnMouseUp(
-	int Button
+	int button
 	)
 {
-	UIButton MappedButton = UIMapButton(Button);
-	if(MappedButton != UI_BUTTON_UNKNOWN && ButtonState[MappedButton])
+	UIbutton Mappedbutton = UIMapbutton(button);
+	if(Mappedbutton != UI_BUTTON_UNKNOWN && buttonState[Mappedbutton])
 	{
-		ButtonState[MappedButton] = false;
-		UIOnMouseUp(MappedButton);
+		buttonState[Mappedbutton] = false;
+		UIOnMouseUp(Mappedbutton);
 	}
 	else
 	{
-		UIMouseUp(Button);
+		UIMouseUp(button);
 	}
 }
 
 
-Static bool
+private bool
 UIMouseMove(
-	float X,
-	float Y
+	float x,
+	float y
 	)
 {
-	MouseX = X;
-	MouseY = Y;
+	MouseX = x;
+	MouseY = y;
 
 	if(SelectedElement)
 	{
@@ -4217,22 +4217,22 @@ UIMouseMove(
 
 void
 WindowOnMouseMove(
-	float X,
-	float Y
+	float x,
+	float y
 	)
 {
-	if(!UIMouseMove(X, Y)) {
-		UIOnMouseMove(X, Y);
+	if(!UIMouseMove(x, y)) {
+		UIOnMouseMove(x, y);
 	}
 }
 
 
-Static bool
+private bool
 UIMouseScroll(
-	float OffsetY
+	float offset_y
 	)
 {
-	ScrollOffset = OffsetY;
+	ScrollOffset = offset_y;
 
 	if(ScrollableUnderMouse)
 	{
@@ -4246,17 +4246,17 @@ UIMouseScroll(
 
 void
 WindowOnMouseScroll(
-	float OffsetY
+	float offset_y
 	)
 {
-	if(!UIMouseScroll(OffsetY))
+	if(!UIMouseScroll(offset_y))
 	{
-		UIOnMouseScroll(OffsetY);
+		UIOnMouseScroll(offset_y);
 	}
 }
 
 
-DrawData
+window_draw_event_data_t
 VulkanGetDrawData(
 	void
 	)
@@ -4268,17 +4268,17 @@ VulkanGetDrawData(
 	else
 	{
 		uint64_t Now = GetTime();
-		uint64_t Delta = Now - LastDrawAt;
+		uint64_t delta = Now - LastDrawAt;
 		LastDrawAt = Now;
-		DeltaTime = (double) Delta / 16666666.6f;
+		DeltaTime = (double) delta / 16666666.6f;
 	}
 
 	UIDraw();
 
 	return
-	(DrawData)
+	(window_draw_event_data_t)
 	{
 		.Input = DrawInput,
-		.Count = DrawIndex
+		.count = DrawIndex
 	};
 }

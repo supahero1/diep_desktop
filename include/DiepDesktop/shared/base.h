@@ -1,173 +1,24 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #pragma once
 
+#include <DiepDesktop/shared/macro.h>
+
 #include <stdint.h>
-
-#define SHIFT(Bit) (1 << (Bit))
-
-#define GET_BITS(Value) __builtin_choose_expr((Value) == 1, 0, 32 - __builtin_clz((Value) - 1))
-
-#define BITS_COUNT(Name)	\
-Name##__COUNT,				\
-Name##__BITS = GET_BITS( Name##__COUNT )
-
-#define BITS_COUNT_EXP(Name)	\
-Name##__COUNT,					\
-Name##__BITS = GET_BITS(SHIFT( Name##__COUNT ))
-
-#define TO_BYTES(Bits) (((Bits) + 7) >> 3)
-
-#define ARRAYLEN(A) (sizeof(A)/sizeof((A)[0]))
-
-#define MIN(a, b)               \
-({                              \
-    __typeof__ (a) _a = (a);    \
-    __typeof__ (b) _b = (b);    \
-    _a > _b ? _b : _a;          \
-})
-
-#define MAX(a, b)               \
-({                              \
-    __typeof__ (a) _a = (a);    \
-    __typeof__ (b) _b = (b);    \
-    _a > _b ? _a : _b;          \
-})
-
-#define CLAMP(a, min, max) MIN(MAX((a), (min)), (max))
-#define CLAMP_SYM(a, min_max) CLAMP((a), -(min_max), (min_max))
-
-#define UINT_TO_FLOAT(a)	\
-({							\
-	union					\
-	{						\
-		float F32;			\
-		uint32_t U32;		\
-	}						\
-	X =						\
-	{						\
-		.U32 = a			\
-	};						\
-							\
-	X.F32;					\
-})
-
-#define FLOAT_TO_UINT(a)	\
-({							\
-	union					\
-	{						\
-		float F32;			\
-		uint32_t U32;		\
-	}						\
-	X =						\
-	{						\
-		.F32 = a			\
-	};						\
-							\
-	X.U32;					\
-})
-
-#define ROUNDF(Num)	\
-({					\
-	roundf(Num);	\
-})
-
-
-typedef union Pair
-{
-	struct
-	{
-		float X;
-		float Y;
-	};
-
-	struct
-	{
-		float W;
-		float H;
-	};
-}
-Pair;
-
-
-typedef union IPair
-{
-	struct
-	{
-		int X;
-		int Y;
-	};
-
-	struct
-	{
-		int W;
-		int H;
-	};
-}
-IPair;
-
-
-typedef union HalfExtent
-{
-	struct
-	{
-		union
-		{
-			Pair Pos;
-
-			struct
-			{
-				float X;
-				float Y;
-			};
-		};
-
-		union
-		{
-			Pair Size;
-
-			struct
-			{
-				float W;
-				float H;
-			};
-		};
-	};
-
-	struct
-	{
-		float Top;
-		float Left;
-		float Right;
-		float Bottom;
-	};
-}
-HalfExtent;
-
-
-typedef struct RectExtent
-{
-	union
-	{
-		Pair Min;
-
-		struct
-		{
-			float MinX;
-			float MinY;
-		};
-	};
-
-	union
-	{
-		Pair Max;
-
-		struct
-		{
-			float MaxX;
-			float MaxY;
-		};
-	};
-}
-RectExtent;
 
 
 typedef enum GameConst
@@ -176,21 +27,21 @@ typedef enum GameConst
 	GAME_CONST_DEFAULT_WINDOW_HEIGHT = 720,
 	GAME_CONST_MAX_MOVEMENT_SPEED = 16,
 	GAME_CONST_MAX_PLAYERS = 256,
-	GAME_CONST_MAX_ENTITIES__BITS = GET_BITS(GAME_CONST_MAX_PLAYERS * 100),
+	GAME_CONST_MAX_ENTITIES__BITS = MACRO_GET_BITS(GAME_CONST_MAX_PLAYERS * 100),
 	GAME_CONST_MAX_ENTITIES = 1 << GAME_CONST_MAX_ENTITIES__BITS,
 	GAME_CONST_PORT = 2468,
 	GAME_CONST_CLIENT_PACKET_SIZE = 256,
 	GAME_CONST_SERVER_PACKET_SIZE = 65536,
 	GAME_CONST_CLIENT_RECV_SIZE = GAME_CONST_SERVER_PACKET_SIZE << 3,
 	GAME_CONST_SERVER_RECV_SIZE = GAME_CONST_CLIENT_PACKET_SIZE << 3,
-	GAME_CONST_SERVER_PACKET_SIZE__BITS = GET_BITS(GAME_CONST_SERVER_PACKET_SIZE),
+	GAME_CONST_SERVER_PACKET_SIZE__BITS = MACRO_GET_BITS(GAME_CONST_SERVER_PACKET_SIZE),
 	GAME_CONST_TILE_SIZE = 128,
 	GAME_CONST_HALF_ARENA_SIZE = GAME_CONST_TILE_SIZE * 32 + GAME_CONST_TILE_SIZE / 2,
 	GAME_CONST_BORDER_PADDING = GAME_CONST_TILE_SIZE * 2,
 	GAME_CONST_MIN_QUADTREE_NODE_SIZE = 4,
 	GAME_CONST_QUADTREE_QUERY_PADDING = GAME_CONST_TILE_SIZE * 2,
 	GAME_CONST_HALF_ARENA_CLEAR_ZONE = GAME_CONST_TILE_SIZE * 50,
-	GAME_CONST_POSITION_INTEGER_BITS = GET_BITS(GAME_CONST_HALF_ARENA_SIZE + GAME_CONST_HALF_ARENA_CLEAR_ZONE),
+	GAME_CONST_POSITION_INTEGER_BITS = MACRO_GET_BITS(GAME_CONST_HALF_ARENA_SIZE + GAME_CONST_HALF_ARENA_CLEAR_ZONE),
 	GAME_CONST_BUFFERED_STATES = 3,
 	GAME_CONST_TICK_RATE_MS = 30,
 	GAME_CONST_MAX_PLAYER_BARRELS = 8,
@@ -217,19 +68,19 @@ typedef enum GameConst
 GameConst;
 
 
-typedef enum KeyButton
+typedef enum Keybutton
 {
-	KEY_BUTTON_W,
-	KEY_BUTTON_A,
-	KEY_BUTTON_S,
-	KEY_BUTTON_D,
-	KEY_BUTTON_C,
-	KEY_BUTTON_E,
-	KEY_BUTTON_LMB,
-	KEY_BUTTON_RMB,
-	BITS_COUNT_EXP(KEY_BUTTON)
+	WINDOW_KEY_BUTTON_W,
+	WINDOW_KEY_BUTTON_A,
+	WINDOW_KEY_BUTTON_S,
+	WINDOW_KEY_BUTTON_D,
+	WINDOW_KEY_BUTTON_C,
+	WINDOW_KEY_BUTTON_E,
+	WINDOW_KEY_BUTTON_LMB,
+	WINDOW_KEY_BUTTON_RMB,
+	MACRO_ENUM_BITS_EXP(WINDOW_KEY_BUTTON)
 }
-KeyButton;
+Keybutton;
 
 
 typedef enum EntityFlags
@@ -240,7 +91,7 @@ typedef enum EntityFlags
 	ENTITY_FLAG_R = ENTITY_FLAG_W,
 	ENTITY_FLAG_H,
 	ENTITY_FLAG_ANGLE,
-	BITS_COUNT_EXP(ENTITY_FLAG)
+	MACRO_ENUM_BITS_EXP(ENTITY_FLAG)
 }
 EntityFlags;
 
@@ -248,7 +99,7 @@ EntityFlags;
 typedef enum ClientOpCode
 {
 	CLIENT_OPCODE_INPUT,
-	BITS_COUNT(CLIENT_OPCODE)
+	MACRO_ENUM_BITS(CLIENT_OPCODE)
 }
 ClientOpCode;
 
@@ -256,7 +107,7 @@ ClientOpCode;
 typedef enum ServerOpCode
 {
 	SERVER_OPCODE_UPDATE,
-	BITS_COUNT(SERVER_OPCODE)
+	MACRO_ENUM_BITS(SERVER_OPCODE)
 }
 ServerOpCode;
 
@@ -265,7 +116,7 @@ typedef enum EntityType
 {
 	ENTITY_TYPE_TANK,
 	ENTITY_TYPE_SHAPE,
-	BITS_COUNT(ENTITY_TYPE)
+	MACRO_ENUM_BITS(ENTITY_TYPE)
 }
 EntityType;
 
@@ -273,7 +124,7 @@ EntityType;
 typedef enum Tank
 {
 	TANK_BASIC,
-	BITS_COUNT(TANK)
+	MACRO_ENUM_BITS(TANK)
 }
 Tank;
 
@@ -283,7 +134,7 @@ typedef enum Shape
 	SHAPE_SQUARE,
 	SHAPE_TRIANGLE,
 	SHAPE_PENTAGON,
-	BITS_COUNT(SHAPE)
+	MACRO_ENUM_BITS(SHAPE)
 }
 Shape;
 
@@ -304,17 +155,17 @@ typedef enum FieldSize
 FieldSize;
 
 
-#define FIXED_POINT(Name) FIXED_POINT_INTEGER_##Name, FIXED_POINT_FRACTION_##Name
-#define DEF_FIXED_POINT(Name, Integer, Fraction)	\
-FIXED_POINT_INTEGER_##Name = Integer,				\
-FIXED_POINT_FRACTION_##Name = Fraction
+#define FIXED_POINT(name) FIXED_POINT_INTEGER_##name, FIXED_POINT_FRACTION_##name
+#define DEF_FIXED_POINT(name, Integer, Fraction)	\
+FIXED_POINT_INTEGER_##name = Integer,				\
+FIXED_POINT_FRACTION_##name = Fraction
 
 typedef enum FixedPoint
 {
 	DEF_FIXED_POINT(FOV, 0, 10),
 	DEF_FIXED_POINT(POS, GAME_CONST_POSITION_INTEGER_BITS, 4),
 	DEF_FIXED_POINT(SCREEN_POS, 12, 4),
-	DEF_FIXED_POINT(RADIUS, GET_BITS(512), 10)
+	DEF_FIXED_POINT(RADIUS, MACRO_GET_BITS(512), 10)
 }
 FixedPoint;
 

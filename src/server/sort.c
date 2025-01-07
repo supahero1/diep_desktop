@@ -2,31 +2,31 @@
 #include <DiepDesktop/shared/debug.h>
 
 
-Static void
+private void
 Swap(
-	uint16_t* A,
-	uint16_t* B
+	uint16_t* a,
+	uint16_t* b
 	)
 {
-	uint16_t Temp = *A;
-	*A = *B;
-	*B = Temp;
+	uint16_t Temp = *a;
+	*a = *b;
+	*b = Temp;
 }
 
 
-Static int32_t
+private int32_t
 Partition(
 	uint16_t* Array,
 	int32_t Low,
 	int32_t High
 	)
 {
-	uint16_t X = Array[High];
+	uint16_t x = Array[High];
 	int32_t j = Low - 1;
 
 	for(int32_t i = Low; i <= High - 1; ++i)
 	{
-		if(Array[i] <= X)
+		if(Array[i] <= x)
 		{
 			++j;
 			Swap(Array + j, Array + i);
@@ -44,41 +44,41 @@ Partition(
 void
 QuickSort(
 	uint16_t* Array,
-	int32_t Length
+	int32_t len
 	)
 {
-	if(Length <= 1)
+	if(len <= 1)
 	{
 		return;
 	}
 
 	int32_t Low = 0;
-	int32_t High = Length - 1;
+	int32_t High = len - 1;
 
 	int32_t Stack[High - Low + 1];
 	Stack[0] = Low;
 	Stack[1] = High;
 
-	int32_t* Top = Stack + 2;
+	int32_t* top = Stack + 2;
 
 	do
 	{
-		High = *(--Top);
-		Low = *(--Top);
+		High = *(--top);
+		Low = *(--top);
 
 		int32_t Pivot = Partition(Array, Low, High);
 
 		if(Pivot - 1 > Low)
 		{
-			*(Top++) = Low;
-			*(Top++) = Pivot - 1;
+			*(top++) = Low;
+			*(top++) = Pivot - 1;
 		}
 
 		if(Pivot + 1 < High)
 		{
-			*(Top++) = Pivot + 1;
-			*(Top++) = High;
+			*(top++) = Pivot + 1;
+			*(top++) = High;
 		}
 	}
-	while(Top != Stack);
+	while(top != Stack);
 }

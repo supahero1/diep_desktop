@@ -8,10 +8,10 @@ typedef struct IHandle IHandle;
 
 typedef struct IElement
 {
-	float X;
-	float Y;
-	float W;
-	float H;
+	float x;
+	float y;
+	float w;
+	float h;
 
 	float MarginTop;
 	float MarginLeft;
@@ -24,11 +24,11 @@ typedef struct IElement
 	float BorderBottom;
 
 	uint32_t Opacity;
-	ARGB BorderColor;
+	color_argb_t BorderColor;
 
 	UIAlign AlignX;
 	UIAlign AlignY;
-	UIPosition Position;
+	UIPosition pos;
 	UIAlign RelativeAlignX;
 	UIAlign RelativeAlignY;
 
@@ -37,18 +37,18 @@ typedef struct IElement
 	IHandle* Relative;
 
 	UICallback Callback;
-	void* Data;
+	void* data;
 }
 IElement;
 
 struct IHandle
 {
-	UIElement* Source;
+	UIElement* source;
 	UIElement* Destination;
 };
 
 
-#define IWindow ((IHandle){ .Source = UIWindow, .Destination = UIWindow })
+#define IWindow ((IHandle){ .source = UIWindow, .Destination = UIWindow })
 
 
 extern void
@@ -122,11 +122,11 @@ typedef struct IContainer
 	bool Scrollable;
 	bool ScrollPassthrough;
 
-	ARGB WhiteColor;
-	ARGB BlackColor;
-	TexInfo Texture;
-	ARGB ScrollbarColor;
-	ARGB ScrollbarAltColor;
+	color_argb_t white_color;
+	color_argb_t black_color;
+	TexInfo tex;
+	color_argb_t ScrollbarColor;
+	color_argb_t ScrollbarAltColor;
 
 	UIElement* TextFocus;
 }
@@ -145,21 +145,21 @@ typedef enum ITextType
 	I_TEXT_TYPE_SINGLELINE_TEXT,
 	I_TEXT_TYPE_INTEGER,
 	I_TEXT_TYPE_HEX_COLOR,
-	kI_TEXT_TYPE
+	I_TEXT_TYPE__COUNT
 }
 ITextType;
 
 typedef struct ITextInteger
 {
-	int64_t Min;
-	int64_t Max;
-	int64_t Value;
+	int64_t min;
+	int64_t max;
+	int64_t value;
 }
 ITextInteger;
 
 typedef struct ITextHexColor
 {
-	ARGB Color;
+	color_argb_t color;
 }
 ITextHexColor;
 
@@ -174,8 +174,8 @@ typedef struct IText
 {
 	const char* Str;
 	const char* Placeholder;
-	uint32_t Length;
-	uint32_t MaxLength;
+	uint32_t len;
+	uint32_t max_len;
 	float MaxWidth;
 
 	float FontSize;
@@ -184,14 +184,14 @@ typedef struct IText
 	bool Selectable;
 	bool Editable;
 
-	ARGB Stroke;
-	ARGB InverseStroke;
-	ARGB Fill;
-	ARGB InverseFill;
-	ARGB Background;
+	color_argb_t Stroke;
+	color_argb_t InverseStroke;
+	color_argb_t Fill;
+	color_argb_t InverseFill;
+	color_argb_t Background;
 
-	ITextType Type;
-	ITextData Data;
+	ITextType type;
+	ITextData data;
 }
 IText;
 
@@ -212,7 +212,7 @@ ITextGetInteger(
 extern void
 ITextSetIntegerExplicit(
 	IHandle Textbox,
-	int64_t Value,
+	int64_t value,
 	bool Changed
 	);
 
@@ -220,11 +220,11 @@ ITextSetIntegerExplicit(
 extern void
 ITextSetInteger(
 	IHandle Textbox,
-	int64_t Value
+	int64_t value
 	);
 
 
-extern ARGB
+extern color_argb_t
 ITextGetHexColor(
 	IHandle Textbox
 	);
@@ -233,7 +233,7 @@ ITextGetHexColor(
 extern void
 ITextSetHexColorExplicit(
 	IHandle Textbox,
-	ARGB Color,
+	color_argb_t color,
 	bool Changed
 	);
 
@@ -241,7 +241,7 @@ ITextSetHexColorExplicit(
 extern void
 ITextSetHexColor(
 	IHandle Textbox,
-	ARGB Color
+	color_argb_t color
 	);
 
 
@@ -250,9 +250,9 @@ typedef struct ICheckbox
 {
 	uint32_t Checked;
 
-	ARGB CheckYes;
-	ARGB CheckNo;
-	ARGB Background;
+	color_argb_t CheckYes;
+	color_argb_t CheckNo;
+	color_argb_t Background;
 }
 ICheckbox;
 
@@ -267,10 +267,10 @@ typedef struct ISlider
 {
 	UIAxis Axis;
 	float Sections;
-	float Value;
+	float value;
 
-	ARGB Color;
-	ARGB BgColor;
+	color_argb_t color;
+	color_argb_t BgColor;
 }
 ISlider;
 
@@ -283,7 +283,7 @@ ICreateSlider(
 
 typedef struct IColorPicker
 {
-	ARGB Color;
+	color_argb_t color;
 }
 IColorPicker;
 
@@ -297,21 +297,21 @@ ICreateColorPicker(
 typedef struct IDropdownOption
 {
 	const char* Text;
-	uintptr_t Data;
+	uintptr_t data;
 }
 IDropdownOption;
 
 typedef struct IDropdown
 {
-	ARGB BgColor;
-	ARGB AltBgColor;
+	color_argb_t BgColor;
+	color_argb_t AltBgColor;
 
 	uint32_t FontSize;
-	ARGB Stroke;
-	ARGB Fill;
+	color_argb_t Stroke;
+	color_argb_t Fill;
 
 	IDropdownOption* Options;
-	uint32_t Count;
+	uint32_t count;
 	uint32_t Chosen;
 }
 IDropdown;
@@ -331,16 +331,16 @@ typedef struct ITexture
 	float OX;
 	float OY;
 
-	ARGB WhiteColor;
-	ARGB BlackColor;
-	TexInfo Texture;
-	float Rotation;
+	color_argb_t white_color;
+	color_argb_t black_color;
+	TexInfo tex;
+	float angle;
 }
 ITexture;
 
 extern IHandle
 ICreateTexture(
 	const IElement* Element,
-	const ITexture* Texture
+	const ITexture* tex
 	);
 

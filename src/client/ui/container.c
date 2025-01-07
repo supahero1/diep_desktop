@@ -1,45 +1,61 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/client/ui/container.h>
 
 
-Static void
+private void
 UIContainerBubbleDown(
 	UIElement* Element,
 	UIBubbleCallback Callback,
-	void* Data
+	void* data
 	)
 {
 	UIContainer* Container = Element->TypeData;
-	UIElement* Child = Container->Head;
+	UIElement* Child = Container->head;
 
 	while(Child)
 	{
 		/* Child might be free'd during the bubble */
-		UIElement* Next = Child->Next;
-		Child->VirtualTable->BubbleDown(Child, Callback, Data);
-		Child = Next;
+		UIElement* next = Child->next;
+		Child->VirtualTable->BubbleDown(Child, Callback, data);
+		Child = next;
 	}
 
-	Callback(Element, Data);
+	Callback(Element, data);
 }
 
 
-Static void
+private void
 UIContainerPropagateSize(
 	UIElement* Element,
 	UIElement* Child,
-	Pair Delta
+	pair_t delta
 	)
 {
-	AssertTrue(UIElementIsContainer(Element));
+	assert_true(UIElementIsContainer(Element));
 	UIContainer* Container = Element->TypeData;
-	AssertNotNull(Container->Head);
-	AssertNotNull(Container->Tail);
+	assert_not_null(Container->head);
+	assert_not_null(Container->tail);
 
 	bool Pass = false;
 
-	Pair OldSize = Element->Extent.Size;
+	pair_t old_size = Element->Extent.size;
 
 	if(Container->AutoW)
 	{
@@ -47,26 +63,26 @@ UIContainerPropagateSize(
 		{
 			if(!Child->Inline)
 			{
-				Container->ContentW += Delta.W;
+				Container->ContentW += delta.w;
 			}
 			else /* Inline */
 			{
-				if(Delta.W >= 0.0f)
+				if(delta.w >= 0.0f)
 				{
-					Container->MaxInlineW = MAX(Container->MaxInlineW, Child->EndExtent.W);
+					Container->MaxInlineW = MACRO_MAX(Container->MaxInlineW, Child->EndExtent.w);
 				}
 				else
 				{
 					float TotalW = 0.0f;
-					UIElement* Child = Container->Head;
+					UIElement* Child = Container->head;
 
 					while(Child)
 					{
 						if(Child->Inline)
 						{
-							TotalW = MAX(TotalW, Child->EndExtent.W);
+							TotalW = MACRO_MAX(TotalW, Child->EndExtent.w);
 						}
-						Child = Child->Next;
+						Child = Child->next;
 					}
 
 					Container->MaxInlineW = TotalW;
@@ -77,22 +93,22 @@ UIContainerPropagateSize(
 		{
 			if(!Child->Inline)
 			{
-				if(Delta.W >= 0.0f)
+				if(delta.w >= 0.0f)
 				{
-					Container->ContentW = MAX(Container->ContentW, Child->EndExtent.W);
+					Container->ContentW = MACRO_MAX(Container->ContentW, Child->EndExtent.w);
 				}
 				else
 				{
 					float TotalW = 0.0f;
-					UIElement* Child = Container->Head;
+					UIElement* Child = Container->head;
 
 					while(Child)
 					{
 						if(!Child->Inline)
 						{
-							TotalW = MAX(TotalW, Child->EndExtent.W);
+							TotalW = MACRO_MAX(TotalW, Child->EndExtent.w);
 						}
-						Child = Child->Next;
+						Child = Child->next;
 					}
 
 					Container->ContentW = TotalW;
@@ -100,22 +116,22 @@ UIContainerPropagateSize(
 			}
 			else /* Inline */
 			{
-				if(Delta.W >= 0.0f)
+				if(delta.w >= 0.0f)
 				{
-					Container->MaxInlineW = MAX(Container->MaxInlineW, Child->EndExtent.W);
+					Container->MaxInlineW = MACRO_MAX(Container->MaxInlineW, Child->EndExtent.w);
 				}
 				else
 				{
 					float TotalW = 0.0f;
-					UIElement* Child = Container->Head;
+					UIElement* Child = Container->head;
 
 					while(Child)
 					{
 						if(Child->Inline)
 						{
-							TotalW = MAX(TotalW, Child->EndExtent.W);
+							TotalW = MACRO_MAX(TotalW, Child->EndExtent.w);
 						}
-						Child = Child->Next;
+						Child = Child->next;
 					}
 
 					Container->MaxInlineW = TotalW;
@@ -123,10 +139,10 @@ UIContainerPropagateSize(
 			}
 		}
 
-		Element->Extent.W = MAX(Container->ContentW, Container->MaxInlineW);
+		Element->Extent.w = MACRO_MAX(Container->ContentW, Container->MaxInlineW);
 
-		Delta.W = Element->Extent.W - OldSize.W;
-		if(Delta.W)
+		delta.w = Element->Extent.w - old_size.w;
+		if(delta.w)
 		{
 			Pass = true;
 			UIUpdateWidth(Element);
@@ -134,7 +150,7 @@ UIContainerPropagateSize(
 	}
 	else
 	{
-		Delta.W = 0.0f;
+		delta.w = 0.0f;
 	}
 
 
@@ -146,26 +162,26 @@ UIContainerPropagateSize(
 		{
 			if(!Child->Inline)
 			{
-				Container->ContentH += Delta.H;
+				Container->ContentH += delta.h;
 			}
 			else /* Inline */
 			{
-				if(Delta.H >= 0.0f)
+				if(delta.h >= 0.0f)
 				{
-					Container->MaxInlineH = MAX(Container->MaxInlineH, Child->EndExtent.H);
+					Container->MaxInlineH = MACRO_MAX(Container->MaxInlineH, Child->EndExtent.h);
 				}
 				else
 				{
 					float TotalH = 0.0f;
-					UIElement* Child = Container->Head;
+					UIElement* Child = Container->head;
 
 					while(Child)
 					{
 						if(Child->Inline)
 						{
-							TotalH = MAX(TotalH, Child->EndExtent.H);
+							TotalH = MACRO_MAX(TotalH, Child->EndExtent.h);
 						}
-						Child = Child->Next;
+						Child = Child->next;
 					}
 
 					Container->MaxInlineH = TotalH;
@@ -176,22 +192,22 @@ UIContainerPropagateSize(
 		{
 			if(!Child->Inline)
 			{
-				if(Delta.H >= 0.0f)
+				if(delta.h >= 0.0f)
 				{
-					Container->ContentH = MAX(Container->ContentH, Child->EndExtent.H);
+					Container->ContentH = MACRO_MAX(Container->ContentH, Child->EndExtent.h);
 				}
 				else
 				{
 					float TotalH = 0.0f;
-					UIElement* Child = Container->Head;
+					UIElement* Child = Container->head;
 
 					while(Child)
 					{
 						if(!Child->Inline)
 						{
-							TotalH = MAX(TotalH, Child->EndExtent.H);
+							TotalH = MACRO_MAX(TotalH, Child->EndExtent.h);
 						}
-						Child = Child->Next;
+						Child = Child->next;
 					}
 
 					Container->ContentH = TotalH;
@@ -199,22 +215,22 @@ UIContainerPropagateSize(
 			}
 			else /* Inline */
 			{
-				if(Delta.H >= 0.0f)
+				if(delta.h >= 0.0f)
 				{
-					Container->MaxInlineH = MAX(Container->MaxInlineH, Child->EndExtent.H);
+					Container->MaxInlineH = MACRO_MAX(Container->MaxInlineH, Child->EndExtent.h);
 				}
 				else
 				{
 					float TotalH = 0.0f;
-					UIElement* Child = Container->Head;
+					UIElement* Child = Container->head;
 
 					while(Child)
 					{
 						if(Child->Inline)
 						{
-							TotalH = MAX(TotalH, Child->EndExtent.H);
+							TotalH = MACRO_MAX(TotalH, Child->EndExtent.h);
 						}
-						Child = Child->Next;
+						Child = Child->next;
 					}
 
 					Container->MaxInlineH = TotalH;
@@ -222,10 +238,10 @@ UIContainerPropagateSize(
 			}
 		}
 
-		Element->Extent.H = MAX(Container->ContentH, Container->MaxInlineH);
+		Element->Extent.h = MACRO_MAX(Container->ContentH, Container->MaxInlineH);
 
-		Delta.H = Element->Extent.H - OldSize.H;
-		if(Delta.H)
+		delta.h = Element->Extent.h - old_size.h;
+		if(delta.h)
 		{
 			Pass = true;
 			UIUpdateHeight(Element);
@@ -233,7 +249,7 @@ UIContainerPropagateSize(
 	}
 	else
 	{
-		Delta.H = 0.0f;
+		delta.h = 0.0f;
 	}
 
 
@@ -242,14 +258,14 @@ UIContainerPropagateSize(
 		return;
 	}
 
-	UIResizeData EventData =
+	UIResizeData event_data =
 	(UIResizeData)
 	{
-		.OldSize = OldSize,
-		.NewSize = Element->Extent.Size
+		.old_size = old_size,
+		.new_size = Element->Extent.size
 	};
 
-	EventNotify(&Element->ResizeTarget, &EventData);
+	event_target_fire(&Element->ResizeTarget, &event_data);
 
 
 	if(Element->Parent)
@@ -257,13 +273,13 @@ UIContainerPropagateSize(
 		Element->VirtualTable->PropagateSize(
 			Element->Parent,
 			Element,
-			Delta
+			delta
 			);
 	}
 }
 
 
-Static void
+private void
 UIContainerPreClip(
 	UIElement* Element,
 	UIElement* Scrollable
@@ -277,27 +293,27 @@ UIContainerPreClip(
 
 		if(Container->Axis == UI_AXIS_VERTICAL)
 		{
-			float ClampedGoalOffsetY = CLAMP(Container->GoalOffsetY, Parent->Extent.H - Element->Extent.H, 0);
+			float ClampedGoalOffsetY = MACRO_CLAMP(Container->GoalOffsetY, Parent->Extent.h - Element->Extent.h, 0);
 			Container->GoalOffsetY = glm_lerpc(Container->GoalOffsetY, ClampedGoalOffsetY, 0.5f * DeltaTime);
-			Container->OffsetY     = glm_lerpc(Container->OffsetY, Container->GoalOffsetY, 0.2f * DeltaTime);
+			Container->offset_y     = glm_lerpc(Container->offset_y, Container->GoalOffsetY, 0.2f * DeltaTime);
 		}
 		else
 		{
-			float ClampedGoalOffsetX = CLAMP(Container->GoalOffsetX, Parent->Extent.W - Element->Extent.W, 0);
+			float ClampedGoalOffsetX = MACRO_CLAMP(Container->GoalOffsetX, Parent->Extent.w - Element->Extent.w, 0);
 			Container->GoalOffsetX = glm_lerpc(Container->GoalOffsetX, ClampedGoalOffsetX, 0.5f * DeltaTime);
 			Container->OffsetX     = glm_lerpc(Container->OffsetX, Container->GoalOffsetX, 0.2f * DeltaTime);
 		}
 
-		Element->EndExtent.X += Container->OffsetX;
-		Element->EndExtent.Y += Container->OffsetY;
+		Element->EndExtent.x += Container->OffsetX;
+		Element->EndExtent.y += Container->offset_y;
 	}
 }
 
 
-Static void
+private void
 UIContainerPostClip(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	)
@@ -306,7 +322,7 @@ UIContainerPostClip(
 }
 
 
-Static bool
+private bool
 UIContainerMouseOver(
 	UIElement* Element
 	)
@@ -315,23 +331,23 @@ UIContainerMouseOver(
 }
 
 
-Static void
+private void
 UIContainerDrawDetail(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	)
 {
 	UIContainer* Container = Element->TypeData;
 
-	UIClipTexture(Element->EndExtent.X, Element->EndExtent.Y,
-		Element->Extent.W, Element->Extent.H,
-		.WhiteColor = RGBmulA(Container->WhiteColor, Opacity),
-		.WhiteDepth = Depth,
-		.BlackColor = RGBmulA(Container->BlackColor, Opacity),
-		.BlackDepth = Depth,
-		.Texture = Container->Texture
+	UIClipTexture(Element->EndExtent.x, Element->EndExtent.y,
+		Element->Extent.w, Element->Extent.h,
+		.white_color = color_argb_mul_a(Container->white_color, Opacity),
+		.white_depth = depth,
+		.black_color = color_argb_mul_a(Container->black_color, Opacity),
+		.black_depth = depth,
+		.tex = Container->tex
 		);
 }
 
@@ -339,7 +355,7 @@ UIContainerDrawDetail(
 void
 UIInheritPosition(
 	UIElement* Element,
-	RectExtent Clip
+	rect_extent_t Clip
 	)
 {
 	if(!Element->Parent)
@@ -349,11 +365,11 @@ UIInheritPosition(
 	}
 
 	UIElement* Parent = Element->Parent;
-	AssertTrue(UIElementIsContainer(Parent));
+	assert_true(UIElementIsContainer(Parent));
 	UIContainer* Container = Parent->TypeData;
 
 
-	switch(Element->Position)
+	switch(Element->pos)
 	{
 
 	case UI_POSITION_INHERIT:
@@ -384,23 +400,23 @@ UIInheritPosition(
 
 		case UI_ALIGN_LEFT:
 		{
-			Element->EndExtent.X = Parent->EndExtent.X - Parent->Extent.W
-				+ Element->Extent.W + Element->DrawMargin.Left * 2.0f + OffsetMinX;
-			OffsetMinX += Element->EndExtent.W * 2.0f;
+			Element->EndExtent.x = Parent->EndExtent.x - Parent->Extent.w
+				+ Element->Extent.w + Element->DrawMargin.left * 2.0f + OffsetMinX;
+			OffsetMinX += Element->EndExtent.w * 2.0f;
 			break;
 		}
 
 		case UI_ALIGN_CENTER:
 		{
-			Element->EndExtent.X = Parent->EndExtent.X;
+			Element->EndExtent.x = Parent->EndExtent.x;
 			break;
 		}
 
 		case UI_ALIGN_RIGHT:
 		{
-			Element->EndExtent.X = Parent->EndExtent.X + Parent->Extent.W
-				-(Element->Extent.W + Element->DrawMargin.Right * 2.0f + OffsetMaxX);
-			OffsetMaxX += Element->EndExtent.W * 2.0f;
+			Element->EndExtent.x = Parent->EndExtent.x + Parent->Extent.w
+				-(Element->Extent.w + Element->DrawMargin.right * 2.0f + OffsetMaxX);
+			OffsetMaxX += Element->EndExtent.w * 2.0f;
 			break;
 		}
 
@@ -412,23 +428,23 @@ UIInheritPosition(
 
 		case UI_ALIGN_TOP:
 		{
-			Element->EndExtent.Y = Parent->EndExtent.Y - Parent->Extent.H
-				+ Element->Extent.H + Element->DrawMargin.Top * 2.0f + OffsetMinY;
-			OffsetMinY += Element->EndExtent.H * 2.0f;
+			Element->EndExtent.y = Parent->EndExtent.y - Parent->Extent.h
+				+ Element->Extent.h + Element->DrawMargin.top * 2.0f + OffsetMinY;
+			OffsetMinY += Element->EndExtent.h * 2.0f;
 			break;
 		}
 
 		case UI_ALIGN_MIDDLE:
 		{
-			Element->EndExtent.Y = Parent->EndExtent.Y;
+			Element->EndExtent.y = Parent->EndExtent.y;
 			break;
 		}
 
 		case UI_ALIGN_BOTTOM:
 		{
-			Element->EndExtent.Y = Parent->EndExtent.Y + Parent->Extent.H
-				-(Element->Extent.H + Element->DrawMargin.Bottom * 2.0f + OffsetMaxY);
-			OffsetMaxY += Element->EndExtent.H * 2.0f;
+			Element->EndExtent.y = Parent->EndExtent.y + Parent->Extent.h
+				-(Element->Extent.h + Element->DrawMargin.bottom * 2.0f + OffsetMaxY);
+			OffsetMaxY += Element->EndExtent.h * 2.0f;
 			break;
 		}
 
@@ -454,31 +470,31 @@ UIInheritPosition(
 
 	case UI_POSITION_ABSOLUTE:
 	{
-		Element->EndExtent.X = Parent->EndExtent.X + Element->Extent.X;
-		Element->EndExtent.Y = Parent->EndExtent.Y + Element->Extent.Y;
+		Element->EndExtent.x = Parent->EndExtent.x + Element->Extent.x;
+		Element->EndExtent.y = Parent->EndExtent.y + Element->Extent.y;
 		break;
 	}
 
 	case UI_POSITION_RELATIVE:
 	{
-		AssertNotNull(Element->Relative);
+		assert_not_null(Element->Relative);
 		UIElement* Relative = Element->Relative;
 
 
-		Element->EndExtent.X = Relative->EndExtent.X;
+		Element->EndExtent.x = Relative->EndExtent.x;
 
 		switch(Element->AlignX)
 		{
 
 		case UI_ALIGN_LEFT:
 		{
-			Element->EndExtent.X -= Element->Extent.W + Element->DrawMargin.Right * 2.0f;
+			Element->EndExtent.x -= Element->Extent.w + Element->DrawMargin.right * 2.0f;
 			break;
 		}
 
 		case UI_ALIGN_RIGHT:
 		{
-			Element->EndExtent.X += Element->Extent.W + Element->DrawMargin.Left * 2.0f;
+			Element->EndExtent.x += Element->Extent.w + Element->DrawMargin.left * 2.0f;
 			break;
 		}
 
@@ -491,13 +507,13 @@ UIInheritPosition(
 
 		case UI_ALIGN_LEFT:
 		{
-			Element->EndExtent.X -= Relative->Extent.W;
+			Element->EndExtent.x -= Relative->Extent.w;
 			break;
 		}
 
 		case UI_ALIGN_RIGHT:
 		{
-			Element->EndExtent.X += Relative->Extent.W;
+			Element->EndExtent.x += Relative->Extent.w;
 			break;
 		}
 
@@ -506,20 +522,20 @@ UIInheritPosition(
 		}
 
 
-		Element->EndExtent.Y = Relative->EndExtent.Y;
+		Element->EndExtent.y = Relative->EndExtent.y;
 
 		switch(Element->AlignY)
 		{
 
 		case UI_ALIGN_TOP:
 		{
-			Element->EndExtent.Y -= Element->Extent.H + Element->DrawMargin.Bottom * 2.0f;
+			Element->EndExtent.y -= Element->Extent.h + Element->DrawMargin.bottom * 2.0f;
 			break;
 		}
 
 		case UI_ALIGN_BOTTOM:
 		{
-			Element->EndExtent.Y += Element->Extent.H + Element->DrawMargin.Top * 2.0f;
+			Element->EndExtent.y += Element->Extent.h + Element->DrawMargin.top * 2.0f;
 			break;
 		}
 
@@ -532,13 +548,13 @@ UIInheritPosition(
 
 		case UI_ALIGN_TOP:
 		{
-			Element->EndExtent.Y -= Relative->Extent.H;
+			Element->EndExtent.y -= Relative->Extent.h;
 			break;
 		}
 
 		case UI_ALIGN_BOTTOM:
 		{
-			Element->EndExtent.Y += Relative->Extent.H;
+			Element->EndExtent.y += Relative->Extent.h;
 			break;
 		}
 
@@ -550,16 +566,16 @@ UIInheritPosition(
 		break;
 	}
 
-	default: AssertUnreachable();
+	default: assert_unreachable();
 
 	}
 }
 
 
-Static void
+private void
 UIContainerDrawChildren(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	)
@@ -574,13 +590,13 @@ UIContainerDrawChildren(
 		Scrollable = Element;
 	}
 
-	UIElement* Child = Container->Head;
+	UIElement* Child = Container->head;
 	while(Child)
 	{
-		uint8_t ChildOpacity = AmulA(Opacity, Child->Opacity);
+		uint8_t ChildOpacity = color_a_mul_a(Opacity, Child->Opacity);
 		if(ChildOpacity)
 		{
-			Depth += DRAW_DEPTH_LEAP;
+			depth += DRAW_DEPTH_LEAP;
 
 			UIDrawElement(
 				Child,
@@ -590,12 +606,12 @@ UIContainerDrawChildren(
 				);
 		}
 
-		Child = Child->Next;
+		Child = Child->next;
 	}
 }
 
 
-Static UIVirtualTable ContainerVirtualTable =
+private UIVirtualTable ContainerVirtualTable =
 {
 	.BubbleDown = UIContainerBubbleDown,
 	.PropagateSize = UIContainerPropagateSize,
@@ -616,62 +632,62 @@ UIElementIsContainer(
 }
 
 
-Static UIContainer*
+private UIContainer*
 UIAllocContainerData(
 	void
 	)
 {
-	void* Container = AllocMalloc(sizeof(UIContainer));
-	AssertNotNull(Container);
+	void* Container = alloc_malloc(sizeof(UIContainer));
+	assert_not_null(Container);
 
 	return Container;
 }
 
 
-Static void
+private void
 UIFreeContainerData(
 	UIContainer* Container,
 	void* _
 	)
 {
-	AssertNotNull(Container);
-	AllocFree(sizeof(UIContainer), Container);
+	assert_not_null(Container);
+	alloc_free(sizeof(UIContainer), Container);
 }
 
 
 UIElement*
 UIAllocContainer(
 	UIElementInfo ElementInfo,
-	UIContainerInfo Info
+	UIContainerInfo info
 	)
 {
 	UIElement* Element = UIAllocElement(ElementInfo);
-	AssertNotNull(Element);
+	assert_not_null(Element);
 
 	UIContainer* Container = UIAllocContainerData();
 	*Container =
 	(UIContainer)
 	{
-		.Axis = Info.Axis,
+		.Axis = info.Axis,
 
-		.AutoW = Info.AutoW,
-		.AutoH = Info.AutoH,
+		.AutoW = info.AutoW,
+		.AutoH = info.AutoH,
 
-		.WhiteColor = Info.WhiteColor,
-		.BlackColor = Info.BlackColor,
-		.Texture = Info.Texture
+		.white_color = info.white_color,
+		.black_color = info.black_color,
+		.tex = info.tex
 	};
 
 	Element->VirtualTable = &ContainerVirtualTable;
 	Element->TypeData = Container;
 
-	EventListen(&Element->FreeTarget, (void*) UIFreeContainerData, Container);
+	event_target_add(&Element->FreeTarget, (void*) UIFreeContainerData, Container);
 
 	return Element;
 }
 
 
-Static void
+private void
 UIPropagateInsertion(
 	UIElement* Element,
 	UIElement* Parent
@@ -680,7 +696,7 @@ UIPropagateInsertion(
 	Parent->VirtualTable->PropagateSize(
 		Parent,
 		Element,
-		Element->EndExtent.Size
+		Element->EndExtent.size
 		);
 }
 
@@ -691,23 +707,23 @@ UIInsertFirst(
 	UIElement* Parent
 	)
 {
-	AssertTrue(UIElementIsContainer(Parent));
+	assert_true(UIElementIsContainer(Parent));
 	UIContainer* Container = Parent->TypeData;
 
 	Element->Parent = Parent;
-	Element->Prev = NULL;
-	Element->Next = Container->Head;
+	Element->prev = NULL;
+	Element->next = Container->head;
 
-	if(Container->Head)
+	if(Container->head)
 	{
-		Container->Head->Prev = Element;
+		Container->head->prev = Element;
 	}
 	else
 	{
-		Container->Tail = Element;
+		Container->tail = Element;
 	}
 
-	Container->Head = Element;
+	Container->head = Element;
 
 	UIPropagateInsertion(Element, Parent);
 }
@@ -719,23 +735,23 @@ UIInsertLast(
 	UIElement* Parent
 	)
 {
-	AssertTrue(UIElementIsContainer(Parent));
+	assert_true(UIElementIsContainer(Parent));
 	UIContainer* Container = Parent->TypeData;
 
 	Element->Parent = Parent;
-	Element->Prev = Container->Tail;
-	Element->Next = NULL;
+	Element->prev = Container->tail;
+	Element->next = NULL;
 
-	if(Container->Tail)
+	if(Container->tail)
 	{
-		Container->Tail->Next = Element;
+		Container->tail->next = Element;
 	}
 	else
 	{
-		Container->Head = Element;
+		Container->head = Element;
 	}
 
-	Container->Tail = Element;
+	Container->tail = Element;
 
 	UIPropagateInsertion(Element, Parent);
 }
@@ -748,23 +764,23 @@ UIInsertBefore(
 	)
 {
 	UIElement* Parent = Before->Parent;
-	AssertTrue(UIElementIsContainer(Parent));
+	assert_true(UIElementIsContainer(Parent));
 	UIContainer* Container = Parent->TypeData;
 
 	Element->Parent = Parent;
-	Element->Prev = Before->Prev;
-	Element->Next = Before;
+	Element->prev = Before->prev;
+	Element->next = Before;
 
-	if(Before->Prev)
+	if(Before->prev)
 	{
-		Before->Prev->Next = Element;
+		Before->prev->next = Element;
 	}
 	else
 	{
-		Container->Head = Element;
+		Container->head = Element;
 	}
 
-	Before->Prev = Element;
+	Before->prev = Element;
 
 	UIPropagateInsertion(Element, Element->Parent);
 }
@@ -777,23 +793,23 @@ UIInsertAfter(
 	)
 {
 	UIElement* Parent = After->Parent;
-	AssertTrue(UIElementIsContainer(Parent));
+	assert_true(UIElementIsContainer(Parent));
 	UIContainer* Container = Parent->TypeData;
 
 	Element->Parent = Parent;
-	Element->Prev = After;
-	Element->Next = After->Next;
+	Element->prev = After;
+	Element->next = After->next;
 
-	if(After->Next)
+	if(After->next)
 	{
-		After->Next->Prev = Element;
+		After->next->prev = Element;
 	}
 	else
 	{
-		Container->Tail = Element;
+		Container->tail = Element;
 	}
 
-	After->Next = Element;
+	After->next = Element;
 
 	UIPropagateInsertion(Element, Element->Parent);
 }
@@ -819,38 +835,38 @@ UIUnlink(
 	}
 
 	UIElement* Parent = Element->Parent;
-	AssertTrue(UIElementIsContainer(Parent));
+	assert_true(UIElementIsContainer(Parent));
 	UIContainer* Container = Parent->TypeData;
 
-	if(Element->Prev)
+	if(Element->prev)
 	{
-		Element->Prev->Next = Element->Next;
+		Element->prev->next = Element->next;
 	}
 	else
 	{
-		Container->Head = Element->Next;
+		Container->head = Element->next;
 	}
 
-	if(Element->Next)
+	if(Element->next)
 	{
-		Element->Next->Prev = Element->Prev;
+		Element->next->prev = Element->prev;
 	}
 	else
 	{
-		Container->Tail = Element->Prev;
+		Container->tail = Element->prev;
 	}
 
 	Element->Parent = NULL;
-	Element->Prev = NULL;
-	Element->Next = NULL;
+	Element->prev = NULL;
+	Element->next = NULL;
 
 	Parent->VirtualTable->PropagateSize(
 		Parent,
 		Element,
-		(Pair)
+		(pair_t)
 		{
-			.W = -Element->EndExtent.W,
-			.H = -Element->EndExtent.H
+			.w = -Element->EndExtent.w,
+			.h = -Element->EndExtent.h
 		}
 		);
 }

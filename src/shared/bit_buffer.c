@@ -1,268 +1,845 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/base.h>
+#include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/bit_buffer.h>
 
 #include <math.h>
 
 
 void
-BitBufferSet(
-	BitBuffer* Buffer,
-	uint8_t* Data,
-	uint64_t Length
+bit_buffer_set(
+	bit_buffer_t* bit_buffer,
+	uint8_t* data,
+	uint64_t len
 	)
 {
-	Buffer->Buffer = Data;
-	Buffer->At = Data;
+	bit_buffer->data = data;
+	bit_buffer->at = data;
 
-	Buffer->Length = Length;
-	Buffer->Bit = 0;
+	bit_buffer->len = len;
+	bit_buffer->bit = 0;
 }
 
 
 void
-BitBufferReset(
-	BitBuffer* Buffer
+bit_buffer_reset(
+	bit_buffer_t* bit_buffer
 	)
 {
-	Buffer->At = Buffer->Buffer;
-	Buffer->Bit = 0;
+	bit_buffer->at = bit_buffer->data;
+	bit_buffer->bit = 0;
 }
 
 
 uint64_t
-BitBufferGetAvailableBits(
-	BitBuffer* Buffer
+bit_buffer_available_bits(
+	bit_buffer_t* bit_buffer
 	)
 {
-	return ((Buffer->Length - (Buffer->At - Buffer->Buffer)) << 3) - Buffer->Bit;
+	return (bit_buffer->len << 3) - bit_buffer_consumed_bits(bit_buffer);
 }
 
 
 uint64_t
-BitBufferGetConsumed(
-	BitBuffer* Buffer
+bit_buffer_available_bytes(
+	bit_buffer_t* bit_buffer
 	)
 {
-	return (Buffer->At - Buffer->Buffer) + !!Buffer->Bit;
+	return MACRO_TO_BYTES(bit_buffer_available_bits(bit_buffer));
+}
+
+
+uint64_t
+bit_buffer_consumed_bits(
+	bit_buffer_t* bit_buffer
+	)
+{
+	return ((bit_buffer->at - bit_buffer->data) << 3) + bit_buffer->bit;
+}
+
+
+uint64_t
+bit_buffer_consumed_bytes(
+	bit_buffer_t* bit_buffer
+	)
+{
+	return MACRO_TO_BYTES(bit_buffer_consumed_bits(bit_buffer));
 }
 
 
 void
-BitBufferSkipBits(
-	BitBuffer* Buffer,
-	uint64_t Bits
+bit_buffer_skip_bits(
+	bit_buffer_t* bit_buffer,
+	uint64_t bits
 	)
 {
-	Buffer->Bit += Bits;
-	Buffer->At += Buffer->Bit >> 3;
-	Buffer->Bit &= 7;
+	bit_buffer->bit += bits;
+	bit_buffer->at += bit_buffer->bit >> 3;
+	bit_buffer->bit &= 7;
 }
 
 
-BitBufferContext
-BitBufferSave(
-	BitBuffer* Buffer
+void
+bit_buffer_skip_bits_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t bits,
+	bool* status
+	)
+{
+	if(bit_buffer_available_bits(bit_buffer) < bits)
+	{
+		*status = false;
+		return;
+	}
+
+	*status = true;
+	bit_buffer_skip_bits(bit_buffer, bits);
+}
+
+
+void
+bit_buffer_skip_bytes(
+	bit_buffer_t* bit_buffer,
+	uint64_t bytes
+	)
+{
+	bit_buffer->at += bytes;
+}
+
+
+void
+bit_buffer_skip_bytes_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t bytes,
+	bool* status
+	)
+{
+	if(bit_buffer_available_bytes(bit_buffer) < bytes)
+	{
+		*status = false;
+		return;
+	}
+
+	*status = true;
+	bit_buffer_skip_bytes(bit_buffer, bytes);
+}
+
+
+bit_buffer_ctx_t
+bit_buffer_save(
+	bit_buffer_t* bit_buffer
 	)
 {
 	return
-	(BitBufferContext)
+	(bit_buffer_ctx_t)
 	{
-		.At = Buffer->At,
-		.Bit = Buffer->Bit
+		.at = bit_buffer->at,
+		.bit = bit_buffer->bit
 	};
 }
 
 
 void
-BitBufferRestore(
-	BitBuffer* Buffer,
-	const BitBufferContext* Context
+bit_buffer_restore(
+	bit_buffer_t* bit_buffer,
+	const bit_buffer_ctx_t* ctx
 	)
 {
-	Buffer->At = Context->At;
-	Buffer->Bit = Context->Bit;
+	bit_buffer->at = ctx->at;
+	bit_buffer->bit = ctx->bit;
 }
 
 
 void
-BitBufferSetBits(
-	BitBuffer* Buffer,
-	uint64_t Number,
-	uint64_t Bits
+bit_buffer_set_bits(
+	bit_buffer_t* bit_buffer,
+	uint64_t num,
+	uint64_t bits
 	)
 {
-	Number &= ((uint64_t) 1 << Bits) - 1;
+	assert_ge(bits, 1);
+	assert_le(bits, 64);
 
-	uint8_t* At = Buffer->At;
+	num &= UINT64_MAX >> (64 - bits);
 
-	while(Bits)
+	uint8_t* at = bit_buffer->at;
+
+	while(bits)
 	{
-		uint64_t Delta = Bits - 8 + Buffer->Bit;
+		int64_t delta = bits - 8 + bit_buffer->bit;
 
-		if(Delta & 0x8000000000000000)
+		if(delta < 0)
 		{
-			*At |= Number << -Delta;
+			*at |= num << -delta;
 
-			Buffer->Bit += Bits;
+			bit_buffer->bit += bits;
 
 			break;
 		}
 		else
 		{
-			*(At++) |= Number >> Delta;
+			*(at++) |= num >> delta;
 
-			Buffer->Bit = 0;
-			Bits = Delta;
+			bit_buffer->bit = 0;
+			bits = delta;
 		}
 	}
 
-	Buffer->At = At;
+	bit_buffer->at = at;
 }
 
 
 uint64_t
-BitBufferGetBits(
-	BitBuffer* Buffer,
-	uint64_t Bits
+bit_buffer_get_bits(
+	bit_buffer_t* bit_buffer,
+	uint64_t bits
 	)
 {
-	uint64_t Mask = ((uint64_t) 1 << Bits) - 1;
-	uint64_t Number = 0;
+	assert_ge(bits, 1);
+	assert_le(bits, 64);
 
-	uint8_t* At = Buffer->At;
+	uint64_t mask = UINT64_MAX >> (64 - bits);
+	uint64_t num = 0;
 
-	while(Bits)
+	uint8_t* at = bit_buffer->at;
+
+	while(bits)
 	{
-		uint64_t Delta = Bits - 8 + Buffer->Bit;
+		int64_t delta = bits - 8 + bit_buffer->bit;
 
-		if(Delta & 0x8000000000000000)
+		if(delta < 0)
 		{
-			Number |= *At >> -Delta;
+			num |= *at >> -delta;
 
-			Buffer->Bit += Bits;
+			bit_buffer->bit += bits;
 
 			break;
 		}
 		else
 		{
-			Number |= (uint64_t) *(At++) << Delta;
+			num |= (uint64_t) *(at++) << delta;
 
-			Buffer->Bit = 0;
-			Bits = Delta;
+			bit_buffer->bit = 0;
+			bits = delta;
 		}
 	}
 
-	Buffer->At = At;
+	bit_buffer->at = at;
 
-	Number &= Mask;
+	num &= mask;
 
-	return Number;
+	return num;
+}
+
+
+uint64_t
+bit_buffer_get_bits_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t bits,
+	bool* status
+	)
+{
+	assert_ge(bits, 1);
+	assert_le(bits, 64);
+
+	if(bit_buffer_available_bits(bit_buffer) < bits)
+	{
+		*status = false;
+		return 0;
+	}
+
+	*status = true;
+	return bit_buffer_get_bits(bit_buffer, bits);
+}
+
+
+uint64_t
+bit_buffer_len_bits(
+	uint64_t bits
+	)
+{
+	assert_ge(bits, 1);
+	assert_le(bits, 64);
+
+	return bits;
+}
+
+
+void
+bit_buffer_set_signed_bits(
+	bit_buffer_t* bit_buffer,
+	int64_t num,
+	uint64_t bits
+	)
+{
+	assert_ge(bits, 1);
+	assert_le(bits, 63);
+
+	num <<= 1;
+	if(num < 0)
+	{
+		num = ~num;
+	}
+
+	bit_buffer_set_bits(bit_buffer, num, bits + 1);
+}
+
+
+int64_t
+bit_buffer_get_signed_bits(
+	bit_buffer_t* bit_buffer,
+	uint64_t bits
+	)
+{
+	assert_ge(bits, 1);
+	assert_le(bits, 63);
+
+	int64_t num = bit_buffer_get_bits(bit_buffer, bits + 1);
+
+	if(num & 1)
+	{
+		num = ~num;
+	}
+
+	num >>= 1;
+
+	return num;
+}
+
+
+int64_t
+bit_buffer_get_signed_bits_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t bits,
+	bool* status
+	)
+{
+	assert_ge(bits, 1);
+	assert_le(bits, 63);
+
+	if(bit_buffer_available_bits(bit_buffer) < 1 + bits)
+	{
+		*status = false;
+		return 0;
+	}
+
+	*status = true;
+	return bit_buffer_get_signed_bits(bit_buffer, bits);
+}
+
+
+uint64_t
+bit_buffer_len_signed_bits(
+	uint64_t bits
+	)
+{
+	assert_ge(bits, 1);
+	assert_le(bits, 63);
+
+	return bit_buffer_len_bits(bits + 1);
 }
 
 
 extern void
-BitBufferSetBitsVar(
-	BitBuffer* Buffer,
-	uint64_t Number,
-	uint64_t Bits,
-	uint64_t Segment
+bit_buffer_set_bits_var(
+	bit_buffer_t* bit_buffer,
+	uint64_t num,
+	uint64_t segment
 	)
 {
-	uint64_t SegmentBit = (uint64_t) 1 << Segment;
-	uint64_t SegmentMask = SegmentBit - 1;
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
 
-	while(Bits >= Segment)
+	uint64_t segment_bit = (uint64_t) 1 << segment;
+	uint64_t segment_mask = segment_bit - 1;
+
+	do
 	{
-		BitBufferSetBits(Buffer, (Number & SegmentMask) | SegmentBit, Segment + 1);
+		bit_buffer_set_bits(bit_buffer, (num & segment_mask) | segment_bit, segment + 1);
 
-		Number >>= Segment;
-		Bits -= Segment;
+		num >>= segment;
 	}
-
-	if(Bits)
-	{
-		BitBufferSetBits(Buffer, Number, Segment + 1);
-	}
+	while(num);
 }
 
 
 extern uint64_t
-BitBufferGetBitsVar(
-	BitBuffer* Buffer,
-	uint64_t Segment
+bit_buffer_get_bits_var(
+	bit_buffer_t* bit_buffer,
+	uint64_t segment
 	)
 {
-	uint64_t Number = 0;
-	uint64_t Shift = 0;
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
 
-	uint64_t SegmentBit = (uint64_t) 1 << Segment;
-	uint64_t SegmentMask = SegmentBit - 1;
+	uint64_t num = 0;
+	uint64_t shift = 0;
+
+	uint64_t segment_bit = (uint64_t) 1 << segment;
+	uint64_t segment_mask = segment_bit - 1;
 
 	while(1)
 	{
-		uint64_t Part = BitBufferGetBits(Buffer, Segment + 1);
+		uint64_t part = bit_buffer_get_bits(bit_buffer, segment + 1);
 
-		Number |= (Part & SegmentMask) << Shift;
+		num |= (part & segment_mask) << shift;
 
-		if(!(Part & SegmentBit))
+		if(!(part & segment_bit))
 		{
 			break;
 		}
 
-		Shift += Segment;
+		shift += segment;
 	}
 
-	return Number;
+	return num;
+}
+
+
+uint64_t
+bit_buffer_get_bits_var_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t segment,
+	bool* status
+	)
+{
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
+
+	uint64_t num = 0;
+	uint64_t shift = 0;
+
+	uint64_t segment_bit = (uint64_t) 1 << segment;
+	uint64_t segment_mask = segment_bit - 1;
+
+	while(1)
+	{
+		uint64_t part = bit_buffer_get_bits_safe(bit_buffer, segment + 1, status);
+		if(!*status)
+		{
+			return 0;
+		}
+
+		num |= (part & segment_mask) << shift;
+
+		if(!(part & segment_bit))
+		{
+			break;
+		}
+
+		shift += segment;
+		if(shift >= 64)
+		{
+			*status = false;
+			return 0;
+		}
+	}
+
+	return num;
+}
+
+
+uint64_t
+bit_buffer_len_bits_var(
+	uint64_t num,
+	uint64_t segment
+	)
+{
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
+
+	uint64_t len = 0;
+
+	do
+	{
+		len += segment + 1;
+		num >>= segment;
+	}
+	while(num);
+
+	return len;
 }
 
 
 void
-BitBufferSetFixedPoint(
-	BitBuffer* Buffer,
-	float Value,
-	uint64_t IntegerBits,
-	uint64_t FractionBits
+bit_buffer_set_signed_bits_var(
+	bit_buffer_t* bit_buffer,
+	int64_t num,
+	uint64_t segment
 	)
 {
-	BitBufferSetBits(Buffer, ROUNDF(Value * UINT_TO_FLOAT((FractionBits + 127) << 23)), IntegerBits + FractionBits);
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
+
+	num <<= 1;
+	if(num < 0)
+	{
+		num = ~num;
+	}
+
+	bit_buffer_set_bits_var(bit_buffer, num, segment + 1);
 }
 
 
-float
-BitBufferGetFixedPoint(
-	BitBuffer* Buffer,
-	uint64_t IntegerBits,
-	uint64_t FractionBits
+int64_t
+bit_buffer_get_signed_bits_var(
+	bit_buffer_t* bit_buffer,
+	uint64_t segment
 	)
 {
-	return BitBufferGetBits(Buffer, IntegerBits + FractionBits) * UINT_TO_FLOAT((-FractionBits + 127) << 23);
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
+
+	int64_t num = bit_buffer_get_bits_var(bit_buffer, segment);
+
+	if(num & 1)
+	{
+		num = ~num;
+	}
+
+	num >>= 1;
+
+	return num;
+}
+
+
+int64_t
+bit_buffer_get_signed_bits_var_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t segment,
+	bool* status
+	)
+{
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
+
+	uint64_t num = bit_buffer_get_bits_var_safe(bit_buffer, segment, status);
+	if(!*status)
+	{
+		return 0;
+	}
+
+	if(num & 1)
+	{
+		num = ~num;
+	}
+
+	num >>= 1;
+
+	return num;
+}
+
+
+uint64_t
+bit_buffer_len_signed_bits_var(
+	int64_t num,
+	uint64_t segment
+	)
+{
+	assert_ge(segment, 1);
+	assert_le(segment, 63);
+
+	num <<= 1;
+	if(num < 0)
+	{
+		num = ~num;
+	}
+
+	return bit_buffer_len_bits_var(num, segment);
 }
 
 
 void
-BitBufferSetSignedFixedPoint(
-	BitBuffer* Buffer,
-	float Value,
-	uint64_t IntegerBits,
-	uint64_t FractionBits
+bit_buffer_set_fixed_point(
+	bit_buffer_t* bit_buffer,
+	float value,
+	uint64_t integer_bits,
+	uint64_t fraction_bits
 	)
 {
-	uint32_t UValue = FLOAT_TO_UINT(Value);
-	BitBufferSetBits(Buffer, UValue >> 31, 1);
-	Value = UINT_TO_FLOAT(UValue & 0x7FFFFFFF);
-	BitBufferSetFixedPoint(Buffer, Value, IntegerBits, FractionBits);
+	assert_ge(integer_bits, 1);
+	assert_ge(fraction_bits, 1);
+	assert_le(integer_bits + fraction_bits, 31);
+
+	uint32_t num = roundf(value * MACRO_U32_TO_F32((fraction_bits + 127) << 23));
+	bit_buffer_set_bits(bit_buffer, num, integer_bits + fraction_bits);
 }
 
 
 float
-BitBufferGetSignedFixedPoint(
-	BitBuffer* Buffer,
-	uint64_t IntegerBits,
-	uint64_t FractionBits
+bit_buffer_get_fixed_point(
+	bit_buffer_t* bit_buffer,
+	uint64_t integer_bits,
+	uint64_t fraction_bits
 	)
 {
-	uint64_t Sign = BitBufferGetBits(Buffer, 1);
-	uint32_t Value = FLOAT_TO_UINT(BitBufferGetFixedPoint(Buffer, IntegerBits, FractionBits));
-	Value |= Sign << 31;
-	return UINT_TO_FLOAT(Value);
+	assert_ge(integer_bits, 1);
+	assert_ge(fraction_bits, 1);
+	assert_le(integer_bits + fraction_bits, 31);
+
+	uint32_t num = bit_buffer_get_bits(bit_buffer, integer_bits + fraction_bits);
+	return num * MACRO_U32_TO_F32((-fraction_bits + 127) << 23);
+}
+
+
+float
+bit_buffer_get_fixed_point_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t integer_bits,
+	uint64_t fraction_bits,
+	bool* status
+	)
+{
+	assert_ge(integer_bits, 1);
+	assert_ge(fraction_bits, 1);
+	assert_le(integer_bits + fraction_bits, 31);
+
+	if(bit_buffer_available_bits(bit_buffer) < integer_bits + fraction_bits)
+	{
+		*status = false;
+		return 0;
+	}
+
+	*status = true;
+	return bit_buffer_get_fixed_point(bit_buffer, integer_bits, fraction_bits);
+}
+
+
+uint64_t
+bit_buffer_len_fixed_point(
+	uint64_t integer_bits,
+	uint64_t fraction_bits
+	)
+{
+	assert_ge(integer_bits, 1);
+	assert_ge(fraction_bits, 1);
+	assert_le(integer_bits + fraction_bits, 31);
+
+	return integer_bits + fraction_bits;
+}
+
+
+void
+bit_buffer_set_signed_fixed_point(
+	bit_buffer_t* bit_buffer,
+	float value,
+	uint64_t integer_bits,
+	uint64_t fraction_bits
+	)
+{
+	assert_ge(integer_bits, 1);
+	assert_ge(fraction_bits, 1);
+	assert_le(integer_bits + fraction_bits, 31);
+
+	uint32_t num = MACRO_F32_TO_U32(value);
+	bit_buffer_set_bits(bit_buffer, num >> 31, 1);
+	value = MACRO_U32_TO_F32(num & 0x7FFFFFFF);
+	bit_buffer_set_fixed_point(bit_buffer, value, integer_bits, fraction_bits);
+}
+
+
+float
+bit_buffer_get_signed_fixed_point(
+	bit_buffer_t* bit_buffer,
+	uint64_t integer_bits,
+	uint64_t fraction_bits
+	)
+{
+	assert_ge(integer_bits, 1);
+	assert_ge(fraction_bits, 1);
+	assert_le(integer_bits + fraction_bits, 31);
+
+	uint64_t sign = bit_buffer_get_bits(bit_buffer, 1);
+	uint32_t value = MACRO_F32_TO_U32(bit_buffer_get_fixed_point(bit_buffer, integer_bits, fraction_bits));
+	value |= sign << 31;
+	return MACRO_U32_TO_F32(value);
+}
+
+
+float
+bit_buffer_get_signed_fixed_point_safe(
+	bit_buffer_t* bit_buffer,
+	uint64_t integer_bits,
+	uint64_t fraction_bits,
+	bool* status
+	)
+{
+	assert_ge(integer_bits, 1);
+	assert_ge(fraction_bits, 1);
+	assert_le(integer_bits + fraction_bits, 31);
+
+	if(bit_buffer_available_bits(bit_buffer) < 1 + integer_bits + fraction_bits)
+	{
+		*status = false;
+		return 0;
+	}
+
+	*status = true;
+	return bit_buffer_get_signed_fixed_point(bit_buffer, integer_bits, fraction_bits);
+}
+
+
+uint64_t
+bit_buffer_len_signed_fixed_point(
+	uint64_t integer_bits,
+	uint64_t fraction_bits
+	)
+{
+	return 1 + bit_buffer_len_fixed_point(integer_bits, fraction_bits);
+}
+
+
+void
+bit_buffer_set_bytes(
+	bit_buffer_t* bit_buffer,
+	const void* data,
+	uint64_t len
+	)
+{
+	uint64_t bits = MACRO_TO_BITS(len);
+
+	while(bits >= 64)
+	{
+		bit_buffer_set_bits(bit_buffer, *(uint64_t*) data, 64);
+
+		data += 8;
+		bits -= 64;
+	}
+
+	while(bits)
+	{
+		uint64_t size = MACRO_MIN(bits, 8);
+		bit_buffer_set_bits(bit_buffer, *(uint8_t*) data, size);
+
+		data += 1;
+		bits -= size;
+	}
+}
+
+
+void
+bit_buffer_get_bytes(
+	bit_buffer_t* bit_buffer,
+	void* data,
+	uint64_t len
+	)
+{
+	uint64_t bits = MACRO_TO_BITS(len);
+
+	while(bits >= 64)
+	{
+		*(uint64_t*) data = bit_buffer_get_bits(bit_buffer, 64);
+
+		data += 8;
+		bits -= 64;
+	}
+
+	while(bits)
+	{
+		uint64_t size = MACRO_MIN(bits, 8);
+		*(uint8_t*) data = bit_buffer_get_bits(bit_buffer, size);
+
+		data += 1;
+		bits -= size;
+	}
+}
+
+
+void
+bit_buffer_get_bytes_safe(
+	bit_buffer_t* bit_buffer,
+	void* data,
+	uint64_t len,
+	bool* status
+	)
+{
+	if(bit_buffer_available_bytes(bit_buffer) < len)
+	{
+		*status = false;
+		return;
+	}
+
+	*status = true;
+	bit_buffer_get_bytes(bit_buffer, data, len);
+}
+
+
+uint64_t
+bit_buffer_len_bytes(
+	uint64_t len
+	)
+{
+	return MACRO_TO_BITS(len);
+}
+
+
+void
+bit_buffer_set_str(
+	bit_buffer_t* bit_buffer,
+	const uint8_t* str,
+	uint64_t len
+	)
+{
+	bit_buffer_set_bits_var(bit_buffer, len, 7);
+	bit_buffer_set_bytes(bit_buffer, str, len);
+}
+
+
+void
+bit_buffer_get_str(
+	bit_buffer_t* bit_buffer,
+	uint8_t* str,
+	uint64_t* len
+	)
+{
+	uint64_t size = bit_buffer_get_bits_var(bit_buffer, 7);
+	size = MACRO_MIN(size, *len);
+	*len = size;
+
+	bit_buffer_get_bytes(bit_buffer, str, size);
+}
+
+
+void
+bit_buffer_get_str_safe(
+	bit_buffer_t* bit_buffer,
+	uint8_t* str,
+	uint64_t* len,
+	bool* status
+	)
+{
+	uint64_t size = bit_buffer_get_bits_var_safe(bit_buffer, 7, status);
+	if(!*status)
+	{
+		return;
+	}
+
+	size = MACRO_MIN(size, *len);
+	*len = size;
+
+	bit_buffer_get_bytes_safe(bit_buffer, str, size, status);
+}
+
+
+uint64_t
+bit_buffer_len_str(
+	uint64_t len
+	)
+{
+	return bit_buffer_len_bits_var(len, 7) + bit_buffer_len_bytes(len);
 }

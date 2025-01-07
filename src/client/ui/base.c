@@ -1,3 +1,19 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/client/window.h>
 #include <DiepDesktop/shared/threads.h>
@@ -9,13 +25,13 @@
 #include <SDL3/SDL_clipboard.h>
 
 
-float Depth;
+float depth;
 float DeltaTime;
 uint64_t LastDrawAt;
 
-Static UIElement* RootElement;
+private UIElement* RootElement;
 
-Pair UIMouse;
+pair_t UIMouse;
 UIElement* UIElementUnderMouse;
 UIElement* UIClickableUnderMouse;
 UIElement* UIScrollableUnderMouse;
@@ -24,25 +40,25 @@ UIElement* UISelectedSelectableElement;
 bool UISameElement;
 
 
-Static void
+private void
 UIRootElementOnWindowResize(
 	UIElement* Element,
-	WindowResizeData* Data
+	window_resize_event_data_t* data
 	)
 {
-	Pair HalfSize =
-	(Pair)
+	pair_t HalfSize =
+	(pair_t)
 	{
-		.W = Data->NewSize.W / 2.0f,
-		.H = Data->NewSize.H / 2.0f
+		.w = data->new_size.w / 2.0f,
+		.h = data->new_size.h / 2.0f
 	};
 
 	if(
-		HalfSize.W != Element->Extent.W ||
-		HalfSize.H != Element->Extent.H
+		HalfSize.w != Element->Extent.w ||
+		HalfSize.h != Element->Extent.h
 		)
 	{
-		Element->Extent.Size = HalfSize;
+		Element->Extent.size = HalfSize;
 		UIResizeElement(Element);
 	}
 }
@@ -55,7 +71,7 @@ UISetRootElement(
 {
 	if(RootElement)
 	{
-		EventUnlisten(&WindowResizeTarget,
+		event_target_del(&window_resize_target,
 			(void*) UIRootElementOnWindowResize, RootElement);
 	}
 
@@ -63,17 +79,17 @@ UISetRootElement(
 
 	if(RootElement)
 	{
-		EventListen(&WindowResizeTarget,
+		event_target_add(&window_resize_target,
 			(void*) UIRootElementOnWindowResize, RootElement);
 
 
-		Pair WindowSize = WindowGetSize();
+		pair_t WindowSize = window_get_size();
 
-		Element->Extent.Size =
-		(Pair)
+		Element->Extent.size =
+		(pair_t)
 		{
-			.W = WindowSize.W / 2.0f,
-			.H = WindowSize.H / 2.0f
+			.w = WindowSize.w / 2.0f,
+			.h = WindowSize.h / 2.0f
 		};
 
 		UIResizeElement(Element);
@@ -92,39 +108,39 @@ UIGetRootElement(
 
 UIElement*
 UIAllocElement(
-	UIElementInfo Info
+	UIElementInfo info
 	)
 {
-	UIElement* Element = AllocMalloc(sizeof(UIElement));
-	AssertNotNull(Element);
+	UIElement* Element = alloc_malloc(sizeof(UIElement));
+	assert_not_null(Element);
 
 	*Element =
 	(UIElement)
 	{
-		.Extent = Info.Extent,
-		.Margin = Info.Margin,
+		.Extent = info.Extent,
+		.Margin = info.Margin,
 
-		.BorderRadius = Info.BorderRadius,
-		.BorderColor = Info.BorderColor,
-		.Opacity = Info.Opacity,
+		.BorderRadius = info.BorderRadius,
+		.BorderColor = info.BorderColor,
+		.Opacity = info.Opacity,
 
-		.AlignX = Info.AlignX,
-		.AlignY = Info.AlignY,
-		.Position = Info.Position,
+		.AlignX = info.AlignX,
+		.AlignY = info.AlignY,
+		.pos = info.pos,
 
-		.Relative = Info.Relative,
-		.RelativeAlignX = Info.RelativeAlignX,
-		.RelativeAlignY = Info.RelativeAlignY,
+		.Relative = info.Relative,
+		.RelativeAlignX = info.RelativeAlignX,
+		.RelativeAlignY = info.RelativeAlignY,
 
-		.Clickable = Info.Clickable,
-		.ClickPassthrough = Info.ClickPassthrough,
-		.Selectable = Info.Selectable,
-		.Scrollable = Info.Scrollable,
-		.ScrollPassthrough = Info.ScrollPassthrough,
-		.InteractiveBorder = Info.InteractiveBorder,
-		.Inline = Info.Inline,
-		.Block = Info.Block,
-		.ClipToBorder = Info.ClipToBorder
+		.Clickable = info.Clickable,
+		.ClickPassthrough = info.ClickPassthrough,
+		.Selectable = info.Selectable,
+		.Scrollable = info.Scrollable,
+		.ScrollPassthrough = info.ScrollPassthrough,
+		.InteractiveBorder = info.InteractiveBorder,
+		.Inline = info.Inline,
+		.block = info.block,
+		.ClipToBorder = info.ClipToBorder
 	};
 
 	UIUpdateWidth(Element);
@@ -134,37 +150,37 @@ UIAllocElement(
 }
 
 
-Static void
+private void
 UIFreeElementCallback(
 	UIElement* Element,
-	void* Data
+	void* data
 	)
 {
-	EventNotify(&Element->FreeTarget, &((UIFreeData){0}));
+	event_target_fire(&Element->FreeTarget, &((UIFreeData){0}));
 
-	EventFree(&Element->MouseDownTarget);
-	EventFree(&Element->MouseUpTarget);
-	EventFree(&Element->MouseMoveTarget);
-	EventFree(&Element->MouseInTarget);
-	EventFree(&Element->MouseOutTarget);
-	EventFree(&Element->MouseScrollTarget);
+	event_target_free(&Element->MouseDownTarget);
+	event_target_free(&Element->MouseUpTarget);
+	event_target_free(&Element->MouseMoveTarget);
+	event_target_free(&Element->MouseInTarget);
+	event_target_free(&Element->MouseOutTarget);
+	event_target_free(&Element->MouseScrollTarget);
 
-	EventFree(&Element->ResizeTarget);
-	EventFree(&Element->ChangeTarget);
-	EventFree(&Element->SubmitTarget);
-	EventFree(&Element->FreeTarget);
+	event_target_free(&Element->ResizeTarget);
+	event_target_free(&Element->change_target);
+	event_target_free(&Element->SubmitTarget);
+	event_target_free(&Element->FreeTarget);
 
-	EventFree(&Element->TextSelectAllTarget);
-	EventFree(&Element->TextMoveTarget);
-	EventFree(&Element->TextCopyTarget);
-	EventFree(&Element->TextPasteTarget);
-	EventFree(&Element->TextEscapeTarget);
-	EventFree(&Element->TextEnterTarget);
-	EventFree(&Element->TextDeleteTarget);
-	EventFree(&Element->TextUndoTarget);
-	EventFree(&Element->TextRedoTarget);
+	event_target_free(&Element->TextSelectAllTarget);
+	event_target_free(&Element->TextMoveTarget);
+	event_target_free(&Element->TextCopyTarget);
+	event_target_free(&Element->TextPasteTarget);
+	event_target_free(&Element->TextEscapeTarget);
+	event_target_free(&Element->TextEnterTarget);
+	event_target_free(&Element->TextDeleteTarget);
+	event_target_free(&Element->TextUndoTarget);
+	event_target_free(&Element->TextRedoTarget);
 
-	AllocFree(sizeof(UIElement), Element);
+	alloc_free(sizeof(UIElement), Element);
 }
 
 
@@ -180,14 +196,14 @@ UIFreeElement(
 extern void
 UIInheritPosition(
 	UIElement* Element,
-	RectExtent Clip
+	rect_extent_t Clip
 	);
 
 
 void
 UIDrawElement(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity,
 	UIElement* Scrollable
 	)
@@ -197,37 +213,37 @@ UIDrawElement(
 	Element->VirtualTable->PreClip(Element, Scrollable);
 
 
-	RectExtent Bounds =
-	(RectExtent)
+	rect_extent_t Bounds =
+	(rect_extent_t)
 	{
-		.MinX = Element->EndExtent.X - Element->Extent.W,
-		.MinY = Element->EndExtent.Y - Element->Extent.H,
-		.MaxX = Element->EndExtent.X + Element->Extent.W,
-		.MaxY = Element->EndExtent.Y + Element->Extent.H
+		.min_x = Element->EndExtent.x - Element->Extent.w,
+		.min_y = Element->EndExtent.y - Element->Extent.h,
+		.max_x = Element->EndExtent.x + Element->Extent.w,
+		.max_y = Element->EndExtent.y + Element->Extent.h
 	};
 
 	float Diameter = Element->BorderRadius * 2.0f;
 
 
 	UIClipExplicit(
-		Bounds.MinX - Diameter,
-		Bounds.MaxX + Diameter,
-		Bounds.MinY - Diameter,
-		Bounds.MaxY + Diameter,
+		Bounds.min_x - Diameter,
+		Bounds.max_x + Diameter,
+		Bounds.min_y - Diameter,
+		Bounds.max_y + Diameter,
 		Border
 		);
 
 
 	UIClipExplicit(
-		Bounds.MinX,
-		Bounds.MaxX,
-		Bounds.MinY,
-		Bounds.MaxY,
-		Content
+		Bounds.min_x,
+		Bounds.max_x,
+		Bounds.min_y,
+		Bounds.max_y,
+		content
 		);
 
 
-	RectExtent DrawClip;
+	rect_extent_t DrawClip;
 	bool DrawPass;
 
 	if(Element->ClipToBorder)
@@ -252,7 +268,7 @@ UIDrawElement(
 
 	if((Element->InteractiveBorder && BorderClipPass) || ContentClipPass)
 	{
-		RectExtent MouseClip;
+		rect_extent_t MouseClip;
 
 		if(Element->InteractiveBorder)
 		{
@@ -264,10 +280,10 @@ UIDrawElement(
 		}
 
 		if(
-			UIMouse.X >= MouseClip.MinX &&
-			UIMouse.Y >= MouseClip.MinY &&
-			UIMouse.X <= MouseClip.MaxX &&
-			UIMouse.Y <= MouseClip.MaxY
+			UIMouse.x >= MouseClip.min_x &&
+			UIMouse.y >= MouseClip.min_y &&
+			UIMouse.x <= MouseClip.max_x &&
+			UIMouse.y <= MouseClip.max_y
 			)
 		{
 			bool OldHovered = Element->Hovered;
@@ -277,11 +293,11 @@ UIDrawElement(
 			{
 				if(Element->Hovered)
 				{
-					EventNotify(&Element->MouseInTarget, &((UIMouseInData){0}));
+					event_target_fire(&Element->MouseInTarget, &((UIMouseInData){0}));
 				}
 				else
 				{
-					EventNotify(&Element->MouseOutTarget, &((UIMouseOutData){0}));
+					event_target_fire(&Element->MouseOutTarget, &((UIMouseOutData){0}));
 				}
 			}
 
@@ -303,7 +319,7 @@ UIDrawElement(
 			{
 				if(Element->Hovered)
 				{
-					EventNotify(&Element->MouseOutTarget, &((UIMouseOutData){0}));
+					event_target_fire(&Element->MouseOutTarget, &((UIMouseOutData){0}));
 				}
 			}
 		}
@@ -337,7 +353,7 @@ UIDrawElement(
 }
 
 
-Static void
+private void
 UIDrawCallback(
 	void* _,
 	void* __
@@ -350,9 +366,9 @@ UIDrawCallback(
 	else
 	{
 		uint64_t Now = WindowGetTime();
-		uint64_t Delta = Now - LastDrawAt;
+		uint64_t delta = Now - LastDrawAt;
 		LastDrawAt = Now;
-		DeltaTime = (double) Delta / 16666666.6;
+		DeltaTime = (double) delta / 16666666.6;
 	}
 
 	UIElement* Root = UIGetRootElement();
@@ -361,15 +377,15 @@ UIDrawCallback(
 		return;
 	}
 
-	Depth = DRAW_DEPTH_LEAP;
+	depth = DRAW_DEPTH_LEAP;
 
-	Pair Mouse = WindowGetMousePosition();
+	pair_t Mouse = window_get_mouse_pos();
 
 	UIMouse =
-	(Pair)
+	(pair_t)
 	{
-		.X = CLAMP_SYM(Mouse.X, Root->Extent.W),
-		.Y = CLAMP_SYM(Mouse.Y, Root->Extent.H)
+		.x = MACRO_CLAMP_SYM(Mouse.x, Root->Extent.w),
+		.y = MACRO_CLAMP_SYM(Mouse.y, Root->Extent.h)
 	};
 
 	UIElementUnderMouse = NULL;
@@ -378,39 +394,39 @@ UIDrawCallback(
 
 	UIDrawElement(
 		Root,
-		(RectExtent)
+		(rect_extent_t)
 		{
-			.Min = {{ -Root->Extent.W, -Root->Extent.H }},
-			.Max = {{  Root->Extent.W,  Root->Extent.H }}
+			.min = {{ -Root->Extent.w, -Root->Extent.h }},
+			.max = {{  Root->Extent.w,  Root->Extent.h }}
 		},
 		0xFF,
 		NULL
 		);
 
-	AssertNotNull(UIElementUnderMouse);
+	assert_not_null(UIElementUnderMouse);
 
 	if(UIElementUnderMouse->Selectable)
 	{
-		WindowSetCursor(WINDOW_CURSOR_TYPING);
+		window_set_cursor(WINDOW_CURSOR_TYPING);
 	}
 	else if(UIElementUnderMouse->Clickable)
 	{
-		WindowSetCursor(WINDOW_CURSOR_POINTING);
+		window_set_cursor(WINDOW_CURSOR_POINTING);
 	}
 	else
 	{
-		WindowSetCursor(WINDOW_CURSOR_DEFAULT);
+		window_set_cursor(WINDOW_CURSOR_DEFAULT);
 	}
 }
 
 
-Static void
+private void
 UIMouseDownCallback(
 	void* _,
-	WindowMouseDownData* Data
+	window_mouse_down_event_data_t* data
 	)
 {
-	if(Data->Button != MOUSE_BUTTON_LEFT)
+	if(data->button != WINDOW_BUTTON_LEFT)
 	{
 		return;
 	}
@@ -421,26 +437,26 @@ UIMouseDownCallback(
 	{
 		UISelectedElement->Held = true;
 
-		UIMouseDownData EventData =
+		UIMouseDownData event_data =
 		(UIMouseDownData)
 		{
-			.Button = Data->Button,
-			.Position = Data->Position,
-			.Clicks = Data->Clicks
+			.button = data->button,
+			.pos = data->pos,
+			.clicks = data->clicks
 		};
 
-		EventNotify(&UISelectedElement->MouseDownTarget, &EventData);
+		event_target_fire(&UISelectedElement->MouseDownTarget, &event_data);
 	}
 }
 
 
-Static void
+private void
 UIMouseUpCallback(
 	void* _,
-	WindowMouseUpData* Data
+	window_mouse_up_event_data_t* data
 	)
 {
-	if(Data->Button != MOUSE_BUTTON_LEFT)
+	if(data->button != WINDOW_BUTTON_LEFT)
 	{
 		return;
 	}
@@ -449,14 +465,14 @@ UIMouseUpCallback(
 	{
 		UISameElement = UIClickableUnderMouse == UISelectedElement;
 
-		UIMouseUpData EventData =
+		UIMouseUpData event_data =
 		(UIMouseUpData)
 		{
-			.Button = Data->Button,
-			.Position = Data->Position
+			.button = data->button,
+			.pos = data->pos
 		};
 
-		EventNotify(&UISelectedElement->MouseUpTarget, &EventData);
+		event_target_fire(&UISelectedElement->MouseUpTarget, &event_data);
 
 		UISelectedElement = NULL;
 	}
@@ -468,9 +484,9 @@ UIInit(
 	void
 	)
 {
-	EventListen(&WindowDrawTarget, (void*) UIDrawCallback, NULL);
-	EventListen(&WindowMouseDownTarget, (void*) UIMouseDownCallback, NULL);
-	EventListen(&WindowMouseUpTarget, (void*) UIMouseUpCallback, NULL);
+	event_target_add(&window_draw_target, (void*) UIDrawCallback, NULL);
+	event_target_add(&window_mouse_down_target, (void*) UIMouseDownCallback, NULL);
+	event_target_add(&window_mouse_up_target, (void*) UIMouseUpCallback, NULL);
 }
 
 
@@ -479,7 +495,7 @@ UIFree(
 	void
 	)
 {
-	EventUnlisten(&WindowDrawTarget, UIDrawCallback, NULL);
+	event_target_del(&window_draw_target, UIDrawCallback, NULL);
 
 	UIElement* Root = UIGetRootElement();
 	if(Root)
@@ -495,21 +511,21 @@ UIUpdateWidth( // TODO apply modifiers
 	UIElement* Element
 	)
 {
-	Element->DrawMargin.Left = Element->Margin.Left + Element->BorderRadius;
-	Element->DrawMargin.Right = Element->Margin.Right + Element->BorderRadius;
+	Element->DrawMargin.left = Element->Margin.left + Element->BorderRadius;
+	Element->DrawMargin.right = Element->Margin.right + Element->BorderRadius;
 
-	Element->EndExtent.W =
-		Element->DrawMargin.Left + Element->Extent.W + Element->DrawMargin.Right;
+	Element->EndExtent.w =
+		Element->DrawMargin.left + Element->Extent.w + Element->DrawMargin.right;
 }
 
 
-Static float
+private float
 UIEndWidthToWidth(
 	UIElement* Element,
 	float OldEndWidth
 	)
 {
-	return OldEndWidth - Element->DrawMargin.Left - Element->DrawMargin.Right;
+	return OldEndWidth - Element->DrawMargin.left - Element->DrawMargin.right;
 }
 
 
@@ -518,21 +534,21 @@ UIUpdateHeight(
 	UIElement* Element
 	)
 {
-	Element->DrawMargin.Top = Element->Margin.Top + Element->BorderRadius;
-	Element->DrawMargin.Bottom = Element->Margin.Bottom + Element->BorderRadius;
+	Element->DrawMargin.top = Element->Margin.top + Element->BorderRadius;
+	Element->DrawMargin.bottom = Element->Margin.bottom + Element->BorderRadius;
 
-	Element->EndExtent.H =
-		Element->DrawMargin.Top + Element->Extent.H + Element->DrawMargin.Bottom;
+	Element->EndExtent.h =
+		Element->DrawMargin.top + Element->Extent.h + Element->DrawMargin.bottom;
 }
 
 
-Static float
+private float
 UIEndHeightToHeight(
 	UIElement* Element,
 	float OldEndHeight
 	)
 {
-	return OldEndHeight - Element->DrawMargin.Top - Element->DrawMargin.Bottom;
+	return OldEndHeight - Element->DrawMargin.top - Element->DrawMargin.bottom;
 }
 
 
@@ -541,42 +557,42 @@ UIResizeElement(
 	UIElement* Element
 	)
 {
-	Pair OldSize = Element->EndExtent.Size;
+	pair_t old_size = Element->EndExtent.size;
 
 	UIUpdateWidth(Element);
 	UIUpdateHeight(Element);
 
 	if(
-		Element->EndExtent.W == OldSize.W &&
-		Element->EndExtent.H == OldSize.H
+		Element->EndExtent.w == old_size.w &&
+		Element->EndExtent.h == old_size.h
 		)
 	{
 		return;
 	}
 
-	UIResizeData EventData =
+	UIResizeData event_data =
 	(UIResizeData)
 	{
-		.OldSize =
-		(Pair)
+		.old_size =
+		(pair_t)
 		{
-			.W = UIEndWidthToWidth(Element, OldSize.W),
-			.H = UIEndHeightToHeight(Element, OldSize.H)
+			.w = UIEndWidthToWidth(Element, old_size.w),
+			.h = UIEndHeightToHeight(Element, old_size.h)
 		},
-		.NewSize = Element->Extent.Size
+		.new_size = Element->Extent.size
 	};
 
-	EventNotify(&Element->ResizeTarget, &EventData);
+	event_target_fire(&Element->ResizeTarget, &event_data);
 
 	if(Element->Parent)
 	{
 		Element->VirtualTable->PropagateSize(
 			Element->Parent,
 			Element,
-			(Pair)
+			(pair_t)
 			{
-				.W = Element->EndExtent.W - OldSize.W,
-				.H = Element->EndExtent.H - OldSize.H
+				.w = Element->EndExtent.w - old_size.w,
+				.h = Element->EndExtent.h - old_size.h
 			}
 			);
 	}
@@ -586,7 +602,7 @@ UIResizeElement(
 void
 UIDrawBorder(
 	UIElement* Element,
-	RectExtent Clip,
+	rect_extent_t Clip,
 	uint8_t Opacity
 	)
 {
@@ -595,81 +611,81 @@ UIDrawBorder(
 		return;
 	}
 
-	RectExtent Border =
-	(RectExtent)
+	rect_extent_t Border =
+	(rect_extent_t)
 	{
-		.Min =
-		(Pair)
+		.min =
+		(pair_t)
 		{
-			.X = Element->EndExtent.X - Element->Extent.W - Element->BorderRadius,
-			.Y = Element->EndExtent.Y - Element->Extent.H - Element->BorderRadius
+			.x = Element->EndExtent.x - Element->Extent.w - Element->BorderRadius,
+			.y = Element->EndExtent.y - Element->Extent.h - Element->BorderRadius
 		},
-		.Max =
-		(Pair)
+		.max =
+		(pair_t)
 		{
-			.X = Element->EndExtent.X + Element->Extent.W + Element->BorderRadius,
-			.Y = Element->EndExtent.Y + Element->Extent.H + Element->BorderRadius
+			.x = Element->EndExtent.x + Element->Extent.w + Element->BorderRadius,
+			.y = Element->EndExtent.y + Element->Extent.h + Element->BorderRadius
 		}
 	};
 
 	float Diameter = Element->BorderRadius * 2.0f;
 
-	ARGB Color = RGBmulA(Element->BorderColor, Opacity);
+	color_argb_t color = color_argb_mul_a(Element->BorderColor, Opacity);
 
-	UIClipTexture(Element->EndExtent.X, Border.MinY,
-		Element->Extent.W, Element->BorderRadius,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_RECT
+	UIClipTexture(Element->EndExtent.x, Border.min_y,
+		Element->Extent.w, Element->BorderRadius,
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_RECT
 		);
 
-	UIClipTextureExplicit(Border.MaxX, Border.MinY, Diameter,
+	UIClipTextureExplicit(Border.max_x, Border.min_y, Diameter,
 		Diameter, 0.5f, 0.5f, 0.75f, 0.25f,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 
-	UIClipTexture(Border.MaxX, Element->EndExtent.Y,
-		Element->BorderRadius, Element->Extent.H,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_RECT
+	UIClipTexture(Border.max_x, Element->EndExtent.y,
+		Element->BorderRadius, Element->Extent.h,
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_RECT
 		);
 
-	UIClipTextureExplicit(Border.MaxX, Border.MaxY, Diameter,
+	UIClipTextureExplicit(Border.max_x, Border.max_y, Diameter,
 		Diameter, 0.5f, 0.5f, 0.75f, 0.75f,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 
-	UIClipTexture(Element->EndExtent.X, Border.MaxY,
-		Element->Extent.W, Element->BorderRadius,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_RECT
+	UIClipTexture(Element->EndExtent.x, Border.max_y,
+		Element->Extent.w, Element->BorderRadius,
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_RECT
 		);
 
-	UIClipTextureExplicit(Border.MinX, Border.MaxY, Diameter,
+	UIClipTextureExplicit(Border.min_x, Border.max_y, Diameter,
 		Diameter, 0.5f, 0.5f, 0.25f, 0.75f,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 
-	UIClipTexture(Border.MinX, Element->EndExtent.Y,
-		Element->BorderRadius, Element->Extent.H,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_RECT
+	UIClipTexture(Border.min_x, Element->EndExtent.y,
+		Element->BorderRadius, Element->Extent.h,
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_RECT
 		);
 
-	UIClipTextureExplicit(Border.MinX, Border.MinY, Diameter,
+	UIClipTextureExplicit(Border.min_x, Border.min_y, Diameter,
 		Diameter, 0.5f, 0.5f, 0.25f, 0.25f,
-		.WhiteColor = Color,
-		.WhiteDepth = Depth,
-		.Texture = TEXTURE_CIRCLE
+		.white_color = color,
+		.white_depth = depth,
+		.tex = TEXTURE_CIRCLE
 		);
 }
 
@@ -686,47 +702,47 @@ UIMouseOverElement(
 
 	{ /* Bound check */
 		float Diameter = Element->BorderRadius * 2.0f;
-		float MinX = Element->EndExtent.X - Element->Extent.W - Diameter;
-		float MinY = Element->EndExtent.Y - Element->Extent.H - Diameter;
-		float MaxX = Element->EndExtent.X + Element->Extent.W + Diameter;
-		float MaxY = Element->EndExtent.Y + Element->Extent.H + Diameter;
-		AssertFalse((UIMouse.X < MinX || UIMouse.Y < MinY || UIMouse.X > MaxX || UIMouse.Y > MaxY));
+		float min_x = Element->EndExtent.x - Element->Extent.w - Diameter;
+		float min_y = Element->EndExtent.y - Element->Extent.h - Diameter;
+		float max_x = Element->EndExtent.x + Element->Extent.w + Diameter;
+		float max_y = Element->EndExtent.y + Element->Extent.h + Diameter;
+		assert_false((UIMouse.x < min_x || UIMouse.y < min_y || UIMouse.x > max_x || UIMouse.y > max_y));
 	}
 
-	float MinX = Element->EndExtent.X - Element->Extent.W;
-	float MinY = Element->EndExtent.Y - Element->Extent.H;
-	float MaxX = Element->EndExtent.X + Element->Extent.W;
-	float MaxY = Element->EndExtent.Y + Element->Extent.H;
+	float min_x = Element->EndExtent.x - Element->Extent.w;
+	float min_y = Element->EndExtent.y - Element->Extent.h;
+	float max_x = Element->EndExtent.x + Element->Extent.w;
+	float max_y = Element->EndExtent.y + Element->Extent.h;
 
 	if(
 		Element->BorderRadius == 0.0f ||
-		(UIMouse.X >= MinX && UIMouse.X <= MaxX) ||
-		(UIMouse.Y >= MinY && UIMouse.Y <= MaxY)
+		(UIMouse.x >= min_x && UIMouse.x <= max_x) ||
+		(UIMouse.y >= min_y && UIMouse.y <= max_y)
 		)
 	{
 		return true;
 	}
 
-	/* At this point, only need to check corners. */
+	/* at this point, only need to check corners. */
 
-	float DiffX = UIMouse.X;
-	if(UIMouse.X < MinX)
+	float DiffX = UIMouse.x;
+	if(UIMouse.x < min_x)
 	{
-		DiffX -= MinX;
+		DiffX -= min_x;
 	}
 	else
 	{
-		DiffX -= MaxX;
+		DiffX -= max_x;
 	}
 
-	float DiffY = UIMouse.Y;
-	if(UIMouse.Y < MinY)
+	float DiffY = UIMouse.y;
+	if(UIMouse.y < min_y)
 	{
-		DiffY -= MinY;
+		DiffY -= min_y;
 	}
 	else
 	{
-		DiffY -= MaxY;
+		DiffY -= max_y;
 	}
 
 	return DiffX * DiffX + DiffY * DiffY <=

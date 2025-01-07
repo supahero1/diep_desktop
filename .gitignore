@@ -2,6 +2,8 @@ bin/
 /DiepDesktop/
 include/DiepDesktop/client/tex/
 src/client/tex/
+include/DiepDesktop/client/font/
+src/client/font/
 tex/font/
 tex/var/
 tex/img/

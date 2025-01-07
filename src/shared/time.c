@@ -1,4 +1,19 @@
-#include <DiepDesktop/shared/base.h>
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
@@ -8,302 +23,305 @@
 
 
 uint64_t
-TimeSecondsToMilliseconds(
-	uint64_t Seconds
+time_sec_to_ms(
+	uint64_t sec
 	)
 {
-	return Seconds * 1000;
+	return sec * 1000;
 }
 
 
 uint64_t
-TimeSecondsToMicroseconds(
-	uint64_t Seconds
+time_sec_to_us(
+	uint64_t sec
 	)
 {
-	return Seconds * 1000000;
+	return sec * 1000000;
 }
 
 
 uint64_t
-TimeSecondsToNanoseconds(
-	uint64_t Seconds
+time_sec_to_ns(
+	uint64_t sec
 	)
 {
-	return Seconds * 1000000000;
+	return sec * 1000000000;
 }
 
 
 uint64_t
-TimeMillisecondsToSeconds(
-	uint64_t Milliseconds
+time_ms_to_sec(
+	uint64_t ms
 	)
 {
-	return Milliseconds / 1000;
+	return ms / 1000;
 }
 
 
 uint64_t
-TimeMillisecondsToMicroseconds(
-	uint64_t Milliseconds
+time_ms_to_us(
+	uint64_t ms
 	)
 {
-	return Milliseconds * 1000;
+	return ms * 1000;
 }
 
 
 uint64_t
-TimeMillisecondsToNanoseconds(
-	uint64_t Milliseconds
+time_ms_to_ns(
+	uint64_t ms
 	)
 {
-	return Milliseconds * 1000000;
+	return ms * 1000000;
 }
 
 
 uint64_t
-TimeMicrosecondsToSeconds(
-	uint64_t Microseconds
+time_us_to_sec(
+	uint64_t us
 	)
 {
-	return Microseconds / 1000000;
+	return us / 1000000;
 }
 
 
 uint64_t
-TimeMicrosecondsToMilliseconds(
-	uint64_t Microseconds
+time_us_to_ms(
+	uint64_t us
 	)
 {
-	return Microseconds / 1000;
+	return us / 1000;
 }
 
 
 uint64_t
-TimeMicrosecondsToNanoseconds(
-	uint64_t Microseconds
+time_us_to_ns(
+	uint64_t us
 	)
 {
-	return Microseconds * 1000;
+	return us * 1000;
 }
 
 
 uint64_t
-TimeNanosecondsToSeconds(
-	uint64_t Nanoseconds
+time_ns_to_sec(
+	uint64_t ns
 	)
 {
-	return Nanoseconds / 1000000000;
+	return ns / 1000000000;
 }
 
 
 uint64_t
-TimeNanosecondsToMilliseconds(
-	uint64_t Nanoseconds
+time_ns_to_ms(
+	uint64_t ns
 	)
 {
-	return Nanoseconds / 1000000;
+	return ns / 1000000;
 }
 
 
 uint64_t
-TimeNanosecondsToMicroseconds(
-	uint64_t Nanoseconds
+time_ns_to_us(
+	uint64_t ns
 	)
 {
-	return Nanoseconds / 1000;
+	return ns / 1000;
 }
 
 
 uint64_t
-TimeGet(
+time_get(
 	void
 	)
 {
-	struct timespec Time;
-	int Status = clock_gettime(CLOCK_REALTIME, &Time);
-	HardenedAssertEQ(Status, 0);
+	struct timespec time;
+	int status = clock_gettime(CLOCK_REALTIME, &time);
+	hard_assert_eq(status, 0);
 
-	return Time.tv_sec * 1000000000 + Time.tv_nsec;
+	return time.tv_sec * 1000000000 + time.tv_nsec;
 }
 
 
 uint64_t
-TimeGetWithSeconds(
-	uint64_t Seconds
+time_get_with_sec(
+	uint64_t sec
 	)
 {
-	return TimeGet() + TimeSecondsToNanoseconds(Seconds);
+	return time_get() + time_sec_to_ns(sec);
 }
 
 
 uint64_t
-TimeGetWithMilliseconds(
-	uint64_t Milliseconds
+time_get_with_ms(
+	uint64_t ms
 	)
 {
-	return TimeGet() + TimeMillisecondsToNanoseconds(Milliseconds);
+	return time_get() + time_ms_to_ns(ms);
 }
 
 
 uint64_t
-TimeGetWithMicroseconds(
-	uint64_t Microseconds
+time_get_with_us(
+	uint64_t us
 	)
 {
-	return TimeGet() + TimeMicrosecondsToNanoseconds(Microseconds);
+	return time_get() + time_us_to_ns(us);
 }
 
 
 uint64_t
-TimeGetWithNanoseconds(
-	uint64_t Nanoseconds
+time_get_with_ns(
+	uint64_t ns
 	)
 {
-	return TimeGet() + Nanoseconds;
+	return time_get() + ns;
 }
 
 
-Static uint64_t
-TimeGetLatest(
-	TimeTimers* Timers
+
+
+
+private uint64_t
+time_timers_get_latest(
+	time_timers_t* timers
 	)
 {
-	return atomic_load_explicit(&Timers->Latest, memory_order_acquire);
+	return atomic_load_explicit(&timers->latest, memory_order_acquire);
 }
 
 
-#define TimeOfTimeout(Index)				\
+#define time_of_timeout_idx(idx)			\
 (											\
-	Timers->Timeouts[Index].Time			\
+	timers->timeouts[idx].time				\
 	)
 
-#define TimeOfInterval(Index)				\
+#define time_of_interval_idx(idx)			\
 (											\
-	Timers->Intervals[Index].BaseTime		\
-		+ Timers->Intervals[Index].Interval	\
-		* Timers->Intervals[Index].Count	\
+	timers->intervals[idx].base_time		\
+		+ timers->intervals[idx].interval	\
+		* timers->intervals[idx].count		\
 	)
 
 
-Static void
-TimeSetLatest(
-	TimeTimers* Timers
+private void
+time_timers_set_latest(
+	time_timers_t* timers
 	)
 {
-	uint64_t Old = TimeGetLatest(Timers);
-	uint64_t Latest = UINT64_MAX;
+	uint64_t old = time_timers_get_latest(timers);
+	uint64_t latest = UINT64_MAX;
 
-	if(Timers->TimeoutsUsed > 1)
+	if(timers->timeouts_used > 1)
 	{
-		Latest = MIN(Latest, TimeOfTimeout(1) & (~1));
+		latest = MACRO_MIN(latest, time_of_timeout_idx(1) & (~1));
 	}
 
-	if(Timers->IntervalsUsed > 1)
+	if(timers->intervals_used > 1)
 	{
-		Latest = MIN(Latest, TimeOfInterval(1) | 1);
+		latest = MACRO_MIN(latest, time_of_interval_idx(1) | 1);
 	}
 
-	if(Latest == UINT64_MAX)
+	if(latest == UINT64_MAX)
 	{
-		Latest = 0;
+		latest = 0;
 	}
 
-	atomic_store_explicit(&Timers->Latest, Latest, memory_order_release);
+	atomic_store_explicit(&timers->latest, latest, memory_order_release);
 
-	if(Old != Latest)
+	if(old != latest)
 	{
-		SemaphorePost(&Timers->UpdatesSem);
+		sync_sem_post(&timers->updates_sem);
 	}
 }
 
 
-#define TIME_TIMER_DEF(Name, Names)																\
+#define TIME_TIMER_DEF(name, names)																\
 																								\
-Static void																						\
-TimeSwap##Names (																				\
-	TimeTimers* Timers,																			\
-	uint32_t IndexA,																			\
-	uint32_t IndexB																				\
+private void																					\
+time_timers_swap_##names (																		\
+	time_timers_t* timers,																		\
+	uint32_t idx_a,																				\
+	uint32_t idx_b																				\
 	)																							\
 {																								\
-	Timers-> Names [IndexA] = Timers-> Names [IndexB];											\
+	timers-> names [idx_a] = timers-> names [idx_b];											\
 																								\
-	if(Timers-> Names [IndexA].Timer != NULL)													\
+	if(timers-> names [idx_a].timer != NULL)													\
 	{																							\
-		Timers-> Names [IndexA].Timer-> Index = IndexA;											\
+		timers-> names [idx_a].timer-> idx = idx_a;												\
 	}																							\
 }																								\
 																								\
 																								\
-Static void																						\
-Time##Names##Down (																				\
-	TimeTimers* Timers,																			\
-	uint32_t Timer																				\
+private void																					\
+time_timers_##names##_down (																	\
+	time_timers_t* timers,																		\
+	uint32_t timer_idx																			\
 	)																							\
 {																								\
-	uint32_t Save = Timer;																		\
+	uint32_t save_idx = timer_idx;																\
 																								\
-	Timers-> Names [0] = Timers-> Names [Timer];												\
+	timers-> names [0] = timers-> names [timer_idx];											\
 																								\
 	while(1)																					\
 	{																							\
-		uint32_t LeftChild = Timer << 1;														\
-		uint32_t RightChild = LeftChild + 1;													\
-		uint32_t Smallest = 0;																	\
+		uint32_t left_child_idx = timer_idx << 1;												\
+		uint32_t right_child_idx = left_child_idx + 1;											\
+		uint32_t smallest_idx = 0;																\
 																								\
-		if(LeftChild < Timers-> Names##Used &&													\
-			TimeOf##Name (LeftChild) < TimeOf##Name (Smallest))									\
+		if(left_child_idx < timers-> names##_used &&											\
+			time_of_##name##_idx (left_child_idx) < time_of_##name##_idx (smallest_idx))		\
 		{																						\
-			Smallest = LeftChild;																\
+			smallest_idx = left_child_idx;														\
 		}																						\
 																								\
-		if(RightChild < Timers-> Names##Used &&													\
-			TimeOf##Name (RightChild) < TimeOf##Name (Smallest))								\
+		if(right_child_idx < timers-> names##_used &&											\
+			time_of_##name##_idx (right_child_idx) < time_of_##name##_idx (smallest_idx))		\
 		{																						\
-			Smallest = RightChild;																\
+			smallest_idx = right_child_idx;														\
 		}																						\
 																								\
-		if(Smallest == 0)																		\
+		if(smallest_idx == 0)																	\
 		{																						\
 			break;																				\
 		}																						\
 																								\
-		TimeSwap##Names (Timers, Timer, Smallest);												\
-		Timer = Smallest;																		\
+		time_timers_swap_##names (timers, timer_idx, smallest_idx);								\
+		timer_idx = smallest_idx;																\
 	}																							\
 																								\
-	if(Save != Timer)																			\
+	if(save_idx != timer_idx)																	\
 	{																							\
-		TimeSwap##Names (Timers, Timer, 0);														\
+		time_timers_swap_##names (timers, timer_idx, 0);										\
 	}																							\
 }																								\
 																								\
 																								\
-Static bool																						\
-Time##Names##Up (																				\
-	TimeTimers* Timers,																			\
-	uint32_t Timer																				\
+private bool																					\
+time_timers_##names##_up (																		\
+	time_timers_t* timers,																		\
+	uint32_t timer_idx																			\
 	)																							\
 {																								\
-	uint32_t Save = Timer;																		\
-	uint32_t Parent = Timer >> 1;																\
+	uint32_t save_idx = timer_idx;																\
+	uint32_t parent_idx = timer_idx >> 1;														\
 																								\
-	Timers-> Names [0] = Timers-> Names [Timer];												\
+	timers-> names [0] = timers-> names [timer_idx];											\
 																								\
 	while(																						\
-		Parent > 0 &&																			\
-		TimeOf##Name (Parent) > TimeOf##Name (0)												\
+		parent_idx > 0 &&																		\
+		time_of_##name##_idx (parent_idx) > time_of_##name##_idx (0)							\
 		)																						\
 	{																							\
-		TimeSwap##Names (Timers, Timer, Parent);												\
-		Timer = Parent;																			\
-		Parent >>= 1;																			\
+		time_timers_swap_##names (timers, timer_idx, parent_idx);								\
+		timer_idx = parent_idx;																	\
+		parent_idx >>= 1;																		\
 	}																							\
 																								\
-	if(Save != Timer)																			\
+	if(save_idx != timer_idx)																	\
 	{																							\
-		TimeSwap##Names (Timers, Timer, 0);														\
+		time_timers_swap_##names (timers, timer_idx, 0);										\
 		return true;																			\
 	}																							\
 																								\
@@ -311,349 +329,585 @@ Time##Names##Up (																				\
 }																								\
 																								\
 																								\
-Static void																						\
-TimeDestroy##Names (																			\
-	TimeTimers* Timers																			\
+private void																					\
+time_timers_free_##names (																		\
+	time_timers_t* timers																		\
 	)																							\
 {																								\
-	AllocFree(sizeof( Time##Name ) * Timers-> Names##Size , Timers-> Names);					\
+	alloc_free(sizeof( time_##name##_t ) * timers-> names##_size , timers-> names);				\
 }																								\
 																								\
 																								\
-Static void																						\
-TimeResize##Names (																				\
-	TimeTimers* Timers,																			\
-	uint32_t Count																				\
+private void																					\
+time_timers_resize_##names (																	\
+	time_timers_t* timers,																		\
+	uint32_t count																				\
 	)																							\
 {																								\
-	uint32_t NewUsed = Timers-> Names##Used + Count;											\
-	uint32_t NewSize;																			\
+	uint32_t new_used = timers-> names##_used + count;											\
+	uint32_t new_size;																			\
 																								\
-	if((NewUsed < (Timers-> Names##Size >> 2)) || (NewUsed > Timers-> Names##Size ))			\
+	if((new_used < (timers-> names##_size >> 2)) || (new_used > timers-> names##_size ))		\
 	{																							\
-		NewSize = (NewUsed << 1) | 1;															\
+		new_size = (new_used << 1) | 1;															\
 	}																							\
 	else																						\
 	{																							\
 		return;																					\
 	}																							\
 																								\
-	Timers-> Names = AllocRemalloc(sizeof( Time##Name ) * Timers-> Names##Size ,				\
-		Timers-> Names, sizeof( Time##Name ) * NewSize);										\
-	AssertNotNull(Timers-> Names);																\
+	timers-> names = alloc_remalloc(sizeof( time_##name##_t ) * timers-> names##_size ,			\
+		timers-> names, sizeof( time_##name##_t ) * new_size);									\
+	assert_not_null(timers-> names);															\
 																								\
-	Timers-> Names##Size = NewSize;																\
+	timers-> names##_size = new_size;															\
 }																								\
 																								\
 																								\
-Static void																						\
-TimeAdd##Name##Common (																			\
-	TimeTimers* Timers,																			\
-	Time##Name Name,																			\
-	bool Lock																					\
+private void																					\
+time_timers_add_##name##_common (																\
+	time_timers_t* timers,																		\
+	time_##name##_t name,																		\
+	bool lock																					\
 	)																							\
 {																								\
-	if(Lock)																					\
+	if(lock)																					\
 	{																							\
-		TimeLock(Timers);																		\
+		time_timers_lock(timers);																\
 	}																							\
 																								\
-	TimeResize##Names (Timers, 1);																\
+	time_timers_resize_##names (timers, 1);														\
 																								\
-	if(Name.Timer != NULL)																		\
+	if(name.timer != NULL)																		\
 	{																							\
-		Name.Timer->Index = Timers-> Names##Used ;												\
+		name.timer->idx = timers-> names##_used ;												\
 	}																							\
 																								\
-	Timers-> Names [Timers-> Names##Used ++] = Name;											\
+	timers-> names [timers-> names##_used ++] = name;											\
 																								\
-	(void) Time##Names##Up (Timers, Timers-> Names##Used - 1);									\
+	(void) time_timers_##names##_up (timers, timers-> names##_used - 1);						\
 																								\
-	TimeSetLatest(Timers);																		\
+	time_timers_set_latest(timers);																\
 																								\
-	if(Lock)																					\
+	if(lock)																					\
 	{																							\
-		TimeUnlock(Timers);																		\
+		time_timers_unlock(timers);																\
 	}																							\
 																								\
-	SemaphorePost(&Timers->WorkSem);															\
-}																								\
-																								\
-																								\
-void																							\
-TimeAdd##Name##U (																				\
-	TimeTimers* Timers,																			\
-	Time##Name Name																				\
-	)																							\
-{																								\
-	TimeAdd##Name##Common (Timers, Name, false);												\
+	sync_sem_post(&timers->work_sem);															\
 }																								\
 																								\
 																								\
 void																							\
-TimeAdd##Name (																					\
-	TimeTimers* Timers,																			\
-	Time##Name Name																				\
+time_timers_add_##name##_u (																	\
+	time_timers_t* timers,																		\
+	time_##name##_t name																		\
 	)																							\
 {																								\
-	TimeAdd##Name##Common (Timers, Name, true);													\
+	time_timers_add_##name##_common (timers, name, false);										\
+}																								\
+																								\
+																								\
+void																							\
+time_timers_add_##name (																		\
+	time_timers_t* timers,																		\
+	time_##name##_t name																		\
+	)																							\
+{																								\
+	time_timers_add_##name##_common (timers, name, true);										\
 }																								\
 																								\
 																								\
 bool																							\
-TimeCancel##Name##U (																			\
-	TimeTimers* Timers,																			\
-	TimeTimer* Timer																			\
+time_timers_cancel_##name##_u (																	\
+	time_timers_t* timers,																		\
+	time_timer_t* timer																			\
 	)																							\
 {																								\
-	if(Timer->Index == 0)																		\
+	if(time_timers_is_timer_expired_u(timers, timer))											\
 	{																							\
 		return false;																			\
 	}																							\
 																								\
-	Timers-> Names [Timer->Index] = Timers-> Names [-- Timers-> Names##Used ];					\
+	timers-> names [timer->idx] = timers-> names [-- timers-> names##_used ];					\
 																								\
-	if(! Time##Names##Up (Timers, Timer->Index))												\
+	if(! time_timers_##names##_up (timers, timer->idx))											\
 	{																							\
-		Time##Names##Down (Timers, Timer->Index);												\
+		time_timers_##names##_down (timers, timer->idx);										\
 	}																							\
 																								\
-	TimeSetLatest(Timers);																		\
+	time_timers_set_latest(timers);																\
 																								\
-	Timer->Index = 0;																			\
+	time_timer_init(timer);																		\
 																								\
 	return true;																				\
 }																								\
 																								\
 																								\
 bool																							\
-TimeCancel##Name (																				\
-	TimeTimers* Timers,																			\
-	TimeTimer* Timer																			\
+time_timers_cancel_##name (																		\
+	time_timers_t* timers,																		\
+	time_timer_t* timer																			\
 	)																							\
 {																								\
-	TimeLock(Timers);																			\
-	bool Result = TimeCancel##Name##U (Timers, Timer);											\
-	TimeUnlock(Timers);																			\
-	return Result;																				\
+	time_timers_lock(timers);																	\
+		bool status = time_timers_cancel_##name##_u (timers, timer);							\
+	time_timers_unlock(timers);																	\
+																								\
+	return status;																				\
 }																								\
 																								\
 																								\
-Time##Name *																					\
-TimeOpen##Name##U (																				\
-	TimeTimers* Timers,																			\
-	TimeTimer* Timer																			\
+time_##name##_t *																				\
+time_timers_open_##name##_u (																	\
+	time_timers_t* timers,																		\
+	time_timer_t* timer																			\
 	)																							\
 {																								\
-	if(Timer->Index == 0)																		\
+	if(time_timers_is_timer_expired_u(timers, timer))											\
 	{																							\
 		return NULL;																			\
 	}																							\
 																								\
-	return &Timers-> Names [Timer->Index];														\
+	return &timers-> names [timer->idx];														\
 }																								\
 																								\
 																								\
-Time##Name *																					\
-TimeOpen##Name (																				\
-	TimeTimers* Timers,																			\
-	TimeTimer* Timer																			\
+time_##name##_t *																				\
+time_timers_open_##name (																		\
+	time_timers_t* timers,																		\
+	time_timer_t* timer																			\
 	)																							\
 {																								\
-	TimeLock(Timers);																			\
+	time_timers_lock(timers);																	\
 																								\
-	Time##Name * Result = TimeOpen##Name##U (Timers, Timer);									\
+	time_##name##_t * result = time_timers_open_##name##_u (timers, timer);						\
 																								\
-	if(!Result)																					\
+	if(!result)																					\
 	{																							\
-		TimeUnlock(Timers);																		\
+		time_timers_unlock(timers);																\
 	}																							\
 																								\
-	return Result;																				\
+	return result;																				\
 }																								\
 																								\
 																								\
 void																							\
-TimeClose##Name##U (																			\
-	TimeTimers* Timers,																			\
-	TimeTimer* Timer																			\
+time_timers_close_##name##_u (																	\
+	time_timers_t* timers,																		\
+	time_timer_t* timer																			\
 	)																							\
 {																								\
-	if(Timer->Index == 0)																		\
+	if(time_timers_is_timer_expired_u(timers, timer))											\
 	{																							\
 		return;																					\
 	}																							\
 																								\
-	if(! Time##Names##Up (Timers, Timer->Index))												\
+	if(! time_timers_##names##_up (timers, timer->idx))											\
 	{																							\
-		Time##Names##Down (Timers, Timer->Index);												\
+		time_timers_##names##_down (timers, timer->idx);										\
 	}																							\
 																								\
-	TimeSetLatest(Timers);																		\
+	time_timers_set_latest(timers);																\
 }																								\
 																								\
 																								\
 void																							\
-TimeClose##Name (																				\
-	TimeTimers* Timers,																			\
-	TimeTimer* Timer																			\
+time_timers_close_##name (																		\
+	time_timers_t* timers,																		\
+	time_timer_t* timer																			\
 	)																							\
 {																								\
-	TimeClose##Name##U (Timers, Timer);															\
-	TimeUnlock(Timers);																			\
+	time_timers_close_##name##_u (timers, timer);												\
+	time_timers_unlock(timers);																	\
 }
 
 
-TIME_TIMER_DEF(Timeout, Timeouts)
-TIME_TIMER_DEF(Interval, Intervals)
+TIME_TIMER_DEF(timeout, timeouts)
+TIME_TIMER_DEF(interval, intervals)
 
 #undef TIME_TIMER_DEF
 
 
-void
-TimeThreadFunc(
-	void* Data
+
+
+
+uint64_t
+time_timer_get_timeout_u(
+	time_timeout_t* timeout
 	)
 {
-	TimeTimers* Timers = Data;
+	return timeout->time;
+}
+
+
+uint64_t
+time_timers_get_timeout_u(
+	time_timers_t* timers,
+	time_timer_t* timer
+	)
+{
+	time_timeout_t* timeout = time_timers_open_timeout_u(timers, timer);
+	if(!timeout)
+	{
+		return 0;
+	}
+
+	uint64_t time = time_timer_get_timeout_u(timeout);
+	time_timers_close_timeout_u(timers, timer);
+
+	return time;
+}
+
+
+uint64_t
+time_timers_get_timeout(
+	time_timers_t* timers,
+	time_timer_t* timer
+	)
+{
+	time_timers_lock(timers);
+		uint64_t time = time_timers_get_timeout_u(timers, timer);
+	time_timers_unlock(timers);
+
+	return time;
+}
+
+
+void
+time_timer_set_timeout_u(
+	time_timeout_t* timeout,
+	uint64_t time
+	)
+{
+	timeout->time = time;
+}
+
+
+bool
+time_timers_set_timeout_u(
+	time_timers_t* timers,
+	time_timer_t* timer,
+	uint64_t time
+	)
+{
+	time_timeout_t* timeout = time_timers_open_timeout_u(timers, timer);
+	if(!timeout)
+	{
+		return false;
+	}
+
+	time_timer_set_timeout_u(timeout, time);
+	time_timers_close_timeout_u(timers, timer);
+
+	return true;
+}
+
+
+bool
+time_timers_set_timeout(
+	time_timers_t* timers,
+	time_timer_t* timer,
+	uint64_t time
+	)
+{
+	time_timers_lock(timers);
+		bool status = time_timers_set_timeout_u(timers, timer, time);
+	time_timers_unlock(timers);
+
+	return status;
+}
+
+
+
+
+
+uint64_t
+time_timer_get_interval_u(
+	time_interval_t* interval
+	)
+{
+	return interval->base_time + interval->interval * interval->count;
+}
+
+
+uint64_t
+time_timers_get_interval_u(
+	time_timers_t* timers,
+	time_timer_t* timer
+	)
+{
+	time_interval_t* interval = time_timers_open_interval_u(timers, timer);
+	if(!interval)
+	{
+		return 0;
+	}
+
+	uint64_t time = time_timer_get_interval_u(interval);
+	time_timers_close_interval_u(timers, timer);
+
+	return time;
+}
+
+
+uint64_t
+time_timers_get_interval(
+	time_timers_t* timers,
+	time_timer_t* timer
+	)
+{
+	time_timers_lock(timers);
+		uint64_t time = time_timers_get_interval_u(timers, timer);
+	time_timers_unlock(timers);
+
+	return time;
+}
+
+
+void
+time_timer_set_interval_u(
+	time_interval_t* interval,
+	uint64_t base_time,
+	uint64_t interval_time,
+	uint64_t count
+	)
+{
+	interval->base_time = base_time;
+	interval->interval = interval_time;
+	interval->count = count;
+}
+
+
+bool
+time_timers_set_interval_u(
+	time_timers_t* timers,
+	time_timer_t* timer,
+	uint64_t base_time,
+	uint64_t interval_time,
+	uint64_t count
+	)
+{
+	time_interval_t* interval = time_timers_open_interval_u(timers, timer);
+	if(!interval)
+	{
+		return false;
+	}
+
+	time_timer_set_interval_u(interval, base_time, interval_time, count);
+	time_timers_close_interval_u(timers, timer);
+
+	return true;
+}
+
+
+bool
+time_timers_set_interval(
+	time_timers_t* timers,
+	time_timer_t* timer,
+	uint64_t base_time,
+	uint64_t interval_time,
+	uint64_t count
+	)
+{
+	time_timers_lock(timers);
+		bool status = time_timers_set_interval_u(timers, timer, base_time, interval_time, count);
+	time_timers_unlock(timers);
+
+	return status;
+}
+
+
+
+
+
+void
+time_timers_fn(
+	void* data
+	)
+{
+	time_timers_t* timers = data;
 
 	while(1)
 	{
 		goto_start:
 
-		SemaphoreWait(&Timers->WorkSem);
+		sync_sem_wait(&timers->work_sem);
 
-		uint64_t Time;
+		uint64_t time;
 
 		while(1)
 		{
-			Time = TimeGetLatest(Timers);
+			time = time_timers_get_latest(timers);
 
-			if(Time == 0)
+			if(time == 0)
 			{
 				goto goto_start;
 			}
 
-			if(TimeGet() >= Time)
+			if(time_get() >= time)
 			{
 				break;
 			}
 
-			SemaphoreTimedWait(&Timers->UpdatesSem, Time);
+			sync_sem_timed_wait(&timers->updates_sem, time);
 		}
 
-		TimeData Data;
+		time_data_t data;
 
-		TimeLock(Timers);
+		time_timers_lock(timers);
 
-		Time = TimeGetLatest(Timers);
+		time = time_timers_get_latest(timers);
 
-		if(Time == 0 || TimeGet() < Time)
+		if(time == 0 || time_get() < time)
 		{
-			TimeUnlock(Timers);
+			time_timers_unlock(timers);
 			goto goto_start;
 		}
 
-		if(Time & 1)
+		if(time & 1)
 		{
-			TimeInterval* Interval = &Timers->Intervals[1];
-			Data = Interval->Data;
+			time_interval_t* interval = &timers->intervals[1];
+			data = interval->data;
 
-			++Interval->Count;
-			TimeIntervalsDown(Timers, 1);
-			SemaphorePost(&Timers->WorkSem);
+			++interval->count;
+			time_timers_intervals_down(timers, 1);
+			sync_sem_post(&timers->work_sem);
 		}
 		else
 		{
-			TimeTimeout* Timeout = &Timers->Timeouts[1];
-			Data = Timeout->Data;
+			time_timeout_t* timeout = &timers->timeouts[1];
+			data = timeout->data;
 
-			if(Timeout->Timer != NULL)
+			if(timeout->timer != NULL)
 			{
-				Timeout->Timer->Index = 0;
+				time_timer_init(timeout->timer);
 			}
 
-			if(--Timers->TimeoutsUsed > 1)
+			if(--timers->timeouts_used > 1)
 			{
-				TimeSwapTimeouts(Timers, 1, Timers->TimeoutsUsed);
-				TimeTimeoutsDown(Timers, 1);
+				time_timers_swap_timeouts(timers, 1, timers->timeouts_used);
+				time_timers_timeouts_down(timers, 1);
 			}
 		}
 
-		TimeSetLatest(Timers);
+		time_timers_set_latest(timers);
 
-		TimeUnlock(Timers);
+		time_timers_unlock(timers);
 
-		if(Data.Func != NULL)
+		if(data.fn != NULL)
 		{
-			ThreadCancelOff();
-			Data.Func(Data.Arg);
-			ThreadCancelOn();
+			thread_cancel_off();
+			data.fn(data.data);
+			thread_cancel_on();
 		}
 	}
 }
 
 
 void
-TimeInit(
-	TimeTimers* Timers
+time_timers_init(
+	time_timers_t* timers
 	)
 {
-	Timers->Timeouts = NULL;
-	Timers->TimeoutsUsed = 1;
-	Timers->TimeoutsSize = 0;
+	timers->timeouts = NULL;
+	timers->timeouts_used = 1;
+	timers->timeouts_size = 0;
 
-	Timers->Intervals = NULL;
-	Timers->IntervalsUsed = 1;
-	Timers->IntervalsSize = 0;
+	timers->intervals = NULL;
+	timers->intervals_used = 1;
+	timers->intervals_size = 0;
 
-	atomic_init(&Timers->Latest, 0);
+	atomic_init(&timers->latest, 0);
 
-	MutexInit(&Timers->Mtx);
-	SemaphoreInit(&Timers->WorkSem, 0);
-	SemaphoreInit(&Timers->UpdatesSem, 0);
+	sync_mtx_init(&timers->mtx);
+	sync_sem_init(&timers->work_sem, 0);
+	sync_sem_init(&timers->updates_sem, 0);
 
-	ThreadData Data =
-	(ThreadData)
+	thread_data_t data =
 	{
-		.Func = TimeThreadFunc,
-		.Arg = Timers
+		.fn = time_timers_fn,
+		.data = timers
 	};
 
-	ThreadInit(&Timers->Thread, Data);
+	thread_init(&timers->thread, data);
 }
 
 
 void
-TimeDestroy(
-	TimeTimers* Timers
+time_timers_free(
+	time_timers_t* timers
 	)
 {
-	ThreadCancelSync(Timers->Thread);
-	ThreadDestroy(&Timers->Thread);
+	thread_cancel_sync(timers->thread);
+	thread_free(&timers->thread);
 
-	SemaphoreDestroy(&Timers->UpdatesSem);
-	SemaphoreDestroy(&Timers->WorkSem);
-	MutexDestroy(&Timers->Mtx);
+	sync_sem_free(&timers->updates_sem);
+	sync_sem_free(&timers->work_sem);
+	sync_mtx_free(&timers->mtx);
 
-	TimeDestroyIntervals(Timers);
-	TimeDestroyTimeouts(Timers);
+	time_timers_free_intervals(timers);
+	time_timers_free_timeouts(timers);
 }
 
 
 void
-TimeLock(
-	TimeTimers* Timers
+time_timers_lock(
+	time_timers_t* timers
 	)
 {
-	MutexLock(&Timers->Mtx);
+	sync_mtx_lock(&timers->mtx);
 }
 
 
 void
-TimeUnlock(
-	TimeTimers* Timers
+time_timers_unlock(
+	time_timers_t* timers
 	)
 {
-	MutexUnlock(&Timers->Mtx);
+	sync_mtx_unlock(&timers->mtx);
+}
+
+
+
+
+
+void
+time_timer_init(
+	time_timer_t* timer
+	)
+{
+	timer->idx = 0;
+}
+
+
+bool
+time_timers_is_timer_expired_u(
+	time_timers_t* timers,
+	time_timer_t* timer
+	)
+{
+	return timer->idx == 0;
+}
+
+
+bool
+time_timers_is_timer_expired(
+	time_timers_t* timers,
+	time_timer_t* timer
+	)
+{
+	sync_mtx_lock(&timers->mtx);
+		bool status = time_timers_is_timer_expired_u(timers, timer);
+	sync_mtx_unlock(&timers->mtx);
+
+	return status;
+}
+
+
+void
+time_timer_free(
+	time_timer_t* timer
+	)
+{
+	assert_neq(timer->idx, 0);
 }

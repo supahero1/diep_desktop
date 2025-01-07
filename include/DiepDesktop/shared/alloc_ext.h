@@ -1,5 +1,5 @@
 /*
- *   Copyright 2024 Franciszek Balcerak
+ *   Copyright 2024-2025 Franciszek Balcerak
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,10 +16,6 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <DiepDesktop/shared/alloc_std.h>
 
 #ifndef _inline_
@@ -27,529 +23,524 @@ extern "C" {
 #endif
 
 
-_inline_ _pure_func_ _opaque_ AllocHandle*
-AllocGetHandle(
-	alloc_t Size
+_inline_ _pure_func_ _opaque_ alloc_handle_t*
+alloc_get_handle(
+	alloc_t size
 	)
 {
-	return AllocGetHandleS(AllocGetGlobalState(), Size);
+	return alloc_get_handle_s(alloc_get_global_state(), size);
 }
 
 
 _inline_ void
-AllocHandleLockS(
-	_in_ AllocState* State,
-	alloc_t Size
+alloc_handle_lock_s(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	AllocHandleLockH(AllocGetHandleS(State, Size));
+	alloc_handle_lock_h(alloc_get_handle_s(state, size));
 }
 
 
 _inline_ void
-AllocHandleLock(
-	alloc_t Size
+alloc_handle_lock(
+	alloc_t size
 	)
 {
-	AllocHandleLockH(AllocGetHandle(Size));
+	alloc_handle_lock_h(alloc_get_handle(size));
 }
 
 
 _inline_ void
-AllocHandleUnlockS(
-	_in_ AllocState* State,
-	alloc_t Size
+alloc_handle_unlock_s(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	AllocHandleUnlockH(AllocGetHandleS(State, Size));
+	alloc_handle_unlock_h(alloc_get_handle_s(state, size));
 }
 
 
 _inline_ void
-AllocHandleUnlock(
-	alloc_t Size
+alloc_handle_unlock(
+	alloc_t size
 	)
 {
-	AllocHandleUnlockH(AllocGetHandle(Size));
+	alloc_handle_unlock_h(alloc_get_handle(size));
 }
 
 
 _inline_ void
-AllocHandleSetFlagsS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_set_flags_s(
+	_in_ alloc_state* state,
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleSetFlagsH(AllocGetHandleS(State, Size), Flags);
+	alloc_handle_set_flags_h(alloc_get_handle_s(state, size), flags);
 }
 
 
 _inline_ void
-AllocHandleSetFlagsUS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_set_flags_us(
+	_in_ alloc_state* state,
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleSetFlagsUH(AllocGetHandleS(State, Size), Flags);
+	alloc_handle_set_flags_uh(alloc_get_handle_s(state, size), flags);
 }
 
 
 _inline_ void
-AllocHandleSetFlags(
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_set_flags(
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleSetFlagsH(AllocGetHandle(Size), Flags);
+	alloc_handle_set_flags_h(alloc_get_handle(size), flags);
 }
 
 
 _inline_ void
-AllocHandleSetFlagsU(
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_set_flags_u(
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleSetFlagsUH(AllocGetHandle(Size), Flags);
+	alloc_handle_set_flags_uh(alloc_get_handle(size), flags);
 }
 
 
 _inline_ void
-AllocHandleAddFlagsS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_add_flags_s(
+	_in_ alloc_state* state,
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleAddFlagsH(AllocGetHandleS(State, Size), Flags);
+	alloc_handle_add_flags_h(alloc_get_handle_s(state, size), flags);
 }
 
 
 _inline_ void
-AllocHandleAddFlagsUS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_add_flags_us(
+	_in_ alloc_state* state,
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleAddFlagsUH(AllocGetHandleS(State, Size), Flags);
+	alloc_handle_add_flags_uh(alloc_get_handle_s(state, size), flags);
 }
 
 
 _inline_ void
-AllocHandleAddFlags(
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_add_flags(
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleAddFlagsH(AllocGetHandle(Size), Flags);
+	alloc_handle_add_flags_h(alloc_get_handle(size), flags);
 }
 
 
 _inline_ void
-AllocHandleAddFlagsU(
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_add_flags_u(
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleAddFlagsUH(AllocGetHandle(Size), Flags);
+	alloc_handle_add_flags_uh(alloc_get_handle(size), flags);
 }
 
 
 _inline_ void
-AllocHandleDelFlagsS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_del_flags_s(
+	_in_ alloc_state* state,
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleDelFlagsH(AllocGetHandleS(State, Size), Flags);
+	alloc_handle_del_flags_h(alloc_get_handle_s(state, size), flags);
 }
 
 
 _inline_ void
-AllocHandleDelFlagsUS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_del_flags_us(
+	_in_ alloc_state* state,
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleDelFlagsUH(AllocGetHandleS(State, Size), Flags);
+	alloc_handle_del_flags_uh(alloc_get_handle_s(state, size), flags);
 }
 
 
 _inline_ void
-AllocHandleDelFlags(
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_del_flags(
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleDelFlagsH(AllocGetHandle(Size), Flags);
+	alloc_handle_del_flags_h(alloc_get_handle(size), flags);
 }
 
 
 _inline_ void
-AllocHandleDelFlagsU(
-	alloc_t Size,
-	AllocHandleFlag Flags
+alloc_handle_del_flags_u(
+	alloc_t size,
+	alloc_handle_flag_t flags
 	)
 {
-	AllocHandleDelFlagsUH(AllocGetHandle(Size), Flags);
+	alloc_handle_del_flags_uh(alloc_get_handle(size), flags);
 }
 
 
-_inline_ AllocHandleFlag
-AllocHandleGetFlagsS(
-	_in_ AllocState* State,
-	alloc_t Size
+_inline_ alloc_handle_flag_t
+alloc_handle_get_flags_s(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	return AllocHandleGetFlagsH(AllocGetHandleS(State, Size));
+	return alloc_handle_get_flags_h(alloc_get_handle_s(state, size));
 }
 
 
-_inline_ AllocHandleFlag
-AllocHandleGetFlagsUS(
-	_in_ AllocState* State,
-	alloc_t Size
+_inline_ alloc_handle_flag_t
+alloc_handle_get_flags_us(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	return AllocHandleGetFlagsUH(AllocGetHandleS(State, Size));
+	return alloc_handle_get_flags_uh(alloc_get_handle_s(state, size));
 }
 
 
-_inline_ AllocHandleFlag
-AllocHandleGetFlags(
-	alloc_t Size
+_inline_ alloc_handle_flag_t
+alloc_handle_get_flags(
+	alloc_t size
 	)
 {
-	return AllocHandleGetFlagsH(AllocGetHandle(Size));
+	return alloc_handle_get_flags_h(alloc_get_handle(size));
 }
 
 
-_inline_ AllocHandleFlag
-AllocHandleGetFlagsU(
-	alloc_t Size
+_inline_ alloc_handle_flag_t
+alloc_handle_get_flags_u(
+	alloc_t size
 	)
 {
-	return AllocHandleGetFlagsUH(AllocGetHandle(Size));
-}
-
-
-_inline_ void*
-AllocAllocS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	int Zero
-	)
-{
-	return AllocAllocH(AllocGetHandleS(State, Size), Size, Zero);
+	return alloc_handle_get_flags_uh(alloc_get_handle(size));
 }
 
 
 _inline_ void*
-AllocAllocUS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	int Zero
+alloc_alloc_s(
+	_in_ alloc_state* state,
+	alloc_t size,
+	int zero
 	)
 {
-	return AllocAllocUH(AllocGetHandleS(State, Size), Size, Zero);
+	return alloc_alloc_h(alloc_get_handle_s(state, size), size, zero);
 }
 
 
 _inline_ void*
-AllocAlloc(
-	alloc_t Size,
-	int Zero
+alloc_alloc_us(
+	_in_ alloc_state* state,
+	alloc_t size,
+	int zero
 	)
 {
-	return AllocAllocH(AllocGetHandle(Size), Size, Zero);
+	return alloc_alloc_uh(alloc_get_handle_s(state, size), size, zero);
 }
 
 
 _inline_ void*
-AllocAllocU(
-	alloc_t Size,
-	int Zero
+alloc_alloc(
+	alloc_t size,
+	int zero
 	)
 {
-	return AllocAllocUH(AllocGetHandle(Size), Size, Zero);
+	return alloc_alloc_h(alloc_get_handle(size), size, zero);
+}
+
+
+_inline_ void*
+alloc_alloc_u(
+	alloc_t size,
+	int zero
+	)
+{
+	return alloc_alloc_uh(alloc_get_handle(size), size, zero);
 }
 
 
 _inline_ void
-AllocFreeS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	_in_ void* Ptr
+alloc_free_s(
+	_in_ alloc_state* state,
+	alloc_t size,
+	_in_ void* ptr
 	)
 {
-	AllocFreeH(AllocGetHandleS(State, Size), Ptr, Size);
+	alloc_free_h(alloc_get_handle_s(state, size), ptr, size);
 }
 
 
 _inline_ void
-AllocFreeUS(
-	_in_ AllocState* State,
-	alloc_t Size,
-	_in_ void* Ptr
+alloc_free_us(
+	_in_ alloc_state* state,
+	alloc_t size,
+	_in_ void* ptr
 	)
 {
-	AllocFreeUH(AllocGetHandleS(State, Size), Ptr, Size);
+	alloc_free_uh(alloc_get_handle_s(state, size), ptr, size);
 }
 
 
 _inline_ void
-AllocFree(
-	alloc_t Size,
-	_in_ void* Ptr
+alloc_free(
+	alloc_t size,
+	_in_ void* ptr
 	)
 {
-	AllocFreeH(AllocGetHandle(Size), Ptr, Size);
+	alloc_free_h(alloc_get_handle(size), ptr, size);
 }
 
 
 _inline_ void
-AllocFreeU(
-	alloc_t Size,
-	_in_ void* Ptr
+alloc_free_u(
+	alloc_t size,
+	_in_ void* ptr
 	)
 {
-	AllocFreeUH(AllocGetHandle(Size), Ptr, Size);
+	alloc_free_uh(alloc_get_handle(size), ptr, size);
 }
 
 
 _inline_ void*
-AllocReallocS(
-	_in_ AllocState* OldState,
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	_in_ AllocState* NewState,
-	alloc_t NewSize,
-	int Zero
+alloc_realloc_s(
+	_in_ alloc_state* old_state,
+	alloc_t old_size,
+	_in_ void* ptr,
+	_in_ alloc_state* new_state,
+	alloc_t new_size,
+	int zero
 	)
 {
-	return AllocReallocH(AllocGetHandleS(OldState, OldSize), Ptr, OldSize,
-		AllocGetHandleS(NewState, NewSize), NewSize, Zero);
+	return allow_realloc_h(alloc_get_handle_s(old_state, old_size), ptr, old_size,
+		alloc_get_handle_s(new_state, new_size), new_size, zero);
 }
 
 
 _inline_ void*
-AllocReallocUS(
-	_in_ AllocState* OldState,
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	_in_ AllocState* NewState,
-	alloc_t NewSize,
-	int Zero
+alloc_realloc_us(
+	_in_ alloc_state* old_state,
+	alloc_t old_size,
+	_in_ void* ptr,
+	_in_ alloc_state* new_state,
+	alloc_t new_size,
+	int zero
 	)
 {
-	return AllocReallocUH(AllocGetHandleS(OldState, OldSize), Ptr, OldSize,
-		AllocGetHandleS(NewState, NewSize), NewSize, Zero);
+	return allow_realloc_uh(alloc_get_handle_s(old_state, old_size), ptr, old_size,
+		alloc_get_handle_s(new_state, new_size), new_size, zero);
 }
 
 
 _inline_ void*
-AllocRealloc(
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	alloc_t NewSize,
-	int Zero
+alloc_realloc(
+	alloc_t old_size,
+	_in_ void* ptr,
+	alloc_t new_size,
+	int zero
 	)
 {
-	return AllocReallocH(AllocGetHandle(OldSize), Ptr, OldSize,
-		AllocGetHandle(NewSize), NewSize, Zero);
+	return allow_realloc_h(alloc_get_handle(old_size), ptr, old_size,
+		alloc_get_handle(new_size), new_size, zero);
 }
 
 
 _inline_ void*
-AllocReallocU(
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	alloc_t NewSize,
-	int Zero
+alloc_realloc_u(
+	alloc_t old_size,
+	_in_ void* ptr,
+	alloc_t new_size,
+	int zero
 	)
 {
-	return AllocReallocUH(AllocGetHandle(OldSize), Ptr, OldSize,
-		AllocGetHandle(NewSize), NewSize, Zero);
+	return allow_realloc_uh(alloc_get_handle(old_size), ptr, old_size,
+		alloc_get_handle(new_size), new_size, zero);
 }
 
 
 _inline_ void*
-AllocMallocS(
-	_in_ AllocState* State,
-	alloc_t Size
+alloc_malloc_s(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	return AllocAllocS(State, Size, 0);
+	return alloc_alloc_s(state, size, 0);
 }
 
 
 _inline_ void*
-AllocMallocUS(
-	_in_ AllocState* State,
-	alloc_t Size
+alloc_malloc_us(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	return AllocAllocUS(State, Size, 0);
+	return alloc_alloc_us(state, size, 0);
 }
 
 
 _inline_ void*
-AllocMalloc(
-	alloc_t Size
+alloc_malloc(
+	alloc_t size
 	)
 {
-	return AllocAlloc(Size, 0);
+	return alloc_alloc(size, 0);
 }
 
 
 _inline_ void*
-AllocMallocU(
-	alloc_t Size
+alloc_malloc_u(
+	alloc_t size
 	)
 {
-	return AllocAllocU(Size, 0);
+	return alloc_alloc_u(size, 0);
 }
 
 
 _inline_ void*
-AllocCallocS(
-	_in_ AllocState* State,
-	alloc_t Size
+alloc_calloc_s(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	return AllocAllocS(State, Size, 1);
+	return alloc_alloc_s(state, size, 1);
 }
 
 
 _inline_ void*
-AllocCallocUS(
-	_in_ AllocState* State,
-	alloc_t Size
+alloc_calloc_us(
+	_in_ alloc_state* state,
+	alloc_t size
 	)
 {
-	return AllocAllocUS(State, Size, 1);
+	return alloc_alloc_us(state, size, 1);
 }
 
 
 _inline_ void*
-AllocCalloc(
-	alloc_t Size
+alloc_calloc(
+	alloc_t size
 	)
 {
-	return AllocAlloc(Size, 1);
+	return alloc_alloc(size, 1);
 }
 
 
 _inline_ void*
-AllocCallocU(
-	alloc_t Size
+alloc_calloc_u(
+	alloc_t size
 	)
 {
-	return AllocAllocU(Size, 1);
+	return alloc_alloc_u(size, 1);
 }
 
 
 _inline_ void*
-AllocRemallocS(
-	_in_ AllocState* OldState,
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	_in_ AllocState* NewState,
-	alloc_t NewSize
+alloc_remalloc_s(
+	_in_ alloc_state* old_state,
+	alloc_t old_size,
+	_in_ void* ptr,
+	_in_ alloc_state* new_state,
+	alloc_t new_size
 	)
 {
-	return AllocReallocS(OldState, OldSize, Ptr, NewState, NewSize, 0);
+	return alloc_realloc_s(old_state, old_size, ptr, new_state, new_size, 0);
 }
 
 
 _inline_ void*
-AllocRemallocUS(
-	_in_ AllocState* OldState,
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	_in_ AllocState* NewState,
-	alloc_t NewSize
+alloc_remalloc_us(
+	_in_ alloc_state* old_state,
+	alloc_t old_size,
+	_in_ void* ptr,
+	_in_ alloc_state* new_state,
+	alloc_t new_size
 	)
 {
-	return AllocReallocUS(OldState, OldSize, Ptr, NewState, NewSize, 0);
+	return alloc_realloc_us(old_state, old_size, ptr, new_state, new_size, 0);
 }
 
 
 _inline_ void*
-AllocRemalloc(
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	alloc_t NewSize
+alloc_remalloc(
+	alloc_t old_size,
+	_in_ void* ptr,
+	alloc_t new_size
 	)
 {
-	return AllocRealloc(OldSize, Ptr, NewSize, 0);
+	return alloc_realloc(old_size, ptr, new_size, 0);
 }
 
 
 _inline_ void*
-AllocRemallocU(
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	alloc_t NewSize
+alloc_remalloc_u(
+	alloc_t old_size,
+	_in_ void* ptr,
+	alloc_t new_size
 	)
 {
-	return AllocReallocU(OldSize, Ptr, NewSize, 0);
+	return alloc_realloc_u(old_size, ptr, new_size, 0);
 }
 
 
 _inline_ void*
-AllocRecallocS(
-	_in_ AllocState* OldState,
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	_in_ AllocState* NewState,
-	alloc_t NewSize
+alloc_recalloc_s(
+	_in_ alloc_state* old_state,
+	alloc_t old_size,
+	_in_ void* ptr,
+	_in_ alloc_state* new_state,
+	alloc_t new_size
 	)
 {
-	return AllocReallocS(OldState, OldSize, Ptr, NewState, NewSize, 1);
+	return alloc_realloc_s(old_state, old_size, ptr, new_state, new_size, 1);
 }
 
 
 _inline_ void*
-AllocRecallocUS(
-	_in_ AllocState* OldState,
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	_in_ AllocState* NewState,
-	alloc_t NewSize
+alloc_recalloc_us(
+	_in_ alloc_state* old_state,
+	alloc_t old_size,
+	_in_ void* ptr,
+	_in_ alloc_state* new_state,
+	alloc_t new_size
 	)
 {
-	return AllocReallocUS(OldState, OldSize, Ptr, NewState, NewSize, 1);
+	return alloc_realloc_us(old_state, old_size, ptr, new_state, new_size, 1);
 }
 
 
 _inline_ void*
-AllocRecalloc(
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	alloc_t NewSize
+alloc_recalloc(
+	alloc_t old_size,
+	_in_ void* ptr,
+	alloc_t new_size
 	)
 {
-	return AllocRealloc(OldSize, Ptr, NewSize, 1);
+	return alloc_realloc(old_size, ptr, new_size, 1);
 }
 
 
 _inline_ void*
-AllocRecallocU(
-	alloc_t OldSize,
-	_in_ void* Ptr,
-	alloc_t NewSize
+alloc_recalloc_u(
+	alloc_t old_size,
+	_in_ void* ptr,
+	alloc_t new_size
 	)
 {
-	return AllocReallocU(OldSize, Ptr, NewSize, 1);
+	return alloc_realloc_u(old_size, ptr, new_size, 1);
 }
-
-
-#ifdef __cplusplus
-}
-#endif

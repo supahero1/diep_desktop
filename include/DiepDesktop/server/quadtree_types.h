@@ -25,73 +25,73 @@ typedef float QuadtreePosition;
 
 typedef struct QuadtreeRectExtent
 {
-	QuadtreePosition MinX, MaxX, MinY, MaxY;
+	QuadtreePosition min_x, max_x, min_y, max_y;
 }
 QuadtreeRectExtent;
 
 
 typedef struct QuadtreeHalfExtent
 {
-	QuadtreePosition X, Y, W, H;
+	QuadtreePosition x, y, w, h;
 }
 QuadtreeHalfExtent;
 
 
 static inline bool
 QuadtreeIntersects(
-	QuadtreeRectExtent A,
-	QuadtreeRectExtent B
+	QuadtreeRectExtent a,
+	QuadtreeRectExtent b
 	)
 {
 	return
-		A.MaxX >= B.MinX &&
-		A.MaxY >= B.MinY &&
-		B.MaxX >= A.MinX &&
-		B.MaxY >= A.MinY;
+		a.max_x >= b.min_x &&
+		a.max_y >= b.min_y &&
+		b.max_x >= a.min_x &&
+		b.max_y >= a.min_y;
 }
 
 
 static inline bool
 QuadtreeIsInside(
-	QuadtreeRectExtent A,
-	QuadtreeRectExtent B
+	QuadtreeRectExtent a,
+	QuadtreeRectExtent b
 	)
 {
 	return
-		A.MinX > B.MinX &&
-		A.MinY > B.MinY &&
-		B.MaxX > A.MaxX &&
-		B.MaxY > A.MaxY;
+		a.min_x > b.min_x &&
+		a.min_y > b.min_y &&
+		b.max_x > a.max_x &&
+		b.max_y > a.max_y;
 }
 
 
 static inline QuadtreeRectExtent
 QuadtreeHalfToRectExtent(
-	QuadtreeHalfExtent HalfExtent
+	QuadtreeHalfExtent half_extent_t
 	)
 {
 	return
 	(QuadtreeRectExtent)
 	{
-		.MinX = HalfExtent.X - HalfExtent.W,
-		.MaxX = HalfExtent.X + HalfExtent.W,
-		.MinY = HalfExtent.Y - HalfExtent.H,
-		.MaxY = HalfExtent.Y + HalfExtent.H
+		.min_x = half_extent_t.x - half_extent_t.w,
+		.max_x = half_extent_t.x + half_extent_t.w,
+		.min_y = half_extent_t.y - half_extent_t.h,
+		.max_y = half_extent_t.y + half_extent_t.h
 	};
 }
 
 
 static inline QuadtreeHalfExtent
 QuadtreeRectToHalfExtent(
-	QuadtreeRectExtent RectExtent
+	QuadtreeRectExtent rect_extent_t
 	)
 {
 	return
 	(QuadtreeHalfExtent)
 	{
-		.X = (RectExtent.MaxX + RectExtent.MinX) * 0.5f,
-		.Y = (RectExtent.MaxY + RectExtent.MinY) * 0.5f,
-		.W = (RectExtent.MaxX - RectExtent.MinX) * 0.5f,
-		.H = (RectExtent.MaxY - RectExtent.MinY) * 0.5f
+		.x = (rect_extent_t.max_x + rect_extent_t.min_x) * 0.5f,
+		.y = (rect_extent_t.max_y + rect_extent_t.min_y) * 0.5f,
+		.w = (rect_extent_t.max_x - rect_extent_t.min_x) * 0.5f,
+		.h = (rect_extent_t.max_y - rect_extent_t.min_y) * 0.5f
 	};
 }

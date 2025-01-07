@@ -1,70 +1,90 @@
+/*
+ *   Copyright 2024-2025 Franciszek Balcerak
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #pragma once
 
 #include <stdint.h>
 
 
 typedef void
-(*ListenerCallback)(
-	void* Data,
-	void* EventData
+(*event_fn_t)(
+	void* data,
+	void* event_data
 	);
 
 
-typedef struct Listener
+typedef struct event_listener_data
 {
-	ListenerCallback Callback;
-	void* Data;
+	event_fn_t fn;
+	void* data;
 }
-Listener;
+event_listener_data_t;
 
 
-typedef struct ListenerNode ListenerNode;
+typedef struct event_listener event_listener_t;
 
-struct ListenerNode
+struct event_listener
 {
-	ListenerNode* Prev;
-	ListenerNode* Next;
-	Listener Listener;
+	event_listener_t* prev;
+	event_listener_t* next;
+	event_listener_data_t data;
 };
 
 
-typedef struct EventTarget
+typedef struct event_target
 {
-	ListenerNode* Head;
+	event_listener_t* head;
 }
-EventTarget;
+event_target_t;
 
 
 extern void
-EventListen(
-	EventTarget* Target,
-	ListenerCallback Callback,
-	void* Data
+event_target_init(
+	event_target_t* target
 	);
 
 
 extern void
-EventUnlisten(
-	EventTarget* Target,
-	ListenerCallback Callback,
-	void* Data
+event_target_free(
+	event_target_t* target
+	);
+
+
+extern event_listener_t*
+event_target_add(
+	event_target_t* target,
+	event_listener_data_t data
 	);
 
 
 extern void
-EventNotify(
-	EventTarget* Target,
-	void* EventData
-	);
-
-
-extern bool
-EventHasListeners(
-	EventTarget* Target
+event_target_del(
+	event_target_t* target,
+	event_listener_t* listener
 	);
 
 
 extern void
-EventFree(
-	EventTarget* Target
+event_target_fire(
+	event_target_t* target,
+	void* event_data
+	);
+
+
+extern void*
+event_target_wait(
+	event_target_t* target
 	);
