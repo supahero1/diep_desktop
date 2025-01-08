@@ -210,7 +210,7 @@ font_clean:
 
 .PHONY: font_wipe
 font_wipe: font_clean
-	$(RM) -r include/DiepDesktop/client/tex/font.h src/client/tex/font.c
+	$(RM) -r $(SRC_FONT_DIRS)
 
 
 .PHONY: var_build
@@ -234,8 +234,8 @@ tex_build: bin/sort | tex/img
 .PHONY: tex_gen
 tex_gen: bin/tex_gen | tex/img $(SRC_TEX_DIRS)
 	$(SHARED_CALL) ./bin/tex_gen
-	TEX_NUM=$$(grep -oP '#define TEXTURES_NUM \K\d+' include/DiepDesktop/client/tex/base.h); \
-	sed -i "s/inTex\[[0-9]\{1,\}\];/inTex[$$TEX_NUM];/g" shaders/frag.glsl
+	TEX_COUNT=$$(grep -oP '#define TEX__COUNT \K\d+' include/DiepDesktop/client/tex/base.h); \
+	sed -i "s/inTex\[[0-9]*\];/inTex[$$TEX_COUNT];/g" shaders/frag.glsl
 
 .PHONY: tex_clean
 tex_clean:
@@ -243,8 +243,7 @@ tex_clean:
 
 .PHONY: tex_wipe
 tex_wipe: tex_clean
-	$(RM) -r include/DiepDesktop/client/tex/base.h src/client/tex/base.c \
-		include/DiepDesktop/client/tex/tex_*.h
+	$(RM) -r $(SRC_TEX_DIRS)
 
 
 .PRECIOUS: tex/dds_raw/%.dds

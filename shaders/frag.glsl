@@ -1,6 +1,6 @@
 #version 450
 
-layout(binding = 0) uniform sampler2DArray inTex[];
+layout(binding = 0) uniform sampler2DArray inTex[7];
 
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) flat in vec4 inWhiteColor;
