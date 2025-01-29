@@ -37,14 +37,14 @@ dds_load(
 	uint8_t* content = alloc_malloc(decompressed_size);
 	hard_assert_not_null(content);
 
-	uint64_t actual_decomrpessed_size = ZSTD_decompress(content, decompressed_size, file.data, file.len);
-	hard_assert_ge(actual_decomrpessed_size, sizeof(dds_tex_t));
-	hard_assert_le(actual_decomrpessed_size, decompressed_size);
+	uint64_t actual_decompressed_size = ZSTD_decompress(content, decompressed_size, file.data, file.len);
+	hard_assert_ge(actual_decompressed_size, sizeof(dds_tex_t));
+	hard_assert_le(actual_decompressed_size, decompressed_size);
 
 	file_free(file);
 
 	dds_tex_t* tex = (dds_tex_t*) content;
-	hard_assert_eq(actual_decomrpessed_size, sizeof(dds_tex_t) + dds_data_size(tex));
+	hard_assert_eq(actual_decompressed_size, sizeof(dds_tex_t) + dds_data_size(tex));
 	hard_assert_eq(tex->magic, 0x20534444);
 	hard_assert_eq(tex->size, 124);
 	hard_assert_eq((tex->flags & DDS_REQUIRED_FLAGS), DDS_REQUIRED_FLAGS);

@@ -103,6 +103,76 @@ typedef enum window_mod
 window_mod_t;
 
 
+typedef struct window_resize_event_data
+{
+	pair_t old_size;
+	pair_t new_size;
+}
+window_resize_event_data_t;
+
+typedef struct window_focus_event_data
+{
+	uint8_t _;
+}
+window_focus_event_data_t;
+
+typedef struct window_blur_event_data
+{
+	uint8_t _;
+}
+window_blur_event_data_t;
+
+typedef struct window_key_down_event_data
+{
+	window_key_t key;
+	window_mod_t mods;
+	uint8_t repeat;
+}
+window_key_down_event_data_t;
+
+typedef struct window_key_up_event_data
+{
+	window_key_t key;
+	window_mod_t mods;
+}
+window_key_up_event_data_t;
+
+typedef struct window_text_event_data
+{
+	const char* str;
+	uint32_t len;
+}
+window_text_event_data_t;
+
+typedef struct window_mouse_down_event_data
+{
+	window_button_t button;
+	pair_t pos;
+	uint8_t clicks;
+}
+window_mouse_down_event_data_t;
+
+typedef struct window_mouse_up_event_data
+{
+	window_button_t button;
+	pair_t pos;
+}
+window_mouse_up_event_data_t;
+
+typedef struct window_mouse_move_event_data
+{
+	pair_t old_pos;
+	pair_t new_pos;
+}
+window_mouse_move_event_data_t;
+
+typedef struct window_mouse_scroll_event_data
+{
+	float offset_y;
+}
+window_mouse_scroll_event_data_t;
+
+
 typedef struct window
 {
 	sync_mtx_t mtx;
@@ -119,7 +189,17 @@ typedef struct window
 
 	bool fullscreen;
 	bool first_frame;
-	_Atomic bool running;
+
+	event_target_t resize_target;
+	event_target_t focus_target;
+	event_target_t blur_target;
+	event_target_t key_down_target;
+	event_target_t key_up_target;
+	event_target_t text_target;
+	event_target_t mouse_down_target;
+	event_target_t mouse_up_target;
+	event_target_t mouse_move_target;
+	event_target_t mouse_scroll_target;
 }
 window_t;
 
@@ -132,18 +212,6 @@ window_init(
 
 extern void
 window_free(
-	window_t* window
-	);
-
-
-extern bool
-window_is_running(
-	window_t* window
-	);
-
-
-extern void
-window_run(
 	window_t* window
 	);
 
@@ -194,110 +262,42 @@ window_set_clipboard(
 
 
 
-typedef struct window_resize_event_data
+typedef enum window_user_event
 {
-	pair_t old_size;
-	pair_t new_size;
+	WINDOW_USER_EVENT_SET_CLIPBOARD,
+	WINDOW_USER_EVENT__COUNT
 }
-window_resize_event_data_t;
+window_user_event_t;
 
-extern event_target_t window_resize_target;
-
-
-typedef struct window_focus_event_data
+typedef struct window_manager
 {
-	uint8_t _;
+	window_t* windows;
+	uint32_t count;
+
+	_Atomic bool running;
 }
-window_focus_event_data_t;
-
-extern event_target_t window_focus_target;
+window_manager_t;
 
 
-typedef struct window_blur_event_data
-{
-	uint8_t _;
-}
-window_blur_event_data_t;
-
-extern event_target_t window_blur_target;
+extern void
+window_manager_init(
+	window_manager_t* manager
+	);
 
 
-typedef struct window_key_down_event_data
-{
-	window_key_t key;
-	window_key_mod_t mods;
-	uint8_t repeat;
-}
-window_key_down_event_data_t;
-
-extern event_target_t window_key_down_target;
+extern void
+window_manager_free(
+	window_manager_t* manager
+	);
 
 
-typedef struct window_key_up_event_data
-{
-	window_key_t key;
-	window_key_mod_t mods;
-}
-window_key_up_event_data_t;
-
-extern event_target_t window_key_up_target;
+extern bool
+window_manager_is_running(
+	window_manager_t* manager
+	);
 
 
-typedef struct window_text_event_data
-{
-	const char* str;
-	uint32_t len;
-}
-window_text_event_data_t;
-
-extern event_target_t window_text_target;
-
-
-typedef struct window_mouse_down_event_data
-{
-	window_button_t button;
-	pair_t pos;
-	uint8_t clicks;
-}
-window_mouse_down_event_data_t;
-
-extern event_target_t window_mouse_down_target;
-
-
-typedef struct window_mouse_up_event_data
-{
-	window_button_t button;
-	pair_t pos;
-}
-window_mouse_up_event_data_t;
-
-extern event_target_t window_mouse_up_target;
-
-
-typedef struct window_mouse_move_event_data
-{
-	pair_t old_pos;
-	pair_t new_pos;
-}
-window_mouse_move_event_data_t;
-
-extern event_target_t window_mouse_move_target;
-
-
-typedef struct window_mouse_scroll_event_data
-{
-	float offset_y;
-}
-window_mouse_scroll_event_data_t;
-
-extern event_target_t window_mouse_scroll_target;
-
-
-typedef struct window_draw_event_data
-{
-	uint8_t _;
-}
-window_draw_event_data_t;
-
-extern event_target_t window_draw_target;
-
+extern void
+window_manager_run(
+	window_manager_t* manager
+	);

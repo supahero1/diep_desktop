@@ -168,7 +168,7 @@ window_key_t;
 #undef __
 
 
-typedef enum window_key_mod
+typedef enum window_mod
 {
 	WINDOW_KEY_MOD_NONE = 0,
 	WINDOW_KEY_MOD_SHIFT = 1,
@@ -178,7 +178,7 @@ typedef enum window_key_mod
 	WINDOW_KEY_MOD_CAPS_LOCK = 16,
 	WINDOW_KEY_MOD__COUNT
 }
-window_key_mod_t;
+window_mod_t;
 
 
 typedef struct window_resize_event_data
@@ -212,7 +212,7 @@ extern event_target_t window_blur_target;
 typedef struct window_key_down_event_data
 {
 	window_key_t key;
-	window_key_mod_t mods;
+	window_mod_t mods;
 	uint8_t repeat;
 }
 window_key_down_event_data_t;
@@ -223,7 +223,7 @@ extern event_target_t window_key_down_target;
 typedef struct window_key_up_event_data
 {
 	window_key_t key;
-	window_key_mod_t mods;
+	window_mod_t mods;
 }
 window_key_up_event_data_t;
 

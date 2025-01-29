@@ -15,6 +15,7 @@
  */
 
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/client/window/base.h>
 
 
@@ -160,7 +161,17 @@ window_init(
 
 	window->fullscreen = false;
 	window->first_frame = true;
-	window->running = true;
+
+	event_target_init(&window->resize_target);
+	event_target_init(&window->focus_target);
+	event_target_init(&window->blur_target);
+	event_target_init(&window->key_down_target);
+	event_target_init(&window->key_up_target);
+	event_target_init(&window->text_target);
+	event_target_init(&window->mouse_down_target);
+	event_target_init(&window->mouse_up_target);
+	event_target_init(&window->mouse_move_target);
+	event_target_init(&window->mouse_scroll_target);
 
 	return;
 
@@ -176,6 +187,17 @@ window_free(
 	window_t* window
 	)
 {
+	event_target_free(&window->mouse_scroll_target);
+	event_target_free(&window->mouse_move_target);
+	event_target_free(&window->mouse_up_target);
+	event_target_free(&window->mouse_down_target);
+	event_target_free(&window->text_target);
+	event_target_free(&window->key_up_target);
+	event_target_free(&window->key_down_target);
+	event_target_free(&window->blur_target);
+	event_target_free(&window->focus_target);
+	event_target_free(&window->resize_target);
+
 	SDL_DestroyWindow(window->window);
 	SDL_DestroyProperties(window->props);
 
@@ -185,6 +207,102 @@ window_free(
 
 	sync_mtx_free(&window->mtx);
 }
+
+
+void
+window_lock(
+	window_t* window
+	)
+{
+	sync_mtx_lock(&window->mtx);
+}
+
+
+void
+window_unlock(
+	window_t* window
+	)
+{
+	sync_mtx_unlock(&window->mtx);
+}
+
+
+void
+window_set_cursor(
+	window_t* window,
+	window_cursor_t cursor
+	)
+{
+	assert_ge(cursor, 0);
+	assert_lt(cursor, WINDOW_CURSOR__COUNT);
+
+	if(window->current_cursor == cursor)
+	{
+		return;
+	}
+
+	window->current_cursor = cursor;
+	SDL_SetCursor(window->cursors[cursor]);
+}
+
+
+void
+window_start_typing(
+	window_t* window
+	)
+{
+	SDL_StartTextInput(window->window);
+}
+
+
+void
+window_stop_typing(
+	window_t* window
+	)
+{
+	SDL_StopTextInput(window->window);
+}
+
+
+char*
+window_get_clipboard(
+	window_t* window,
+	uint32_t* len
+	)
+{
+	char* str = SDL_GetClipboardText();
+	if(!str)
+	{
+		return NULL;
+	}
+
+	*len = strlen(str) + 1;
+
+	char* new_text = alloc_malloc(*len);
+	if(!new_text)
+	{
+		SDL_free(str);
+		return NULL;
+	}
+
+	(void) memcpy(new_text, str, *len);
+
+	SDL_free(str);
+
+	return new_text;
+}
+
+
+void
+window_set_clipboard(
+	window_t* window,
+	const char* str
+	)
+{
+	SDL_SetClipboardText(str);
+}
+
+
 
 
 bool
@@ -210,6 +328,9 @@ window_quit(
 	window_t* window
 	)
 {
+	SDL_EVENT_USER
+	SDL_RegisterEvents
+	SDL_EventType a;
 	SDL_Event event =
 	{
 		.type = SDL_EVENT_QUIT

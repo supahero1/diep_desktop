@@ -463,12 +463,12 @@ MapSDLKey(
 #undef ___
 
 
-private window_key_mod_t
+private window_mod_t
 MapSDLMod(
 	int Mod
 	)
 {
-	window_key_mod_t Result = 0;
+	window_mod_t Result = 0;
 
 	if(Mod & SDL_KMOD_SHIFT) Result |= WINDOW_KEY_MOD_SHIFT;
 	if(Mod & SDL_KMOD_CTRL) Result |= WINDOW_KEY_MOD_CTRL;

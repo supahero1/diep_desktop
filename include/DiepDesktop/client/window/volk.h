@@ -1,7 +1,7 @@
 /**
  * volk
  *
- * Copyright (C) 2018-2024, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
+ * Copyright (C) 2018-2025, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
  * Report bugs and download new versions at https://github.com/zeux/volk
  *
  * This library is distributed under the MIT License. See notice at the end of this file.
@@ -15,7 +15,7 @@
 #endif
 
 /* VOLK_GENERATE_VERSION_DEFINE */
-#define VOLK_HEADER_VERSION 304
+#define VOLK_HEADER_VERSION 306
 /* VOLK_GENERATE_VERSION_DEFINE */
 
 #ifndef VK_NO_PROTOTYPES
@@ -447,6 +447,10 @@ struct VolkDeviceTable
 #if defined(VK_EXT_external_memory_host)
 	PFN_vkGetMemoryHostPointerPropertiesEXT vkGetMemoryHostPointerPropertiesEXT;
 #endif /* defined(VK_EXT_external_memory_host) */
+#if defined(VK_EXT_external_memory_metal)
+	PFN_vkGetMemoryMetalHandleEXT vkGetMemoryMetalHandleEXT;
+	PFN_vkGetMemoryMetalHandlePropertiesEXT vkGetMemoryMetalHandlePropertiesEXT;
+#endif /* defined(VK_EXT_external_memory_metal) */
 #if defined(VK_EXT_full_screen_exclusive)
 	PFN_vkAcquireFullScreenExclusiveModeEXT vkAcquireFullScreenExclusiveModeEXT;
 	PFN_vkReleaseFullScreenExclusiveModeEXT vkReleaseFullScreenExclusiveModeEXT;
@@ -1424,6 +1428,10 @@ extern PFN_vkGetPhysicalDeviceSurfaceCapabilities2EXT vkGetPhysicalDeviceSurface
 #if defined(VK_EXT_external_memory_host)
 extern PFN_vkGetMemoryHostPointerPropertiesEXT vkGetMemoryHostPointerPropertiesEXT;
 #endif /* defined(VK_EXT_external_memory_host) */
+#if defined(VK_EXT_external_memory_metal)
+extern PFN_vkGetMemoryMetalHandleEXT vkGetMemoryMetalHandleEXT;
+extern PFN_vkGetMemoryMetalHandlePropertiesEXT vkGetMemoryMetalHandlePropertiesEXT;
+#endif /* defined(VK_EXT_external_memory_metal) */
 #if defined(VK_EXT_full_screen_exclusive)
 extern PFN_vkAcquireFullScreenExclusiveModeEXT vkAcquireFullScreenExclusiveModeEXT;
 extern PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT vkGetPhysicalDeviceSurfacePresentModes2EXT;
@@ -2153,7 +2161,7 @@ extern PFN_vkAcquireNextImage2KHR vkAcquireNextImage2KHR;
 #endif
 
 /**
- * Copyright (c) 2018-2024 Arseny Kapoulkine
+ * Copyright (c) 2018-2025 Arseny Kapoulkine
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
