@@ -17,32 +17,23 @@
 #pragma once
 
 #include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/sync.h>
-#include <DiepDesktop/shared/color.h>
 #include <DiepDesktop/shared/event.h>
 #include <DiepDesktop/shared/extent.h>
-#include <DiepDesktop/client/tex/base.h>
-
-#define VK_NO_PROTOTYPES
-#include <vulkan/vulkan.h>
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
-
-#include <stdatomic.h>
 
 
-typedef enum window_cursor
+typedef enum window_cursor : uint32_t
 {
 	WINDOW_CURSOR_DEFAULT,
 	WINDOW_CURSOR_TYPING,
 	WINDOW_CURSOR_POINTING,
-	WINDOW_CURSOR__COUNT
+	MACRO_ENUM_BITS(WINDOW_CURSOR)
 }
 window_cursor_t;
 
 
-typedef enum window_button
+typedef enum window_button : uint32_t
 {
 	WINDOW_BUTTON_UNKNOWN,
 	WINDOW_BUTTON_LEFT,
@@ -50,7 +41,7 @@ typedef enum window_button
 	WINDOW_BUTTON_RIGHT,
 	WINDOW_BUTTON_X1,
 	WINDOW_BUTTON_X2,
-	WINDOW_BUTTON__COUNT
+	MACRO_ENUM_BITS(WINDOW_BUTTON)
 }
 window_button_t;
 
@@ -58,7 +49,7 @@ window_button_t;
 #define __(x) WINDOW_KEY_##x
 #define _(x) __(x),
 
-typedef enum window_key
+typedef enum window_key : uint32_t
 {
 	_(UNKNOWN)_(RETURN)_(ESCAPE)_(BACKSPACE)_(TAB)_(SPACE)_(EXCLAIM)_(DBLAPOSTROPHE)_(HASH)_(DOLLAR)_(PERCENT)
 	_(AMPERSAND)_(APOSTROPHE)_(LEFTPAREN)_(RIGHTPAREN)_(ASTERISK)_(PLUS)_(COMMA)_(MINUS)_(PERIOD)_(SLASH)_(0)_(1)_(2)
@@ -82,7 +73,7 @@ typedef enum window_key
 	_(MEDIA_EJECT)_(MEDIA_PLAY_PAUSE)_(MEDIA_SELECT)_(AC_NEW)_(AC_OPEN)_(AC_CLOSE)_(AC_EXIT)_(AC_SAVE)_(AC_PRINT)
 	_(AC_PROPERTIES)_(AC_SEARCH)_(AC_HOME)_(AC_BACK)_(AC_FORWARD)_(AC_STOP)_(AC_REFRESH)_(AC_BOOKMARKS)_(SOFTLEFT)
 	_(SOFTRIGHT)_(CALL)_(ENDCALL)
-	WINDOW_KEY__COUNT
+	MACRO_ENUM_BITS(WINDOW_KEY)
 }
 window_key_t;
 
@@ -90,191 +81,75 @@ window_key_t;
 #undef __
 
 
-typedef enum window_mod
+typedef enum window_mod : uint32_t
 {
-	WINDOW_MOD_NONE = 0,
-	WINDOW_MOD_SHIFT = 1,
-	WINDOW_MOD_CTRL = 2,
-	WINDOW_MOD_ALT = 4,
-	WINDOW_MOD_GUI = 8,
-	WINDOW_MOD_CAPS_LOCK = 16,
-	WINDOW_MOD__COUNT
+	WINDOW_MOD_SHIFT,
+	WINDOW_MOD_CTRL,
+	WINDOW_MOD_ALT,
+	WINDOW_MOD_GUI,
+	WINDOW_MOD_CAPS_LOCK,
+	MACRO_ENUM_BITS_EXP(WINDOW_MOD)
 }
 window_mod_t;
 
 
-typedef struct window_resize_event_data
+typedef enum window_user_event : uint32_t
 {
-	pair_t old_size;
-	pair_t new_size;
-}
-window_resize_event_data_t;
-
-typedef struct window_focus_event_data
-{
-	uint8_t _;
-}
-window_focus_event_data_t;
-
-typedef struct window_blur_event_data
-{
-	uint8_t _;
-}
-window_blur_event_data_t;
-
-typedef struct window_key_down_event_data
-{
-	window_key_t key;
-	window_mod_t mods;
-	uint8_t repeat;
-}
-window_key_down_event_data_t;
-
-typedef struct window_key_up_event_data
-{
-	window_key_t key;
-	window_mod_t mods;
-}
-window_key_up_event_data_t;
-
-typedef struct window_text_event_data
-{
-	const char* str;
-	uint32_t len;
-}
-window_text_event_data_t;
-
-typedef struct window_mouse_down_event_data
-{
-	window_button_t button;
-	pair_t pos;
-	uint8_t clicks;
-}
-window_mouse_down_event_data_t;
-
-typedef struct window_mouse_up_event_data
-{
-	window_button_t button;
-	pair_t pos;
-}
-window_mouse_up_event_data_t;
-
-typedef struct window_mouse_move_event_data
-{
-	pair_t old_pos;
-	pair_t new_pos;
-}
-window_mouse_move_event_data_t;
-
-typedef struct window_mouse_scroll_event_data
-{
-	float offset_y;
-}
-window_mouse_scroll_event_data_t;
-
-
-typedef struct window
-{
-	sync_mtx_t mtx;
-
-	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
-	window_cursor_t current_cursor;
-
-	SDL_PropertiesID props;
-	SDL_Window* window;
-
-	half_extent_t extent;
-	pair_t size;
-	pair_t mouse;
-
-	bool fullscreen;
-	bool first_frame;
-
-	event_target_t resize_target;
-	event_target_t focus_target;
-	event_target_t blur_target;
-	event_target_t key_down_target;
-	event_target_t key_up_target;
-	event_target_t text_target;
-	event_target_t mouse_down_target;
-	event_target_t mouse_up_target;
-	event_target_t mouse_move_target;
-	event_target_t mouse_scroll_target;
-}
-window_t;
-
-
-extern void
-window_init(
-	window_t* window
-	);
-
-
-extern void
-window_free(
-	window_t* window
-	);
-
-
-extern void
-window_lock(
-	window_t* window
-	);
-
-
-extern void
-window_unlock(
-	window_t* window
-	);
-
-
-extern void
-window_set_cursor(
-	window_t* window,
-	window_cursor_t cursor
-	);
-
-
-extern void
-window_start_typing(
-	window_t* window
-	);
-
-
-extern void
-window_stop_typing(
-	window_t* window
-	);
-
-
-extern char*
-window_get_clipboard(
-	window_t* window,
-	uint32_t* len
-	);
-
-
-extern void
-window_set_clipboard(
-	window_t* window,
-	const char* str
-	);
-
-
-
-typedef enum window_user_event
-{
+	WINDOW_USER_EVENT_SET_CURSOR,
+	WINDOW_USER_EVENT_SHOW_WINDOW,
+	WINDOW_USER_EVENT_HIDE_WINDOW,
+	WINDOW_USER_EVENT_START_TYPING,
+	WINDOW_USER_EVENT_STOP_TYPING,
 	WINDOW_USER_EVENT_SET_CLIPBOARD,
-	WINDOW_USER_EVENT__COUNT
+	WINDOW_USER_EVENT_GET_CLIPBOARD,
+	MACRO_ENUM_BITS(WINDOW_USER_EVENT)
 }
 window_user_event_t;
 
+typedef struct window_user_event_set_cursor_data
+{
+	window_cursor_t cursor;
+}
+window_user_event_set_cursor_data_t;
+
+typedef struct window_user_event_show_window_data
+{
+}
+window_user_event_show_window_data_t;
+
+typedef struct window_user_event_hide_window_data
+{
+}
+window_user_event_hide_window_data_t;
+
+typedef struct window_user_event_start_typing_data
+{
+}
+window_user_event_start_typing_data_t;
+
+typedef struct window_user_event_stop_typing_data
+{
+}
+window_user_event_stop_typing_data_t;
+
+typedef struct window_user_event_set_clipboard_data
+{
+	const char* str;
+}
+window_user_event_set_clipboard_data_t;
+
+typedef struct window_user_event_get_clipboard_data
+{
+}
+window_user_event_get_clipboard_data_t;
+
+
 typedef struct window_manager
 {
-	window_t* windows;
-	uint32_t count;
-
 	_Atomic bool running;
+
+	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
+	window_cursor_t current_cursor;
 }
 window_manager_t;
 
@@ -291,6 +166,15 @@ window_manager_free(
 	);
 
 
+extern void
+window_manager_push_event(
+	window_manager_t* manager,
+	window_user_event_t type,
+	void* context,
+	void* data
+	);
+
+
 extern bool
 window_manager_is_running(
 	window_manager_t* manager
@@ -298,6 +182,246 @@ window_manager_is_running(
 
 
 extern void
+window_manager_stop_running(
+	window_manager_t* manager
+	);
+
+
+extern void
 window_manager_run(
 	window_manager_t* manager
+	);
+
+
+typedef struct window window_t;
+
+typedef struct window_free_event_data
+{
+	window_t* window;
+}
+window_free_event_data_t;
+
+typedef struct window_move_event_data
+{
+	window_t* window;
+	pair_t old_pos;
+	pair_t new_pos;
+}
+window_move_event_data_t;
+
+typedef struct window_resize_event_data
+{
+	window_t* window;
+	pair_t old_size;
+	pair_t new_size;
+}
+window_resize_event_data_t;
+
+typedef struct window_focus_event_data
+{
+	window_t* window;
+}
+window_focus_event_data_t;
+
+typedef struct window_blur_event_data
+{
+	window_t* window;
+}
+window_blur_event_data_t;
+
+typedef struct window_close_event_data
+{
+	window_t* window;
+}
+window_close_event_data_t;
+
+typedef struct window_key_down_event_data
+{
+	window_t* window;
+	window_key_t key;
+	window_mod_t mods;
+	uint8_t repeat;
+}
+window_key_down_event_data_t;
+
+typedef struct window_key_up_event_data
+{
+	window_t* window;
+	window_key_t key;
+	window_mod_t mods;
+}
+window_key_up_event_data_t;
+
+typedef struct window_text_event_data
+{
+	window_t* window;
+	const char* str;
+	uint32_t len;
+}
+window_text_event_data_t;
+
+typedef struct window_get_clipboard_event_data
+{
+	window_t* window;
+	char* str;
+	uint32_t len;
+}
+window_get_clipboard_event_data_t;
+
+typedef struct window_set_clipboard_event_data
+{
+	window_t* window;
+	bool success;
+}
+window_set_clipboard_event_data_t;
+
+typedef struct window_mouse_down_event_data
+{
+	window_t* window;
+	window_button_t button;
+	pair_t pos;
+	uint8_t clicks;
+}
+window_mouse_down_event_data_t;
+
+typedef struct window_mouse_up_event_data
+{
+	window_t* window;
+	window_button_t button;
+	uint8_t clicks;
+	pair_t pos;
+}
+window_mouse_up_event_data_t;
+
+typedef struct window_mouse_move_event_data
+{
+	window_t* window;
+	pair_t old_pos;
+	pair_t new_pos;
+}
+window_mouse_move_event_data_t;
+
+typedef struct window_mouse_scroll_event_data
+{
+	window_t* window;
+	float offset_y;
+}
+window_mouse_scroll_event_data_t;
+
+
+struct window
+{
+	window_manager_t* manager;
+
+	SDL_PropertiesID sdl_props;
+	SDL_Window* sdl_window;
+	SDL_PropertiesID props;
+
+	half_extent_t old_extent;
+	half_extent_t extent;
+	pair_t mouse;
+
+	bool fullscreen;
+
+	event_target_t free_target;
+	event_target_t move_target;
+	event_target_t resize_target;
+	event_target_t focus_target;
+	event_target_t blur_target;
+	event_target_t close_target;
+	event_target_t key_down_target;
+	event_target_t key_up_target;
+	event_target_t text_target;
+	event_target_t get_clipboard_target;
+	event_target_t set_clipboard_target;
+	event_target_t mouse_down_target;
+	event_target_t mouse_up_target;
+	event_target_t mouse_move_target;
+	event_target_t mouse_scroll_target;
+};
+
+
+extern void
+window_init(
+	window_t* window,
+	window_manager_t* manager
+	);
+
+
+extern void
+window_free(
+	window_t* window
+	);
+
+
+extern void
+window_set(
+	window_t* window,
+	const char* name,
+	void* data
+	);
+
+
+extern void*
+window_get(
+	window_t* window,
+	const char* name
+	);
+
+
+extern void
+window_push_event(
+	window_t* window,
+	window_user_event_t type,
+	void* data
+	);
+
+
+extern void
+window_set_cursor(
+	window_t* window,
+	window_cursor_t cursor
+	);
+
+
+extern void
+window_show(
+	window_t* window
+	);
+
+
+extern void
+window_hide(
+	window_t* window
+	);
+
+
+extern void
+window_start_typing(
+	window_t* window
+	);
+
+
+extern void
+window_stop_typing(
+	window_t* window
+	);
+
+
+extern void
+window_get_clipboard(
+	window_t* window
+	);
+
+
+extern void
+window_set_clipboard(
+	window_t* window,
+	const char* str
+	);
+
+
+extern void
+window_toggle_fullscreen(
+	window_t* window
 	);

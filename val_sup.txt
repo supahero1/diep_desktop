@@ -111,55 +111,9 @@
 }
 
 {
-	Malloc indirect garbage
+	DBUS
 	Memcheck:Leak
-	match-leak-kinds: indirect
-	fun:malloc
-	obj:*
 	...
-}
-
-{
-	Malloc definite garbage
-	Memcheck:Leak
-	match-leak-kinds: definite
-	fun:malloc
-	obj:*
-	...
-}
-
-{
-	Calloc indirect garbage
-	Memcheck:Leak
-	match-leak-kinds: indirect
-	fun:calloc
-	obj:*
-	...
-}
-
-{
-	Calloc definite garbage
-	Memcheck:Leak
-	match-leak-kinds: definite
-	fun:calloc
-	obj:*
-	...
-}
-
-{
-	Realloc indirect garbage
-	Memcheck:Leak
-	match-leak-kinds: indirect
-	fun:realloc
-	obj:*
-	...
-}
-
-{
-	Realloc definite garbage
-	Memcheck:Leak
-	match-leak-kinds: definite
-	fun:realloc
-	obj:*
+	obj:*libdbus-1.so*
 	...
 }

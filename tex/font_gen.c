@@ -444,7 +444,7 @@ main(
 		str += sprintf(str, "\n");
 	}
 
-	alloc_free(sizeof(font_glyph_data_t) * table_size, glyph_data);
+	alloc_free(sizeof(*glyph_data) * table_size, glyph_data);
 
 	str += sprintf(str, "};\n\n");
 	str += sprintf(str, "#undef _\n");

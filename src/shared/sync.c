@@ -18,6 +18,8 @@
 #include <DiepDesktop/shared/debug.h>
 
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
 
 
 void
@@ -135,6 +137,7 @@ sync_sem_wait(
 			continue;
 		}
 
+		fprintf(stderr, "sem_wait: %s\n", strerror(errno));
 		hard_assert_unreachable();
 	}
 }
@@ -163,6 +166,7 @@ sync_sem_timed_wait(
 			break;
 		}
 
+		fprintf(stderr, "sem_timedwait: %s\n", strerror(errno));
 		hard_assert_unreachable();
 	}
 }

@@ -546,34 +546,7 @@ private const alloc_state* alloc_global_state;
 
 
 
-private uint32_t
-alloc_log2(
-	alloc_t value
-	)
-{
-	assert_neq(value, 0);
-
-	return __builtin_ctzll(value);
-}
-
-
-private uint32_t
-alloc_get_next_power_of_2(
-	alloc_t value
-	)
-{
-	assert_neq(value, 0);
-
-	if(value <= 2)
-	{
-		return value;
-	}
-
-	return UINT32_C(1) << (32 - __builtin_clz(value - 1));
-}
-
-
-private __attribute__((constructor)) void
+private assert_ctor void
 alloc_library_init(
 	void
 	)
@@ -590,7 +563,7 @@ alloc_library_init(
 	assert_true(MACRO_IS_POWER_OF_2(alloc_page_size));
 
 	alloc_page_size_mask = alloc_page_size - 1;
-	alloc_page_size_shift = alloc_log2(alloc_page_size);
+	alloc_page_size_shift = MACRO_LOG2(alloc_page_size);
 
 #ifndef ALLOC_DO_NOT_AUTO_INIT_GLOBAL_STATE
 	alloc_global_state = alloc_alloc_state(NULL);
@@ -599,7 +572,7 @@ alloc_library_init(
 }
 
 
-private __attribute__((destructor)) void
+private assert_dtor void
 aloc_library_free(
 	void
 	)
@@ -1192,7 +1165,7 @@ alloc_create_handle(
 		alloc_t block_size = info->block_size;
 		block_size = MACRO_MIN(block_size, block_size_max[table_idx]);
 		block_size = MACRO_MAX(block_size, alloc_page_size);
-		block_size = alloc_get_next_power_of_2(block_size);
+		block_size = MACRO_NEXT_OR_EQUAL_POWER_OF_2(block_size);
 
 		alloc_t alloc_limit =
 			(block_size - sizeof(alloc_1_block_t)) / sizeof(alloc_1_t);
@@ -1200,7 +1173,7 @@ alloc_create_handle(
 		alloc_limit = MACRO_MAX(alloc_limit, 1U);
 
 		block_size = sizeof(alloc_1_block_t) + alloc_limit * sizeof(alloc_1_t);
-		block_size = alloc_get_next_power_of_2(block_size);
+		block_size = MACRO_NEXT_OR_EQUAL_POWER_OF_2(block_size);
 
 		handle_internal->padding = 0;
 		handle_internal->alloc_limit = alloc_limit;
@@ -1222,14 +1195,14 @@ alloc_create_handle(
 	alloc_t block_size = info->block_size;
 	block_size = MACRO_MIN(block_size, block_size_max[table_idx]);
 	block_size = MACRO_MAX(block_size, alloc_page_size);
-	block_size = alloc_get_next_power_of_2(block_size);
+	block_size = MACRO_NEXT_OR_EQUAL_POWER_OF_2(block_size);
 
 	alloc_t alloc_limit = (block_size - alloc_size) / info->alloc_size;
 	alloc_limit = MACRO_MIN(alloc_limit, alloc_limit_max[table_idx]);
 	alloc_limit = MACRO_MAX(alloc_limit, 1U);
 
 	block_size = padding + alloc_limit * info->alloc_size;
-	block_size = alloc_get_next_power_of_2(block_size);
+	block_size = MACRO_NEXT_OR_EQUAL_POWER_OF_2(block_size);
 
 	handle_internal->padding = padding;
 	handle_internal->alloc_limit = alloc_limit;
@@ -1283,7 +1256,7 @@ alloc_default_idx_fn(
 	alloc_t size
 	)
 {
-	return alloc_log2(alloc_get_next_power_of_2(size));
+	return MACRO_LOG2(MACRO_NEXT_OR_EQUAL_POWER_OF_2(size));
 }
 
 

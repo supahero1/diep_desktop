@@ -14,6 +14,5 @@
  *  limitations under the License.
  */
 
-#pragma once
-
+#include <DiepDesktop/client/window/graphics.h>
 

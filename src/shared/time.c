@@ -334,7 +334,7 @@ time_timers_free_##names (																		\
 	time_timers_t* timers																		\
 	)																							\
 {																								\
-	alloc_free(sizeof( time_##name##_t ) * timers-> names##_size , timers-> names);				\
+	alloc_free(sizeof(* timers-> names ) * timers-> names##_size , timers-> names);				\
 }																								\
 																								\
 																								\
@@ -356,8 +356,8 @@ time_timers_resize_##names (																	\
 		return;																					\
 	}																							\
 																								\
-	timers-> names = alloc_remalloc(sizeof( time_##name##_t ) * timers-> names##_size ,			\
-		timers-> names, sizeof( time_##name##_t ) * new_size);									\
+	timers-> names = alloc_remalloc(sizeof(* timers-> names ) * timers-> names##_size ,			\
+		timers-> names, sizeof(* timers-> names ) * new_size);									\
 	assert_not_null(timers-> names);															\
 																								\
 	timers-> names##_size = new_size;															\

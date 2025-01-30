@@ -59,7 +59,7 @@ typedef union half_extent
 	{
 		union
 		{
-			pair_t Pos;
+			pair_t pos;
 
 			struct
 			{

@@ -27,7 +27,12 @@ LOCALE :=
 endif
 
 
-BASE_FLAGS := -std=gnu23 -Wall -flto -Iinclude -D_GNU_SOURCE
+BASE_FLAGS := -std=c2y -Wall -Iinclude -D_GNU_SOURCE
+
+SHARED_FLAGS := -Wno-address-of-packed-member
+SHARED_NOLIB_FLAGS :=
+SHARED_LD_FLAGS :=
+
 
 ifeq ($(VALGRIND),1)
 ifeq ($(OS),Windows_NT)
@@ -44,17 +49,18 @@ VALGRIND_CALL := valgrind --tool=callgrind
 endif
 
 ifeq ($(RELEASE),2)
-BASE_FLAGS += -O3 -DNDEBUG -march=native -mtune=native
+BASE_FLAGS += -O3 -DNDEBUG -flto -march=native -mtune=native
+SHARED_NOLIB_FLAGS += -fwhole-program
 else
 ifeq ($(RELEASE),1)
-BASE_FLAGS += -O3 -DNDEBUG
+BASE_FLAGS += -O3 -DNDEBUG -flto
+SHARED_NOLIB_FLAGS += -fwhole-program
 else
 BASE_FLAGS += -O0 -g3 -ggdb -D_FORTIFY_SOURCE=3
-endif
-endif
-
 ifneq ($(OS),Windows_NT)
 BASE_FLAGS += -rdynamic
+endif
+endif
 endif
 
 
@@ -66,11 +72,6 @@ endif
 
 
 FREETYPE_LD_FLAGS := -I/$(USR)/include/freetype2 -lfreetype
-
-
-SHARED_FLAGS := -Wno-address-of-packed-member
-SHARED_NOLIB_FLAGS := -fwhole-program
-SHARED_LD_FLAGS :=
 
 
 CLIENT_FLAGS := $(SHARED_FLAGS) $(SHARED_NOLIB_FLAGS)
@@ -103,8 +104,7 @@ endif
 SHARED_FILES := alloc base debug event file threads rand \
 	bit_buffer hash time settings base64 color sync
 CLIENT_FILES := tex/base font/base font/filter window/base \
-	window/dds window/volk window/vulkan ui/base ui/container \
-	ui/checkbox main
+	window/dds window/volk window/graphics main
 SERVER_FILES := main quadtree sort
 
 SHARED_FILES := $(SHARED_FILES:%=src/shared/%.c)

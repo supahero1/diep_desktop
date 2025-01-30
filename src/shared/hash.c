@@ -54,7 +54,7 @@ hash_table_init(
 	table->entries_size = 0;
 	table->free_entry = 0;
 
-	table->buckets = alloc_calloc(sizeof(uint32_t) * table->bucket_count);
+	table->buckets = alloc_calloc(sizeof(*table->buckets) * table->bucket_count);
 	assert_not_null(table->buckets);
 
 	table->entries = NULL;
@@ -66,8 +66,8 @@ hash_table_free(
 	hash_table_t* table
 	)
 {
-	alloc_free(sizeof(uint32_t) * table->bucket_count, table->buckets);
-	alloc_free(sizeof(hash_table_entry_t) * table->entries_size, table->entries);
+	alloc_free(sizeof(*table->buckets) * table->bucket_count, table->buckets);
+	alloc_free(sizeof(*table->entries) * table->entries_size, table->entries);
 }
 
 
@@ -76,9 +76,9 @@ hash_table_clear(
 	hash_table_t* table
 	)
 {
-	(void) memset(table->buckets, 0, sizeof(uint32_t) * table->bucket_count);
+	(void) memset(table->buckets, 0, sizeof(*table->buckets) * table->bucket_count);
 
-	alloc_free(sizeof(hash_table_entry_t) * table->entries_size, table->entries);
+	alloc_free(sizeof(*table->entries) * table->entries_size, table->entries);
 
 	table->entries = NULL;
 	table->entries_used = 1;
@@ -125,9 +125,9 @@ hash_table_get_entry(
 	{
 		uint32_t new_size = (table->entries_used << 1) | 1;
 		table->entries = alloc_remalloc(
-			sizeof(hash_table_entry_t) * table->entries_size,
+			sizeof(*table->entries) * table->entries_size,
 			table->entries,
-			sizeof(hash_table_entry_t) * new_size
+			sizeof(*table->entries) * new_size
 			);
 		assert_not_null(table->entries);
 

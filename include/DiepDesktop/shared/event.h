@@ -70,6 +70,13 @@ event_target_add(
 	);
 
 
+extern event_listener_t*
+event_target_once(
+	event_target_t* target,
+	event_listener_data_t data
+	);
+
+
 extern void
 event_target_del(
 	event_target_t* target,

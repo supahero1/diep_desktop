@@ -50,7 +50,8 @@ const uint32_t ShapeMaxHP[] =
 };
 
 
-#define SHAPE_HP_BITS(ShapeName) [ SHAPE_##ShapeName ] = MACRO_GET_BITS( ShapeName##_MAX_HP )
+#define SHAPE_HP_BITS(ShapeName)	\
+[ SHAPE_##ShapeName ] = MACRO_GET_BITS_CONST( ShapeName##_MAX_HP )
 
 const uint32_t ShapeHPBits[] =
 {

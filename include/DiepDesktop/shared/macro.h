@@ -18,46 +18,97 @@
 
 #define MACRO_POWER_OF_2(bit) (1U << (bit))
 
-#define MACRO_GET_BITS(num) __builtin_choose_expr((num) == 1, 0, 32 - __builtin_clz((num) - 1))
+#define MACRO_LOG2(num)					\
+({										\
+	typeof(num) _num = (num);			\
+										\
+	if(num <= 1)						\
+	{									\
+		_num = 0;						\
+	}									\
+	else								\
+	{									\
+		_num = __builtin_ctzll(num);	\
+	}									\
+										\
+	_num;								\
+})
+
+#define MACRO_LOG2_CONST(num)	\
+__builtin_choose_expr((num) <= 1, 0, __builtin_ctzll(num))
+
+#define MACRO_NEXT_OR_EQUAL_POWER_OF_2(num)				\
+({														\
+	typeof(num) _num = (num);							\
+														\
+	if(_num > 2)										\
+	{													\
+		_num = 1U << (32 - __builtin_clz(_num - 1));	\
+	}													\
+														\
+	_num;												\
+})
+
+#define MACRO_NEXT_OR_EQUAL_POWER_OF_2_CONST(num)	\
+__builtin_choose_expr((num) <= 2, (num), 1U << (32 - __builtin_clz((num) - 1)))
 
 #define MACRO_IS_POWER_OF_2(x)	\
 ({								\
-	__typeof__ (x) _x = (x);	\
+	typeof(x) _x = (x);	\
 	(_x & (_x - 1)) == 0;		\
 })
 
-#define MACRO_ALIGN_UP(num, mask)						\
-({														\
-	__typeof__ (mask) _mask = (mask);					\
-	__typeof__ (num) result = (__typeof__ (num))(		\
-		((__typeof__ (mask)) num + _mask) & ~_mask);	\
-	result;												\
+#define MACRO_GET_BITS(num)						\
+({												\
+	typeof(num) _num = (num);					\
+												\
+	if(_num <= 1)								\
+	{											\
+		_num = 0;								\
+	}											\
+	else										\
+	{											\
+		_num = 32 - __builtin_clz(_num - 1);	\
+	}											\
+												\
+	_num;										\
+})
+
+#define MACRO_GET_BITS_CONST(num)	\
+__builtin_choose_expr((num) <= 1, 0, 32 - __builtin_clz((num) - 1))
+
+#define MACRO_ALIGN_UP(num, mask)				\
+({												\
+	typeof(mask) _mask = (mask);				\
+	typeof(num) result = (typeof(num))(			\
+		((typeof(mask)) num + _mask) & ~_mask);	\
+	result;										\
 })
 
 #define MACRO_ALIGN_UP_CONST(num, mask)	\
-((__typeof__ (num)) (((__typeof__ (mask)) num + (mask)) & ~(mask)))
+((typeof(num)) (((typeof(mask)) num + (mask)) & ~(mask)))
 
-#define MACRO_ALIGN_DOWN(num, mask)					\
-({													\
-	__typeof__ (mask) _mask = (mask);				\
-	__typeof__ (num) result = (__typeof__ (num))(	\
-		((__typeof__ (mask)) num) & ~_mask);		\
-	result;											\
+#define MACRO_ALIGN_DOWN(num, mask)		\
+({										\
+	typeof(mask) _mask = (mask);		\
+	typeof(num) result = (typeof(num))(	\
+		((typeof(mask)) num) & ~_mask);	\
+	result;								\
 })
 
 #define MACRO_ALIGN_DOWN_CONST(num, mask)	\
-((__typeof__ (num)) (((__typeof__ (mask)) num) & ~(mask)))
+((typeof(num)) (((typeof(mask)) num) & ~(mask)))
 
 #define MACRO_STR2(x) #x
 #define MACRO_STR(x) MACRO_STR2(x)
 
 #define MACRO_ENUM_BITS(name)	\
 name##__COUNT,					\
-name##__BITS = MACRO_GET_BITS( name##__COUNT )
+name##__BITS = MACRO_GET_BITS_CONST( name##__COUNT )
 
 #define MACRO_ENUM_BITS_EXP(name)	\
 name##__COUNT,						\
-name##__BITS = MACRO_GET_BITS(MACRO_POWER_OF_2( name##__COUNT ))
+name##__BITS = MACRO_GET_BITS_CONST(MACRO_NEXT_OR_EQUAL_POWER_OF_2_CONST( name##__COUNT ))
 
 #define MACRO_TO_BITS(bytes) ((bytes) << 3)
 
@@ -65,18 +116,18 @@ name##__BITS = MACRO_GET_BITS(MACRO_POWER_OF_2( name##__COUNT ))
 
 #define MACRO_ARRAY_LEN(a) (sizeof(a)/sizeof((a)[0]))
 
-#define MACRO_MIN(a, b)			\
-({								\
-    __typeof__ (a) _a = (a);	\
-    __typeof__ (b) _b = (b);	\
-    _a > _b ? _b : _a;			\
+#define MACRO_MIN(a, b)	\
+({						\
+    typeof(a) _a = (a);	\
+    typeof(b) _b = (b);	\
+    _a > _b ? _b : _a;	\
 })
 
-#define MACRO_MAX(a, b)			\
-({								\
-    __typeof__ (a) _a = (a);	\
-    __typeof__ (b) _b = (b);	\
-    _a > _b ? _a : _b;			\
+#define MACRO_MAX(a, b)	\
+({						\
+    typeof(a) _a = (a);	\
+    typeof(b) _b = (b);	\
+    _a > _b ? _a : _b;	\
 })
 
 #define MACRO_CLAMP(a, min, max) MACRO_MIN(MACRO_MAX((a), (min)), (max))
@@ -111,3 +162,22 @@ name##__BITS = MACRO_GET_BITS(MACRO_POWER_OF_2( name##__COUNT ))
 							\
 	x.u32;					\
 })
+
+#define MACRO_FORMAT_TYPE(x)	\
+_Generic((x),					\
+	bool:				"%d",	\
+	signed char:		"%hhd",	\
+	short:				"%hd",	\
+	int:				"%d",	\
+	long:				"%ld",	\
+	long long:			"%lld",	\
+	unsigned char:		"%hhu",	\
+	unsigned short:		"%hu",	\
+	unsigned int:		"%u",	\
+	unsigned long:		"%lu",	\
+	unsigned long long:	"%llu",	\
+	float:				"%f",	\
+	double:				"%lf",	\
+	long double:		"%Lf",	\
+	default:			"%p"	\
+	)

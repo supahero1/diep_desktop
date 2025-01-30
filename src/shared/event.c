@@ -45,10 +45,32 @@ event_target_free(
 }
 
 
-event_listener_t*
-event_target_add(
+typedef struct event_once_data
+{
+	event_target_t* target;
+	event_listener_t* listener;
+	event_listener_data_t data;
+}
+event_once_data_t;
+
+
+private void
+event_oneself_fn(
+	event_once_data_t* once,
+	void* event_data
+	)
+{
+	event_target_del(once->target, once->listener);
+	once->data.fn(once->data.data, event_data);
+	alloc_free(sizeof(event_once_data_t), once);
+}
+
+
+private event_listener_t*
+event_target_add_common(
 	event_target_t* target,
-	event_listener_data_t data
+	event_listener_data_t data,
+	bool once
 	)
 {
 	assert_not_null(target);
@@ -56,6 +78,27 @@ event_target_add(
 
 	event_listener_t* listener = alloc_malloc(sizeof(event_listener_t));
 	assert_not_null(listener);
+
+	if(once)
+	{
+		event_once_data_t* once_data = alloc_malloc(sizeof(*once_data));
+		assert_not_null(once_data);
+
+		*once_data =
+		(event_once_data_t)
+		{
+			.target = target,
+			.listener = listener,
+			.data = data
+		};
+
+		data =
+		(event_listener_data_t)
+		{
+			.fn = (event_fn_t) event_oneself_fn,
+			.data = once_data
+		};
+	}
 
 	listener->prev = NULL;
 	listener->next = target->head;
@@ -69,6 +112,26 @@ event_target_add(
 	target->head = listener;
 
 	return listener;
+}
+
+
+event_listener_t*
+event_target_add(
+	event_target_t* target,
+	event_listener_data_t data
+	)
+{
+	return event_target_add_common(target, data, false);
+}
+
+
+event_listener_t*
+event_target_once(
+	event_target_t* target,
+	event_listener_data_t data
+	)
+{
+	return event_target_add_common(target, data, true);
 }
 
 

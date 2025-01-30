@@ -19,6 +19,7 @@
 #include <DiepDesktop/shared/alloc_ext.h>
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 
 
@@ -231,6 +232,7 @@ thread_sleep(
 			continue;
 		}
 
+		fprintf(stderr, "nanosleep: %s\n", strerror(errno));
 		hard_assert_unreachable();
 	}
 }
@@ -567,7 +569,7 @@ thread_pool_try_work_common(
 	if(pool->used)
 	{
 		(void) memmove(pool->queue, pool->queue + 1,
-			sizeof(thread_data_t) * pool->used);
+			sizeof(*pool->queue) * pool->used);
 	}
 
 	if(lock)
