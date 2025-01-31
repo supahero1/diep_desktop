@@ -104,7 +104,7 @@ endif
 SHARED_FILES := alloc base debug event file threads rand \
 	bit_buffer hash time settings base64 color sync
 CLIENT_FILES := tex/base font/base font/filter window/base \
-	window/dds window/volk window/graphics main
+	window/dds window/volk window/graphics app main
 SERVER_FILES := main quadtree sort
 
 SHARED_FILES := $(SHARED_FILES:%=src/shared/%.c)

@@ -135,6 +135,38 @@ window_sdl_free(
 }
 
 
+private void
+window_free_fn(
+	window_t* window
+	)
+{
+	window_free_event_data_t data =
+	{
+		.window = window
+	};
+	event_target_fire(&window->free_target, &data);
+
+	event_target_free(&window->mouse_scroll_target);
+	event_target_free(&window->mouse_move_target);
+	event_target_free(&window->mouse_up_target);
+	event_target_free(&window->mouse_down_target);
+	event_target_free(&window->set_clipboard_target);
+	event_target_free(&window->get_clipboard_target);
+	event_target_free(&window->text_target);
+	event_target_free(&window->key_up_target);
+	event_target_free(&window->key_down_target);
+	event_target_free(&window->close_target);
+	event_target_free(&window->blur_target);
+	event_target_free(&window->focus_target);
+	event_target_free(&window->resize_target);
+	event_target_free(&window->move_target);
+	event_target_free(&window->free_target);
+
+	SDL_DestroyWindow(window->sdl_window);
+	SDL_DestroyProperties(window->sdl_props);
+}
+
+
 void
 window_init(
 	window_t* window,
@@ -142,6 +174,13 @@ window_init(
 	)
 {
 	window->manager = manager;
+
+	event_listener_data_t data =
+	{
+		.fn = (event_fn_t) window_free_fn,
+		.data = window
+	};
+	window->free_listener = event_target_once(&manager->free_target, data);
 
 
 	uint32_t sdl_props = SDL_CreateProperties();
@@ -218,35 +257,30 @@ window_init(
 }
 
 
-void
+private void
 window_free(
 	window_t* window
 	)
 {
-	window_free_event_data_t data =
+	event_target_del(&window->manager->free_target, window->free_listener);
+	window_free_fn(window);
+}
+
+
+void
+window_close(
+	window_t* window
+	)
+{
+	window_user_event_window_close_t* data = alloc_malloc(sizeof(*data));
+	assert_ptr(data, sizeof(*data));
+
+	*data =
+	(window_user_event_window_close_t)
 	{
-		.window = window
 	};
-	event_target_fire(&window->free_target, &data);
 
-	event_target_free(&window->mouse_scroll_target);
-	event_target_free(&window->mouse_move_target);
-	event_target_free(&window->mouse_up_target);
-	event_target_free(&window->mouse_down_target);
-	event_target_free(&window->set_clipboard_target);
-	event_target_free(&window->get_clipboard_target);
-	event_target_free(&window->text_target);
-	event_target_free(&window->key_up_target);
-	event_target_free(&window->key_down_target);
-	event_target_free(&window->close_target);
-	event_target_free(&window->blur_target);
-	event_target_free(&window->focus_target);
-	event_target_free(&window->resize_target);
-	event_target_free(&window->move_target);
-	event_target_free(&window->free_target);
-
-	SDL_DestroyWindow(window->sdl_window);
-	SDL_DestroyProperties(window->sdl_props);
+	window_push_event(window, WINDOW_USER_EVENT_WINDOW_CLOSE, data);
 }
 
 
@@ -632,9 +666,26 @@ window_process_event(
 
 
 
+private void
+window_manager_free_fn(
+	window_manager_t* manager,
+	void* event_data
+	)
+{
+	event_target_fire(&manager->free_target, NULL);
+
+	event_target_free(&manager->free_target);
+
+	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_POINTING]);
+	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_TYPING]);
+	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_DEFAULT]);
+}
+
+
 void
 window_manager_init(
-	window_manager_t* manager
+	window_manager_t* manager,
+	event_target_t* free_target
 	)
 {
 	atomic_init(&manager->running, true);
@@ -653,17 +704,17 @@ window_manager_init(
 	manager->cursors[WINDOW_CURSOR_POINTING] = cursor;
 
 	manager->current_cursor = WINDOW_CURSOR_DEFAULT;
-}
 
 
-void
-window_manager_free(
-	window_manager_t* manager
-	)
-{
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_POINTING]);
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_TYPING]);
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_DEFAULT]);
+	event_target_init(&manager->free_target);
+
+
+	event_listener_data_t data =
+	{
+		.fn = (event_fn_t) window_manager_free_fn,
+		.data = manager
+	};
+	event_target_once(free_target, data);
 }
 
 
@@ -824,6 +875,17 @@ window_manager_process_user_event(
 
 			SDL_free(str);
 		}
+
+		alloc_free(sizeof(*data), data);
+
+		break;
+	}
+
+	case WINDOW_USER_EVENT_WINDOW_CLOSE:
+	{
+		window_user_event_window_close_t* data = event_data;
+
+		window_free(window);
 
 		alloc_free(sizeof(*data), data);
 

@@ -102,6 +102,7 @@ typedef enum window_user_event : uint32_t
 	WINDOW_USER_EVENT_STOP_TYPING,
 	WINDOW_USER_EVENT_SET_CLIPBOARD,
 	WINDOW_USER_EVENT_GET_CLIPBOARD,
+	WINDOW_USER_EVENT_WINDOW_CLOSE,
 	MACRO_ENUM_BITS(WINDOW_USER_EVENT)
 }
 window_user_event_t;
@@ -143,6 +144,11 @@ typedef struct window_user_event_get_clipboard_data
 }
 window_user_event_get_clipboard_data_t;
 
+typedef struct window_user_event_window_close
+{
+}
+window_user_event_window_close_t;
+
 
 typedef struct window_manager
 {
@@ -150,19 +156,16 @@ typedef struct window_manager
 
 	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
 	window_cursor_t current_cursor;
+
+	event_target_t free_target;
 }
 window_manager_t;
 
 
 extern void
 window_manager_init(
-	window_manager_t* manager
-	);
-
-
-extern void
-window_manager_free(
-	window_manager_t* manager
+	window_manager_t* manager,
+	event_target_t* free_target
 	);
 
 
@@ -312,6 +315,7 @@ window_mouse_scroll_event_data_t;
 struct window
 {
 	window_manager_t* manager;
+	event_listener_t* free_listener;
 
 	SDL_PropertiesID sdl_props;
 	SDL_Window* sdl_window;
@@ -349,7 +353,7 @@ window_init(
 
 
 extern void
-window_free(
+window_close(
 	window_t* window
 	);
 

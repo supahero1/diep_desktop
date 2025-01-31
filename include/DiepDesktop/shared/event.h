@@ -85,6 +85,13 @@ event_target_del(
 
 
 extern void
+event_target_del_once(
+	event_target_t* target,
+	event_listener_t* listener
+	);
+
+
+extern void
 event_target_fire(
 	event_target_t* target,
 	void* event_data

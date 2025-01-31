@@ -48,21 +48,20 @@ event_target_free(
 typedef struct event_once_data
 {
 	event_target_t* target;
-	event_listener_t* listener;
 	event_listener_data_t data;
 }
 event_once_data_t;
 
 
 private void
-event_oneself_fn(
-	event_once_data_t* once,
+event_once_fn(
+	event_listener_t* listener,
 	void* event_data
 	)
 {
-	event_target_del(once->target, once->listener);
-	once->data.fn(once->data.data, event_data);
-	alloc_free(sizeof(event_once_data_t), once);
+	event_once_data_t once = *(event_once_data_t*)(listener + 1);
+	event_target_del(once.target, listener);
+	once.data.fn(once.data.data, event_data);
 }
 
 
@@ -76,28 +75,35 @@ event_target_add_common(
 	assert_not_null(target);
 	assert_not_null(data.fn);
 
-	event_listener_t* listener = alloc_malloc(sizeof(event_listener_t));
-	assert_not_null(listener);
+	event_listener_t* listener;
 
 	if(once)
 	{
-		event_once_data_t* once_data = alloc_malloc(sizeof(*once_data));
-		assert_not_null(once_data);
+		event_once_data_t* once_data;
+
+		listener = alloc_malloc(sizeof(*listener) + sizeof(*once_data));
+		assert_not_null(listener);
+
+		once_data = (void*)(listener + 1);
 
 		*once_data =
 		(event_once_data_t)
 		{
 			.target = target,
-			.listener = listener,
 			.data = data
 		};
 
 		data =
 		(event_listener_data_t)
 		{
-			.fn = (event_fn_t) event_oneself_fn,
-			.data = once_data
+			.fn = (event_fn_t) event_once_fn,
+			.data = listener
 		};
+	}
+	else
+	{
+		listener = alloc_malloc(sizeof(*listener));
+		assert_not_null(listener);
 	}
 
 	listener->prev = NULL;
@@ -135,10 +141,11 @@ event_target_once(
 }
 
 
-void
-event_target_del(
+private void
+event_target_del_common(
 	event_target_t* target,
-	event_listener_t* listener
+	event_listener_t* listener,
+	alloc_t size
 	)
 {
 	assert_not_null(target);
@@ -158,7 +165,28 @@ event_target_del(
 		listener->next->prev = listener->prev;
 	}
 
-	alloc_free(sizeof(event_listener_t), listener);
+	alloc_free(size, listener);
+}
+
+
+void
+event_target_del(
+	event_target_t* target,
+	event_listener_t* listener
+	)
+{
+	event_target_del_common(target, listener, sizeof(*listener));
+}
+
+
+void
+event_target_del_once(
+	event_target_t* target,
+	event_listener_t* listener
+	)
+{
+	event_target_del_common(target, listener,
+		sizeof(*listener) + sizeof(event_once_data_t));
 }
 
 

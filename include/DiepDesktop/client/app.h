@@ -14,19 +14,25 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/client/app.h>
+#pragma once
 
 
-int
-main(
+typedef struct app app_t;
+
+
+extern app_t*
+app_init(
 	void
-	)
-{
-	app_t* app = app_init();
+	);
 
-	app_run(app);
 
-	app_free(app);
+extern void
+app_free(
+	app_t* app
+	);
 
-	return 0;
-}
+
+extern void
+app_run(
+	app_t* app
+	);
