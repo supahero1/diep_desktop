@@ -33,17 +33,17 @@ settings_init(
 {
 	sync_mtx_init(&settings->mtx);
 	hash_table_init(&settings->table, 256);
+	settings->dirty = false;
 
 	settings->path = path;
 
 	settings->timers = timers;
 	time_timer_init(&settings->save_timer);
 
-	event_target_init(&settings->save_success_target);
-	event_target_init(&settings->save_failure_target);
+	event_target_init(&settings->save_target);
+	event_target_init(&settings->load_target);
 
-	event_target_init(&settings->load_success_target);
-	event_target_init(&settings->load_failure_target);
+	settings_load(settings);
 }
 
 
@@ -57,11 +57,8 @@ settings_free(
 		settings_save(settings);
 	}
 
-	event_target_free(&settings->load_failure_target);
-	event_target_free(&settings->load_success_target);
-
-	event_target_free(&settings->save_failure_target);
-	event_target_free(&settings->save_success_target);
+	event_target_free(&settings->load_target);
+	event_target_free(&settings->save_target);
 
 	time_timer_free(&settings->save_timer);
 
@@ -179,6 +176,12 @@ settings_save(
 {
 	sync_mtx_lock(&settings->mtx);
 
+	if(!settings->dirty)
+	{
+		sync_mtx_unlock(&settings->mtx);
+		return;
+	}
+
 	uint64_t sum = 0;
 	hash_table_for_each(&settings->table, (hash_table_for_each_fn_t) settings_for_each_sum_fn, &sum);
 	sum = MACRO_TO_BYTES(sum) + 60;
@@ -212,14 +215,12 @@ settings_save(
 	bool status = file_write(settings->path, file);
 	alloc_free(compressed_size, compressed);
 
-	if(status)
+	settings_save_event_data_t save_data =
 	{
-		event_target_fire(&settings->save_success_target, settings);
-	}
-	else
-	{
-		event_target_fire(&settings->save_failure_target, settings);
-	}
+		.settings = settings,
+		.success = status
+	};
+	event_target_fire(&settings->save_target, &save_data);
 }
 
 
@@ -228,7 +229,12 @@ settings_save_fn(
 	settings_t* settings
 	)
 {
-	thread_init(NULL, (thread_data_t){ (thread_fn_t) settings_save, settings });
+	thread_data_t data =
+	{
+		.fn = (thread_fn_t) settings_save,
+		.data = settings
+	};
+	thread_init(NULL, data);
 }
 
 
@@ -278,6 +284,15 @@ settings_load(
 	}
 
 	uint8_t name[127];
+
+	settings_load_event_data_t load_data =
+	{
+		.settings = settings,
+		.success = false
+	};
+
+	hash_table_t new_table;
+	hash_table_init(&new_table, 256);
 
 	while(bit_buffer_available_bits(&buffer) >= 8 + 8 + 3 + 1)
 	{
@@ -364,14 +379,21 @@ settings_load(
 		}
 
 
-		sync_mtx_lock(&settings->mtx);
-			hash_table_modify(&settings->table, (const char*) name, &setting);
-		sync_mtx_unlock(&settings->mtx);
+		hash_table_modify(&new_table, (const char*) name, &setting);
 	}
+
+	sync_mtx_lock(&settings->mtx);
+		time_timers_cancel_timeout(settings->timers, &settings->save_timer);
+
+		hash_table_free(&settings->table);
+		settings->table = new_table;
+		settings->dirty = false;
+	sync_mtx_unlock(&settings->mtx);
 
 	alloc_free(decompressed_size, decompressed);
 
-	event_target_fire(&settings->load_success_target, settings);
+	load_data.success = true;
+	event_target_fire(&settings->load_target, &load_data);
 
 	return;
 
@@ -383,7 +405,7 @@ settings_load(
 	file_free(file);
 
 	goto_failure:
-	event_target_fire(&settings->load_failure_target, settings);
+	event_target_fire(&settings->load_target, &load_data);
 }
 
 

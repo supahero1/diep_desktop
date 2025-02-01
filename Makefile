@@ -307,7 +307,7 @@ ifeq ($(OS),Windows_NT)
 	$(CP) "C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll" DiepDesktop/
 else
 	$(CP) \
-		$$(ls -1 /usr/lib/x86_64-linux-gnu/libvulkan.so.1.3.* | sort -V | tail -n 1) \
+		$$(ls -1 /usr/lib/x86_64-linux-gnu/libvulkan.so.1.4.* | sort -V | tail -n 1) \
 		DiepDesktop/libvulkan.so.1
 	$(CP) \
 		$$(ls -1 /usr/local/lib/libSDL3.so.0.1.* | sort -V | tail -n 1) \

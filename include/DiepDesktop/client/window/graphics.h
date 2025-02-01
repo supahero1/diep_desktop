@@ -18,3 +18,15 @@
 
 #include <DiepDesktop/client/window/base.h>
 
+
+typedef struct graphics
+{
+	window_t* window;
+}
+graphics_t;
+
+
+extern void
+graphics_init(
+	window_t* window
+	);

@@ -828,7 +828,6 @@ time_timers_init(
 		.fn = time_timers_fn,
 		.data = timers
 	};
-
 	thread_init(&timers->thread, data);
 }
 
@@ -909,5 +908,5 @@ time_timer_free(
 	time_timer_t* timer
 	)
 {
-	assert_neq(timer->idx, 0);
+	assert_eq(timer->idx, 0);
 }

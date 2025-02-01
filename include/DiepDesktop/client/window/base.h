@@ -20,7 +20,10 @@
 #include <DiepDesktop/shared/event.h>
 #include <DiepDesktop/shared/extent.h>
 
-#include <SDL3/SDL.h>
+
+typedef uint32_t SDL_PropertiesID;
+typedef struct SDL_Window SDL_Window;
+typedef struct SDL_Cursor SDL_Cursor;
 
 
 typedef enum window_cursor : uint32_t
@@ -156,16 +159,19 @@ typedef struct window_manager
 
 	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
 	window_cursor_t current_cursor;
-
-	event_target_t free_target;
 }
 window_manager_t;
 
 
 extern void
 window_manager_init(
-	window_manager_t* manager,
-	event_target_t* free_target
+	window_manager_t* manager
+	);
+
+
+extern void
+window_manager_free(
+	window_manager_t* manager
 	);
 
 
@@ -349,6 +355,12 @@ extern void
 window_init(
 	window_t* window,
 	window_manager_t* manager
+	);
+
+
+extern void
+window_free(
+	window_t* window
 	);
 
 

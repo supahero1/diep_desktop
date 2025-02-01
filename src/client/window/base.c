@@ -18,6 +18,8 @@
 #include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/client/window/base.h>
 
+#include <SDL3/SDL.h>
+
 #include <stdio.h>
 #include <stdatomic.h>
 
@@ -135,38 +137,6 @@ window_sdl_free(
 }
 
 
-private void
-window_free_fn(
-	window_t* window
-	)
-{
-	window_free_event_data_t data =
-	{
-		.window = window
-	};
-	event_target_fire(&window->free_target, &data);
-
-	event_target_free(&window->mouse_scroll_target);
-	event_target_free(&window->mouse_move_target);
-	event_target_free(&window->mouse_up_target);
-	event_target_free(&window->mouse_down_target);
-	event_target_free(&window->set_clipboard_target);
-	event_target_free(&window->get_clipboard_target);
-	event_target_free(&window->text_target);
-	event_target_free(&window->key_up_target);
-	event_target_free(&window->key_down_target);
-	event_target_free(&window->close_target);
-	event_target_free(&window->blur_target);
-	event_target_free(&window->focus_target);
-	event_target_free(&window->resize_target);
-	event_target_free(&window->move_target);
-	event_target_free(&window->free_target);
-
-	SDL_DestroyWindow(window->sdl_window);
-	SDL_DestroyProperties(window->sdl_props);
-}
-
-
 void
 window_init(
 	window_t* window,
@@ -174,13 +144,6 @@ window_init(
 	)
 {
 	window->manager = manager;
-
-	event_listener_data_t data =
-	{
-		.fn = (event_fn_t) window_free_fn,
-		.data = window
-	};
-	window->free_listener = event_target_once(&manager->free_target, data);
 
 
 	uint32_t sdl_props = SDL_CreateProperties();
@@ -257,13 +220,35 @@ window_init(
 }
 
 
-private void
+void
 window_free(
 	window_t* window
 	)
 {
-	event_target_del(&window->manager->free_target, window->free_listener);
-	window_free_fn(window);
+	window_free_event_data_t data =
+	{
+		.window = window
+	};
+	event_target_fire(&window->free_target, &data);
+
+	event_target_free(&window->mouse_scroll_target);
+	event_target_free(&window->mouse_move_target);
+	event_target_free(&window->mouse_up_target);
+	event_target_free(&window->mouse_down_target);
+	event_target_free(&window->set_clipboard_target);
+	event_target_free(&window->get_clipboard_target);
+	event_target_free(&window->text_target);
+	event_target_free(&window->key_up_target);
+	event_target_free(&window->key_down_target);
+	event_target_free(&window->close_target);
+	event_target_free(&window->blur_target);
+	event_target_free(&window->focus_target);
+	event_target_free(&window->resize_target);
+	event_target_free(&window->move_target);
+	event_target_free(&window->free_target);
+
+	SDL_DestroyWindow(window->sdl_window);
+	SDL_DestroyProperties(window->sdl_props);
 }
 
 
@@ -666,26 +651,9 @@ window_process_event(
 
 
 
-private void
-window_manager_free_fn(
-	window_manager_t* manager,
-	void* event_data
-	)
-{
-	event_target_fire(&manager->free_target, NULL);
-
-	event_target_free(&manager->free_target);
-
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_POINTING]);
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_TYPING]);
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_DEFAULT]);
-}
-
-
 void
 window_manager_init(
-	window_manager_t* manager,
-	event_target_t* free_target
+	window_manager_t* manager
 	)
 {
 	atomic_init(&manager->running, true);
@@ -704,17 +672,17 @@ window_manager_init(
 	manager->cursors[WINDOW_CURSOR_POINTING] = cursor;
 
 	manager->current_cursor = WINDOW_CURSOR_DEFAULT;
+}
 
 
-	event_target_init(&manager->free_target);
-
-
-	event_listener_data_t data =
-	{
-		.fn = (event_fn_t) window_manager_free_fn,
-		.data = manager
-	};
-	event_target_once(free_target, data);
+void
+window_manager_free(
+	window_manager_t* manager
+	)
+{
+	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_POINTING]);
+	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_TYPING]);
+	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_DEFAULT]);
 }
 
 

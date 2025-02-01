@@ -104,23 +104,37 @@ typedef struct setting
 setting_t;
 
 
-typedef struct settings
+typedef struct settings settings_t;
+
+typedef struct settings_save_event_data
+{
+	settings_t* settings;
+	bool success;
+}
+settings_save_event_data_t;
+
+typedef struct settings_load_event_data
+{
+	settings_t* settings;
+	bool success;
+}
+settings_load_event_data_t;
+
+
+struct settings
 {
 	sync_mtx_t mtx;
 	hash_table_t table;
+	bool dirty;
 
 	const char* path;
 
 	time_timers_t* timers;
 	time_timer_t save_timer;
 
-	event_target_t save_success_target;
-	event_target_t save_failure_target;
-
-	event_target_t load_success_target;
-	event_target_t load_failure_target;
-}
-settings_t;
+	event_target_t save_target;
+	event_target_t load_target;
+};
 
 
 extern void

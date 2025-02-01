@@ -15,17 +15,19 @@
  */
 
 #include <DiepDesktop/client/app.h>
+#include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/settings.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/client/window/base.h>
 
 
 struct app
 {
-	event_target_t free_target;
-
 	event_listener_t* window_close_once_listener;
-	event_listener_t* window_free_once_listener;
+
+	time_timers_t timers;
+	settings_t settings;
 
 	window_manager_t manager;
 	window_t window;
@@ -38,7 +40,7 @@ app_window_close_once_fn(
 	window_close_event_data_t* event_data
 	)
 {
-	event_target_del_once(&app->window.free_target, app->window_free_once_listener);
+	app->window_close_once_listener = NULL;
 	window_close(event_data->window);
 }
 
@@ -49,7 +51,10 @@ app_window_free_once_fn(
 	window_free_event_data_t* event_data
 	)
 {
-	event_target_del_once(&app->window.close_target, app->window_close_once_listener);
+	if(app->window_close_once_listener)
+	{
+		event_target_del_once(&app->window.close_target, app->window_close_once_listener);
+	}
 }
 
 
@@ -61,25 +66,26 @@ app_init(
 	app_t* app = alloc_malloc(sizeof(*app));
 	assert_ptr(app, sizeof(*app));
 
-	event_target_init(&app->free_target);
+	time_timers_init(&app->timers);
+	settings_init(&app->settings, "settings.bin", &app->timers);
 
-	window_manager_init(&app->manager, &app->free_target);
+	window_manager_init(&app->manager);
 	window_init(&app->window, &app->manager);
 	window_show(&app->window);
 
-	event_listener_data_t close_data =
+	event_listener_data_t close_once_data =
 	{
 		.fn = (event_fn_t) app_window_close_once_fn,
 		.data = app
 	};
-	app->window_close_once_listener = event_target_once(&app->window.close_target, close_data);
+	app->window_close_once_listener = event_target_once(&app->window.close_target, close_once_data);
 
-	event_listener_data_t free_data =
+	event_listener_data_t free_once_data =
 	{
 		.fn = (event_fn_t) app_window_free_once_fn,
 		.data = app
 	};
-	app->window_free_once_listener = event_target_once(&app->window.free_target, free_data);
+	event_target_once(&app->window.free_target, free_once_data);
 
 	return app;
 }
@@ -90,9 +96,11 @@ app_free(
 	app_t* app
 	)
 {
-	event_target_fire(&app->free_target, NULL);
+	window_free(&app->window);
+	window_manager_free(&app->manager);
 
-	event_target_free(&app->free_target);
+	settings_free(&app->settings);
+	time_timers_free(&app->timers);
 
 	alloc_free(sizeof(*app), app);
 }
