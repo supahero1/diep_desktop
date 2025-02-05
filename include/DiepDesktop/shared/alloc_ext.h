@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/alloc_std.h>
+#include <DiepDesktop/shared/alloc.h>
 
 #ifndef _inline_
 	#define _inline_ __attribute__((always_inline)) inline

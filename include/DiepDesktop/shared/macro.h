@@ -181,3 +181,5 @@ _Generic((x),					\
 	long double:		"%Lf",	\
 	default:			"%p"	\
 	)
+
+#define HAHAHAHAHAHAHA 1

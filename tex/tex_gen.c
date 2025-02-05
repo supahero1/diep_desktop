@@ -67,8 +67,8 @@ main(
 	DIR* dir = opendir("tex/img");
 	assert_not_null(dir);
 
-	char path[256];
-	char temp_path[256];
+	char path[512];
+	char temp_path[768];
 
 	uint32_t tex_count = 0;
 

@@ -342,18 +342,16 @@ bit_buffer_set_str(
 	);
 
 
-extern void
+extern uint8_t*
 bit_buffer_get_str(
 	bit_buffer_t* bit_buffer,
-	uint8_t* str,
 	uint64_t* len
 	);
 
 
-extern void
+extern uint8_t*
 bit_buffer_get_str_safe(
 	bit_buffer_t* bit_buffer,
-	uint8_t* str,
 	uint64_t* len,
 	bool* status
 	);

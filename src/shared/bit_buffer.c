@@ -16,9 +16,11 @@
 
 #include <DiepDesktop/shared/base.h>
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/shared/bit_buffer.h>
 
 #include <math.h>
+#include <stddef.h>
 
 
 void
@@ -800,10 +802,9 @@ bit_buffer_set_str(
 }
 
 
-void
+uint8_t*
 bit_buffer_get_str(
 	bit_buffer_t* bit_buffer,
-	uint8_t* str,
 	uint64_t* len
 	)
 {
@@ -811,14 +812,18 @@ bit_buffer_get_str(
 	size = MACRO_MIN(size, *len);
 	*len = size;
 
+	uint8_t* str = alloc_malloc(size);
+	assert_ptr(str, size);
+
 	bit_buffer_get_bytes(bit_buffer, str, size);
+
+	return str;
 }
 
 
-void
+uint8_t*
 bit_buffer_get_str_safe(
 	bit_buffer_t* bit_buffer,
-	uint8_t* str,
 	uint64_t* len,
 	bool* status
 	)
@@ -826,13 +831,23 @@ bit_buffer_get_str_safe(
 	uint64_t size = bit_buffer_get_bits_var_safe(bit_buffer, 7, status);
 	if(!*status)
 	{
-		return;
+		return NULL;
 	}
 
 	size = MACRO_MIN(size, *len);
 	*len = size;
 
+	uint8_t* str = alloc_malloc(size);
+	assert_ptr(str, size);
+
 	bit_buffer_get_bytes_safe(bit_buffer, str, size, status);
+	if(!*status)
+	{
+		alloc_free(size, str);
+		return NULL;
+	}
+
+	return str;
 }
 
 

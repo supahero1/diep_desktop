@@ -20,6 +20,7 @@
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/color.h>
 #include <DiepDesktop/shared/event.h>
+#include <DiepDesktop/shared/macro.h>
 
 
 typedef enum setting_type : uint8_t
@@ -29,6 +30,7 @@ typedef enum setting_type : uint8_t
 	SETTING_TYPE_BOOLEAN,
 	SETTING_TYPE_STR,
 	SETTING_TYPE_COLOR,
+	MACRO_ENUM_BITS(SETTING_TYPE)
 }
 setting_type_t;
 
@@ -94,6 +96,17 @@ typedef union setting_constraint
 setting_constraint_t;
 
 
+typedef struct settings settings_t;
+
+typedef struct setting_change_event_data
+{
+	settings_t* settings;
+	const char* name;
+	setting_value_t old_value;
+	setting_value_t new_value;
+}
+setting_change_event_data_t;
+
 typedef struct setting
 {
 	setting_type_t type;
@@ -103,8 +116,6 @@ typedef struct setting
 }
 setting_t;
 
-
-typedef struct settings settings_t;
 
 typedef struct settings_save_event_data
 {
@@ -163,13 +174,6 @@ settings_load(
 	);
 
 
-extern setting_t*
-settings_get(
-	settings_t* settings,
-	const char* name
-	);
-
-
 extern void
 settings_add(
 	settings_t* settings,
@@ -179,15 +183,8 @@ settings_add(
 
 
 extern void
-settings_set(
+settings_modify(
 	settings_t* settings,
 	const char* name,
 	setting_value_t value
-	);
-
-
-extern void
-settings_del(
-	settings_t* settings,
-	const char* name
 	);

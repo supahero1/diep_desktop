@@ -1,3 +1,5 @@
+/* skip */
+
 /*
  *   Copyright 2024-2025 Franciszek Balcerak
  *

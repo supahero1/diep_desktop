@@ -10,3 +10,6 @@ tex/img/
 tex/dds_raw/
 tex/dds_bc1/
 tex/dds/
+.sconsign.dblite
+config.log
+.sconf_temp

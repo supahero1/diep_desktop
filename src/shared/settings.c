@@ -42,8 +42,6 @@ settings_init(
 
 	event_target_init(&settings->save_target);
 	event_target_init(&settings->load_target);
-
-	settings_load(settings);
 }
 
 
@@ -76,7 +74,7 @@ settings_for_each_sum_fn(
 	)
 {
 	*sum += bit_buffer_len_str(len);
-	*sum += bit_buffer_len_bits_var(setting->type, 3);
+	*sum += bit_buffer_len_bits_var(setting->type, SETTING_TYPE__BITS);
 
 
 	switch(setting->type)
@@ -127,7 +125,7 @@ settings_for_each_set_fn(
 	)
 {
 	bit_buffer_set_str(buffer, (const uint8_t*) name, len);
-	bit_buffer_set_bits_var(buffer, setting->type, 3);
+	bit_buffer_set_bits_var(buffer, setting->type, SETTING_TYPE__BITS);
 
 
 	switch(setting->type)
@@ -283,28 +281,23 @@ settings_load(
 		goto goto_failure_compressed;
 	}
 
-	uint8_t name[127];
-
 	settings_load_event_data_t load_data =
 	{
 		.settings = settings,
 		.success = false
 	};
 
-	hash_table_t new_table;
-	hash_table_init(&new_table, 256);
-
-	while(bit_buffer_available_bits(&buffer) >= 8 + 8 + 3 + 1)
+	while(bit_buffer_available_bits(&buffer) >= 8 + 8 + SETTING_TYPE__BITS + 1)
 	{
 		uint64_t name_len = 127;
-		bit_buffer_get_str_safe(&buffer, name, &name_len, &status);
+		uint8_t* name = bit_buffer_get_str_safe(&buffer, &name_len, &status);
 		if(!status || !name_len)
 		{
 			goto goto_failure_compressed;
 		}
 
 		setting_t setting;
-		setting.type = bit_buffer_get_bits_var_safe(&buffer, 3, &status);
+		setting.type = bit_buffer_get_bits_var_safe(&buffer, SETTING_TYPE__BITS, &status);
 		if(!status)
 		{
 			goto goto_failure_compressed;
@@ -349,11 +342,8 @@ settings_load(
 
 		case SETTING_TYPE_STR:
 		{
-			setting.value.str.len = 127;
-			setting.value.str.str = alloc_malloc(setting.value.str.len);
-			assert_not_null(setting.value.str.str);
-
-			bit_buffer_get_str_safe(&buffer, setting.value.str.str, &setting.value.str.len, &status);
+			setting.value.str.len = 16383;
+			setting.value.str.str = bit_buffer_get_str_safe(&buffer, &setting.value.str.len, &status);
 			if(!status)
 			{
 				alloc_free(setting.value.str.len, setting.value.str.str);
@@ -379,16 +369,8 @@ settings_load(
 		}
 
 
-		hash_table_modify(&new_table, (const char*) name, &setting);
+		hash_table_modify(&settings->table, (const char*) name, &setting);
 	}
-
-	sync_mtx_lock(&settings->mtx);
-		time_timers_cancel_timeout(settings->timers, &settings->save_timer);
-
-		hash_table_free(&settings->table);
-		settings->table = new_table;
-		settings->dirty = false;
-	sync_mtx_unlock(&settings->mtx);
 
 	alloc_free(decompressed_size, decompressed);
 
@@ -409,20 +391,6 @@ settings_load(
 }
 
 
-setting_t*
-settings_get(
-	settings_t* settings,
-	const char* name
-	)
-{
-	sync_mtx_lock(&settings->mtx);
-		setting_t* setting = hash_table_get(&settings->table, name);
-	sync_mtx_unlock(&settings->mtx);
-
-	return setting;
-}
-
-
 void
 settings_add(
 	settings_t* settings,
@@ -438,7 +406,7 @@ settings_add(
 
 
 void
-settings_set(
+settings_modify(
 	settings_t* settings,
 	const char* name,
 	setting_value_t value
@@ -446,9 +414,61 @@ settings_set(
 {
 	sync_mtx_lock(&settings->mtx);
 		setting_t* setting = hash_table_get(&settings->table, name);
-		assert_not_null(setting);
+		if(!setting)
+		{
+			sync_mtx_unlock(&settings->mtx);
+			return;
+		}
+
+
+		switch(setting->type)
+		{
+
+		case SETTING_TYPE_I64:
+		{
+			value.i64.value = MACRO_CLAMP(value.i64.value,
+				setting->constraint.i64.min, setting->constraint.i64.max);
+			break;
+		}
+
+		case SETTING_TYPE_F32:
+		{
+			value.f32.value = MACRO_CLAMP(value.f32.value,
+				setting->constraint.f32.min, setting->constraint.f32.max);
+			break;
+		}
+
+		case SETTING_TYPE_STR:
+		{
+			uint64_t new_len = MACRO_CLAMP(value.str.len, 0, setting->constraint.str.max_len);
+			uint8_t* new_str = alloc_recalloc(value.str.len, value.str.str, new_len);
+			assert_ptr(new_str, new_len);
+
+			value.str.str = new_str;
+			value.str.len = new_len;
+
+			break;
+		}
+
+		default: break;
+
+		}
+
+
+		if(setting->change_target)
+		{
+			setting_change_event_data_t change_data =
+			{
+				.settings = settings,
+				.name = name,
+				.old_value = setting->value,
+				.new_value = value
+			};
+			event_target_fire(setting->change_target, &change_data);
+		}
 
 		setting->value = value;
+		settings->dirty = true;
 
 		time_timers_lock(settings->timers);
 			uint64_t time = time_get_with_sec(5);
@@ -467,18 +487,5 @@ settings_set(
 				time_timers_add_timeout_u(settings->timers, timeout);
 			}
 		time_timers_unlock(settings->timers);
-	sync_mtx_unlock(&settings->mtx);
-}
-
-
-void
-settings_del(
-	settings_t* settings,
-	const char* name
-	)
-{
-	sync_mtx_lock(&settings->mtx);
-		bool status = hash_table_del(&settings->table, name);
-		assert_true(status);
 	sync_mtx_unlock(&settings->mtx);
 }

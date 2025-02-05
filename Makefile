@@ -12,114 +12,33 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-CC ?= gcc
 RM := rm -f
 CP := cp
 MV := mv
 SHELL := bash
 
 ifeq ($(OS),Windows_NT)
-USR := mingw64
 LOCALE := LC_ALL=C LANG=C
 else
-USR := usr
 LOCALE :=
 endif
 
 
-BASE_FLAGS := -std=c2y -Wall -Iinclude -D_GNU_SOURCE
-
-SHARED_FLAGS := -Wno-address-of-packed-member
-SHARED_NOLIB_FLAGS :=
-SHARED_LD_FLAGS :=
-
-
 ifeq ($(VALGRIND),1)
-ifeq ($(OS),Windows_NT)
-CC := clang
-BASE_FLAGS += -fsanitize=address,undefined
-else
 VALGRIND_CALL := valgrind --leak-check=full --show-leak-kinds=all \
 	--suppressions=../val_sup.txt --log-file="val_log.txt"
-endif
 endif
 
 ifeq ($(KCACHEGRIND),1)
 VALGRIND_CALL := valgrind --tool=callgrind
 endif
 
-ifeq ($(RELEASE),2)
-BASE_FLAGS += -O3 -DNDEBUG -flto -march=native -mtune=native
-SHARED_NOLIB_FLAGS += -fwhole-program
-else
-ifeq ($(RELEASE),1)
-BASE_FLAGS += -O3 -DNDEBUG -flto
-SHARED_NOLIB_FLAGS += -fwhole-program
-else
-BASE_FLAGS += -O0 -g3 -ggdb -D_FORTIFY_SOURCE=3
-ifneq ($(OS),Windows_NT)
-BASE_FLAGS += -rdynamic
-endif
-endif
-endif
-
-
-BASE_LD_FLAGS := -lm
-
-ifneq ($(OS),Windows_NT)
-BASE_LD_FLAGS += -pthread
-endif
-
-
-FREETYPE_LD_FLAGS := -I/$(USR)/include/freetype2 -lfreetype
-
-
-CLIENT_FLAGS := $(SHARED_FLAGS) $(SHARED_NOLIB_FLAGS)
-CLIENT_LD_FLAGS := $(SHARED_LD_FLAGS) $(FREETYPE_LD_FLAGS) -lm -lSDL3 -lharfbuzz -lzstd -lutf8proc
-
-ifeq ($(OS),Windows_NT)
-CLIENT_LD_FLAGS += -lvulkan-1 -lws2_32
-FILE_EXT := .exe
-else
-CLIENT_LD_FLAGS += -lvulkan
-endif
-
-
-SERVER_FLAGS := $(SHARED_FLAGS) $(SHARED_NOLIB_FLAGS)
-SERVER_LD_FLAGS := $(SHARED_LD_FLAGS)
-
-
-TEX_FLAGS := -fwhole-program
-TEX_LD_FLAGS := -Lbin -lshared
-
-
-SHARED_LIB_FLAGS := -shared
-SHARED_LIB_LD_FLAGS :=
-
-ifeq ($(OS),Windows_NT)
-SHARED_LIB_FLAGS += -Wl,--out-implib,bin/libshared.lib
-endif
-
-
-SHARED_FILES := alloc base debug event file threads rand \
-	bit_buffer hash time settings base64 color sync
-CLIENT_FILES := tex/base font/base font/filter window/base \
-	window/dds window/volk window/graphics app main
-SERVER_FILES := main quadtree sort
-
-SHARED_FILES := $(SHARED_FILES:%=src/shared/%.c)
-CLIENT_FILES := $(CLIENT_FILES:%=src/client/%.c) $(SHARED_FILES)
-SERVER_FILES := $(SERVER_FILES:%=src/server/%.c) $(SHARED_FILES)
-
 
 TEX_DIRS := $(wildcard tex/img/[0-9]*/)
 TEX_FILES := $(TEX_DIRS:tex/img/%/=tex/dds/%.dds)
 
-SRC_TEX_DIRS := src/client/tex include/DiepDesktop/client/tex
-SRC_FONT_DIRS := src/client/font include/DiepDesktop/client/font
-
-
-SHARED_CALL := LD_LIBRARY_PATH=bin:$$LD_LIBRARY_PATH
+SRC_TEX_DIRS := src/client/tex/ include/DiepDesktop/client/tex/
+SRC_FONT_DIRS := src/client/font/ include/DiepDesktop/client/font/
 
 
 .PHONY: all
@@ -160,11 +79,10 @@ all:
 	Unless you deeply know how they work, use one command per a \`make\` call.\n\
 	\n\
 	Specify RELEASE=1 for a production build\n\
-	Specify RELEASE=2 for a native build (faster than production but not portable)\n\
-	You can't mix various build types, if you change it you gotta \`make clean\` first\n"
+	Specify RELEASE=2 for a native build (faster than production but not portable)\n"
 
 
-bin tex/font tex/var tex/img tex/dds_raw tex/dds_bc1 tex/dds $(SRC_TEX_DIRS) $(SRC_FONT_DIRS):
+bin/shaders/ tex/font/ tex/var/ tex/img/ tex/dds_raw/ tex/dds_bc1/ tex/dds/ $(SRC_TEX_DIRS) $(SRC_FONT_DIRS):
 	mkdir -p $@
 
 .PHONY: clean
@@ -175,34 +93,16 @@ clean:
 wipe: clean font_wipe var_clean tex_wipe dds_wipe
 
 
-bin/libshared.a: $(SHARED_FILES) | bin
-	for file in $^; do \
-		$(CC) $(BASE_FLAGS) $(SHARED_FLAGS) $(SHARED_LIB_FLAGS) -c -o bin/$$(basename $${file%.*}).o \
-			$$file $(BASE_LD_FLAGS) $(SHARED_LD_FLAGS) $(SHARED_LIB_LD_FLAGS); \
-	done
-	$(AR) rcs $@ bin/*.o
-
-bin/font_gen: tex/font_gen.c | bin/libshared.a
-	$(CC) $(BASE_FLAGS) $(TEX_FLAGS) -o $@ $^ $(BASE_LD_FLAGS) $(TEX_LD_FLAGS) $(FREETYPE_LD_FLAGS)
-
-bin/sort: tex/sort.c | bin/libshared.a
-	$(CC) $(BASE_FLAGS) $(TEX_FLAGS) -o $@ $^ $(BASE_LD_FLAGS) $(TEX_LD_FLAGS) -lpng
-
-bin/tex_gen: tex/tex_gen.c | bin/libshared.a
-	$(CC) $(BASE_FLAGS) $(TEX_FLAGS) -o $@ $^ $(BASE_LD_FLAGS) $(TEX_LD_FLAGS)
-
-bin/var_gen: tex/var_gen.c | bin/libshared.a
-	$(CC) $(BASE_FLAGS) $(TEX_FLAGS) -o $@ $^ $(BASE_LD_FLAGS) $(TEX_LD_FLAGS)
-
+FONT_GEN_EXE := bin/tex/font_gen$(FILE_EXT)
 
 .PHONY: font_build
-font_build: bin/font_gen | tex/font $(SRC_FONT_DIRS)
+font_build: $(FONT_GEN_EXE) | tex/font/ $(SRC_FONT_DIRS)
 	$(RM) -r tex/font/*
-	$(SHARED_CALL) WRITE_IMG=1 ./bin/font_gen
+	WRITE_IMG=1 ./$(FONT_GEN_EXE)
 
 .PHONY: font_gen
-font_gen: bin/font_gen | $(SRC_FONT_DIRS)
-	$(SHARED_CALL) ./bin/font_gen
+font_gen: $(FONT_GEN_EXE) | $(SRC_FONT_DIRS)
+	./$(FONT_GEN_EXE)
 
 .PHONY: font_clean
 font_clean:
@@ -213,27 +113,32 @@ font_wipe: font_clean
 	$(RM) -r $(SRC_FONT_DIRS)
 
 
+VAR_GEN_EXE := bin/tex/var_gen$(FILE_EXT)
+
 .PHONY: var_build
-var_build: bin/var_gen | tex/var
+var_build: $(VAR_GEN_EXE) | tex/var/
 	$(RM) -r tex/var/*
-	$(SHARED_CALL) ./bin/var_gen
+	./$(VAR_GEN_EXE)
 
 .PHONY: var_clean
 var_clean:
 	$(RM) -r tex/var/
 
 
+SORT_EXE := bin/tex/sort$(FILE_EXT)
+TEX_GEN_EXE := bin/tex/tex_gen$(FILE_EXT)
+
 .PHONY: tex_build
-tex_build: bin/sort | tex/img
+tex_build: $(SORT_EXE) | tex/img/
 	$(RM) -r tex/img/*
 	$(CP) -r tex/const/* tex/img/
 	$(CP) -r tex/font/* tex/img/
 	$(CP) -r tex/var/* tex/img/
-	$(SHARED_CALL) ./bin/sort
+	./$(SORT_EXE)
 
 .PHONY: tex_gen
-tex_gen: bin/tex_gen | tex/img $(SRC_TEX_DIRS)
-	$(SHARED_CALL) ./bin/tex_gen
+tex_gen: $(TEX_GEN_EXE) | tex/img/ $(SRC_TEX_DIRS)
+	./$(TEX_GEN_EXE)
 	TEX_COUNT=$$(grep -oP '#define TEX__COUNT \K\d+' include/DiepDesktop/client/tex/base.h); \
 	sed -i "s/inTex\[[0-9]*\];/inTex[$$TEX_COUNT];/g" shaders/frag.glsl
 
@@ -247,7 +152,7 @@ tex_wipe: tex_clean
 
 
 .PRECIOUS: tex/dds_raw/%.dds
-tex/dds_raw/%.dds: tex/img/% | tex/dds_raw
+tex/dds_raw/%.dds: tex/img/% | tex/dds_raw/
 	pngs=$$(ls -1 "$<" | wc -l); \
 	if [ "$$pngs" -eq 1 ]; then \
 		$(CP) $</* $(shell dirname $@)/$*.png; \
@@ -258,11 +163,11 @@ tex/dds_raw/%.dds: tex/img/% | tex/dds_raw
 	fi
 
 .PRECIOUS: tex/dds_bc1/%.dds
-tex/dds_bc1/%.dds: tex/dds_raw/%.dds | tex/dds_bc1
+tex/dds_bc1/%.dds: tex/dds_raw/%.dds | tex/dds_bc1/
 	$(LOCALE) texconv -w $* -h $* -m 1 -f BC1_UNORM_SRGB -o $(shell dirname $@) -l -y -- $<
 
 .PRECIOUS: tex/dds/%.dds
-tex/dds/%.dds: tex/dds_bc1/%.dds | tex/dds
+tex/dds/%.dds: tex/dds_bc1/%.dds | tex/dds/
 	-zstd -T0 --ultra -20 -o $@ $<
 
 .PHONY: dds_build
@@ -284,21 +189,25 @@ tex_reset:
 	$(MAKE) dds_build
 
 
-bin/%.spv: shaders/%.glsl | bin
+bin/shaders/%.spv: shaders/%.glsl | bin/shaders/
 	glslc -O -fshader-stage=$* $< -o $@
 
 .PHONY: shaders
-shaders: bin/vert.spv bin/frag.spv | bin
+shaders: bin/shaders/vert.spv bin/shaders/frag.spv
+
+
+bin/tex/%$(FILE_EXT):
+	scons %
+
 
 .PHONY: client
-client: shaders dds_build | bin
-	$(CC) $(BASE_FLAGS) $(CLIENT_FLAGS) -o bin/client$(FILE_EXT) $(CLIENT_FILES) $(BASE_LD_FLAGS) $(CLIENT_LD_FLAGS)
-
+client: shaders dds_build
+	scons client -j 8
 	$(RM) -r DiepDesktop
 	mkdir DiepDesktop
 
 	$(CP) bin/client$(FILE_EXT) DiepDesktop/
-	$(CP) bin/*.spv DiepDesktop/
+	$(CP) bin/shaders/*.spv DiepDesktop/
 	$(CP) tex/dds/* DiepDesktop/
 	$(CP) tex/Ubuntu.ttf DiepDesktop/
 
@@ -318,5 +227,6 @@ endif
 
 
 .PHONY: server
-server: | bin
-	$(CC) $(BASE_FLAGS) $(SERVER_FLAGS) -o bin/server$(FILE_EXT) $(SERVER_FILES) $(BASE_LD_FLAGS) $(SERVER_LD_FLAGS)
+server:
+	scons server -j 8
+	./bin/server$(FILE_EXT)

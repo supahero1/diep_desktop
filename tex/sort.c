@@ -18,6 +18,7 @@
 
 #include <png.h>
 #include <dirent.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -57,9 +58,9 @@ main(
 	DIR* dir = opendir("tex/img");
 	assert_not_null(dir);
 
-	char old_path[256];
-	char dir_path[256];
-	char new_path[256];
+	char old_path[512];
+	char dir_path[512];
+	char new_path[512];
 	int sizes[16] = {0};
 
 	while((entry = readdir(dir)) != NULL)

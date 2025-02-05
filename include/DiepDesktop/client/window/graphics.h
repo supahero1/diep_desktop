@@ -22,11 +22,20 @@
 typedef struct graphics
 {
 	window_t* window;
+
+	event_target_t draw_target;
 }
 graphics_t;
 
 
 extern void
 graphics_init(
+	graphics_t* graphics,
 	window_t* window
+	);
+
+
+extern void
+graphics_free(
+	graphics_t* graphics
 	);

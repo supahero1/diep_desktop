@@ -1,3 +1,5 @@
+/* skip */
+
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/client/if/base.h>
 
