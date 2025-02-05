@@ -93,7 +93,7 @@ clean:
 wipe: clean font_wipe var_clean tex_wipe dds_wipe
 
 
-FONT_GEN_EXE := bin/tex/font_gen$(FILE_EXT)
+FONT_GEN_EXE := bin/tex/font_gen
 
 .PHONY: font_build
 font_build: $(FONT_GEN_EXE) | tex/font/ $(SRC_FONT_DIRS)
@@ -113,7 +113,7 @@ font_wipe: font_clean
 	$(RM) -r $(SRC_FONT_DIRS)
 
 
-VAR_GEN_EXE := bin/tex/var_gen$(FILE_EXT)
+VAR_GEN_EXE := bin/tex/var_gen
 
 .PHONY: var_build
 var_build: $(VAR_GEN_EXE) | tex/var/
@@ -125,8 +125,8 @@ var_clean:
 	$(RM) -r tex/var/
 
 
-SORT_EXE := bin/tex/sort$(FILE_EXT)
-TEX_GEN_EXE := bin/tex/tex_gen$(FILE_EXT)
+SORT_EXE := bin/tex/sort
+TEX_GEN_EXE := bin/tex/tex_gen
 
 .PHONY: tex_build
 tex_build: $(SORT_EXE) | tex/img/
@@ -185,6 +185,7 @@ dds_wipe: dds_clean
 .PHONY: tex_reset
 tex_reset:
 	$(MAKE) wipe
+	RELEASE=2 scons font_gen var_gen tex_gen sort -j 8
 	RELEASE=2 $(MAKE) font_build var_build tex_build tex_gen
 	$(MAKE) dds_build
 
@@ -196,17 +197,17 @@ bin/shaders/%.spv: shaders/%.glsl | bin/shaders/
 shaders: bin/shaders/vert.spv bin/shaders/frag.spv
 
 
-bin/tex/%$(FILE_EXT):
-	scons %
+bin/tex/%:
+	scons $* -j 8
 
 
 .PHONY: client
-client: shaders dds_build
+client: shaders # dds_build
 	scons client -j 8
 	$(RM) -r DiepDesktop
 	mkdir DiepDesktop
 
-	$(CP) bin/client$(FILE_EXT) DiepDesktop/
+	$(CP) bin/client DiepDesktop/
 	$(CP) bin/shaders/*.spv DiepDesktop/
 	$(CP) tex/dds/* DiepDesktop/
 	$(CP) tex/Ubuntu.ttf DiepDesktop/
@@ -223,10 +224,10 @@ else
 		DiepDesktop/
 endif
 
-	cd DiepDesktop; $(VALGRIND_CALL) ./client$(FILE_EXT)
+	cd DiepDesktop; $(VALGRIND_CALL) ./client
 
 
 .PHONY: server
 server:
 	scons server -j 8
-	./bin/server$(FILE_EXT)
+	./bin/server

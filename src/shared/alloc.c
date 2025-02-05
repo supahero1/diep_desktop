@@ -35,6 +35,7 @@
 
 
 #ifdef _WIN32
+	#include <windows.h>
 
 
 	_alloc_func_ void*

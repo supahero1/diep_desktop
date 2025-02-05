@@ -13,13 +13,14 @@
 #  limitations under the License.
 
 import os
+import subprocess
 
-env = Environment()
+env = Environment(tools = ["mingw"] if os.name == "nt" else ["gcc"])
 
-flags = Split("-std=c2y -Wall -Iinclude -D_GNU_SOURCE")
+flags = Split("-std=gnu23 -Wall -Iinclude/ -D_GNU_SOURCE")
 
-usr = "mingw64" if os.name == "nt" else "usr"
-flags.append(f"-I/{usr}/include/freetype2")
+pkg_config_output = subprocess.check_output(["pkg-config", "--cflags", "freetype2"], text=True)
+flags.append(pkg_config_output.split()[0])
 
 release = int(ARGUMENTS["RELEASE"] if "RELEASE" in ARGUMENTS else os.environ.get("RELEASE", "0"))
 if release <= 0:
@@ -77,7 +78,7 @@ tex_sources = collect_sources("tex", "")
 sources = {}
 
 def scan_file(file):
-	if file not in sources:
+	if file not in sources and "client/tex/" not in file:
 		path = "include/DiepDesktop/" + file[4:] if file.endswith(".h") else file
 		with open(path, "r") as f:
 			include_lines = [line for line in f if line.startswith("#include <DiepDesktop/")]
@@ -115,8 +116,12 @@ def expand_sources(name, file):
 		for header in sources[file]:
 			expand_sources(name, header)
 
-for file in sources:
-	for dependency in sources[file]:
+files = list(sources.keys())
+for file in files:
+	dependencies = list(sources[file])
+	for dependency in dependencies:
+		if dependency not in sources:
+			sources[dependency] = []
 		for header in sources[dependency]:
 			expand_sources(file, header)
 
@@ -173,7 +178,7 @@ def create_program(source, object):
 def create_test(test_source, source_object):
 	test_program = create_program(test_source, source_object)
 	output = str(test_program[0]) + ".out"
-	test = env.Command(output, test_program, "./$SOURCE > " + output)
+	test = env.Command(output, test_program, "$SOURCE > " + output)
 	return test
 
 def for_source_pairs(sources, objects, cb):
