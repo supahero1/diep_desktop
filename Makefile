@@ -66,6 +66,7 @@ all:
 	\n\
 	client      generates the client, requires dds and all sources\n\
 	server      generates the server, no prerequisites\n\
+	test        runs any modified tests\n\
 	\n\
 	clean       removes any built executables\n\
 	wipe        above + all textures + all sources (= everything)\n\
@@ -231,3 +232,8 @@ endif
 server:
 	scons server -j 8
 	./bin/server
+
+
+.PHONY: test
+test:
+	scons test -j 8

@@ -15,12 +15,12 @@
 import os
 import subprocess
 
-env = Environment(tools = ["mingw"] if os.name == "nt" else ["gcc"])
+env = Environment(tools = ["mingw"] if os.name == "nt" else ["default"])
 
 flags = Split("-std=gnu23 -Wall -Iinclude/ -D_GNU_SOURCE")
 
-pkg_config_output = subprocess.check_output(["pkg-config", "--cflags", "freetype2"], text=True)
-flags.append(pkg_config_output.split()[0])
+freetype2_flags = subprocess.check_output(["pkg-config", "--cflags", "freetype2"], text=True)
+flags.extend(Split(freetype2_flags))
 
 release = int(ARGUMENTS["RELEASE"] if "RELEASE" in ARGUMENTS else os.environ.get("RELEASE", "0"))
 if release <= 0:
@@ -169,17 +169,24 @@ shared_tests = collect_sources("tests", "shared")
 client_tests = collect_sources("tests", "client")
 server_tests = collect_sources("tests", "server")
 
-def create_program(source, object):
+libtest_object = source_to_object("tests/libtest.c")
+libtest = env.Library("bin/tests/libtest", libtest_object)
+
+def create_program(source, object, use_libtest=False):
 	program_object = source_to_object(source)
 	header_deps = ["include/DiepDesktop/" + header[4:] for header in sources[str(object)[4:-1] + "h"]]
 	env.Depends(program_object, deps[str(object)] + header_deps)
-	return env.Program("bin/" + source[:-2], [program_object] + deps[str(object)])
+	return env.Program("bin/" + source[:-2], [program_object] + deps[str(object)],
+		LIBPATH=Split("bin/tests/"), LIBS = Split("libtest elf") if use_libtest else [])
 
 def create_test(test_source, source_object):
-	test_program = create_program(test_source, source_object)
+	test_program = create_program(test_source, source_object, True)
 	output = str(test_program[0]) + ".out"
-	test = env.Command(output, test_program, "$SOURCE > " + output)
-	return test
+	test = env.Command(output, test_program, "$SOURCE > $TARGET 2>&1")
+	valgrind_output = output + ".val"
+	valgrind_test = env.Command(valgrind_output, test_program,
+		"valgrind --leak-check=full --show-leak-kinds=all --suppressions=val_sup.txt $SOURCE > $TARGET 2>&1")
+	return [test, valgrind_test]
 
 def for_source_pairs(sources, objects, cb):
 	for source in sources:
@@ -196,7 +203,7 @@ def for_source_pairs(sources, objects, cb):
 
 def create_tests(tests, objects):
 	outputs = []
-	for_source_pairs(tests, objects, lambda source, object: outputs.append(create_test(source, object)))
+	for_source_pairs(tests, objects, lambda source, object: outputs.extend(create_test(source, object)))
 	return outputs
 
 shared_test_outputs = create_tests(shared_tests, shared_objects)
@@ -204,8 +211,9 @@ client_test_outputs = create_tests(client_tests, client_objects)
 server_test_outputs = create_tests(server_tests, server_objects)
 
 tests = env.Command("bin/tests/status",
-					shared_test_outputs + client_test_outputs + server_test_outputs,
-					"echo \"pass\" > $TARGET")
+	shared_test_outputs + client_test_outputs + server_test_outputs,
+	"echo \"pass\" > $TARGET")
+env.Alias("test", tests)
 env.Depends([client, server], tests)
 
 def create_tex_program(source, object):

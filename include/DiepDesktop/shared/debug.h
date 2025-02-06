@@ -45,11 +45,13 @@ location_logger(
 	);
 
 
+#define ASSERT_NULL ((const volatile void*) 0)
+
 #define hard_assert_base(a, b, Op, ROp, ...)	\
 do												\
 {												\
-	typeof(a) _a = (a);							\
-	typeof(a) _b = (b);							\
+	typeof(b) _a = (a);							\
+	typeof(b) _b = (b);							\
 												\
 	if(!__builtin_expect(_a Op _b, 1))			\
 	{											\
@@ -63,8 +65,8 @@ while(0)
 #define hard_assert_neq(a, b, ...) hard_assert_base(a, b, !=, == __VA_OPT__(,) __VA_ARGS__)
 #define hard_assert_true(a, ...) hard_assert_eq(a, true __VA_OPT__(,) __VA_ARGS__)
 #define hard_assert_false(a, ...) hard_assert_eq(a, false __VA_OPT__(,) __VA_ARGS__)
-#define hard_assert_null(a, ...) hard_assert_eq(a, NULL __VA_OPT__(,) __VA_ARGS__)
-#define hard_assert_not_null(a, ...) hard_assert_neq(a, NULL __VA_OPT__(,) __VA_ARGS__)
+#define hard_assert_null(a, ...) hard_assert_eq(a, ASSERT_NULL __VA_OPT__(,) __VA_ARGS__)
+#define hard_assert_not_null(a, ...) hard_assert_neq(a, ASSERT_NULL __VA_OPT__(,) __VA_ARGS__)
 #define hard_assert_ptr(ptr, size, ...)	\
 hard_assert_not_null(ptr,				\
 	{									\
@@ -92,8 +94,8 @@ location_logger("at " __FILE__ ":" MACRO_STR(__LINE__) __VA_OPT__(":") "\n" __VA
 #define empty_assert_base(a, b, Op, ...)	\
 do											\
 {											\
-	typeof(a) _a = (a);						\
-	typeof(a) _b = (b);						\
+	typeof(b) _a = (a);						\
+	typeof(b) _b = (b);						\
 											\
 	if(!__builtin_expect(_a Op _b, 1))		\
 	{										\
@@ -107,10 +109,10 @@ while(0)
 #define empty_assert_neq(a, b, ...) empty_assert_base(a, b, !=)
 #define empty_assert_true(a, ...) empty_assert_eq(a, true)
 #define empty_assert_false(a, ...) empty_assert_eq(a, false)
-#define empty_assert_null(a, ...) empty_assert_eq(a, NULL)
-#define empty_assert_not_null(a, ...) empty_assert_neq(a, NULL)
+#define empty_assert_null(a, ...) empty_assert_eq(a, ASSERT_NULL)
+#define empty_assert_not_null(a, ...) empty_assert_neq(a, ASSERT_NULL)
 #define empty_assert_ptr(ptr, size, ...)	\
-empty_assert_base(ptr, NULL, !=,			\
+empty_assert_base(ptr, ASSERT_NULL, !=,		\
 	{										\
 		if(size == 0) break;				\
 	}										\
