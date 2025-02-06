@@ -141,7 +141,7 @@ main(
 				void (*test_func)() = (void*) symbol.st_value;
 				assert_not_null(test_func);
 
-				test_say("Running test '%s', expecting %s", sym_name, should_pass ? "success" : "failure");
+				test_say("Running test '%s', expecting %s", name, should_pass ? "success" : "failure");
 
 				int pid = fork();
 				if(pid == 0)
@@ -160,12 +160,12 @@ main(
 
 					if(success)
 					{
-						test_say("Test '%s' passed", sym_name);
+						test_say("Test '%s' passed", name);
 						++passed;
 					}
 					else
 					{
-						test_say_important("\033[31mTest '%s' FAILED !!!\033[0m", sym_name);
+						test_say_important("\033[31mTest '%s' FAILED !!!\033[39m", name);
 					}
 				}
 			}
