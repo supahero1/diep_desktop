@@ -173,6 +173,8 @@ assert_failed(										\
 	#define private static
 #endif
 
-#define assert_fallthrough() __attribute__((fallthrough))
-#define assert_ctor __attribute__((constructor))
-#define assert_dtor __attribute__((destructor))
+#define assert_attr(...) __attribute__((__VA_ARGS__))
+#define assert_fallthrough() assert_attr(fallthrough)
+#define assert_ctor assert_attr(constructor)
+#define assert_dtor assert_attr(destructor)
+#define assert_used assert_attr(used)

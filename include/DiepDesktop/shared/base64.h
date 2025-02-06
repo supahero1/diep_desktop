@@ -33,3 +33,10 @@ base64_decode(
 	uint64_t in_len,
 	uint64_t* out_len
 	);
+
+
+extern bool
+base64_is_valid(
+	const uint8_t* data,
+	uint64_t len
+	);

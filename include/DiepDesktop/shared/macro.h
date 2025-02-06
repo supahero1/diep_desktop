@@ -52,6 +52,12 @@ __builtin_choose_expr((num) <= 1, 0, __builtin_ctzll(num))
 #define MACRO_NEXT_OR_EQUAL_POWER_OF_2_CONST(num)	\
 __builtin_choose_expr((num) <= 2, (num), 1U << (32 - __builtin_clz((num) - 1)))
 
+#define MACRO_POWER_OF_2_MASK(num)	\
+(MACRO_NEXT_OR_EQUAL_POWER_OF_2(num) - 1)
+
+#define MACRO_POWER_OF_2_MASK_CONST(num)	\
+(MACRO_NEXT_OR_EQUAL_POWER_OF_2_CONST(num) - 1)
+
 #define MACRO_IS_POWER_OF_2(x)	\
 ({								\
 	typeof(x) _x = (x);	\
@@ -181,3 +187,6 @@ _Generic((x),					\
 	long double:		"%Lf",	\
 	default:			"%p"	\
 	)
+
+#define MACRO_FORMAT_TYPE_CONST(x)	\
+MACRO_FORMAT_TYPE((x) 0)

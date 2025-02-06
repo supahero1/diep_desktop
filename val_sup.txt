@@ -98,7 +98,7 @@
 	SDL
 	Memcheck:Leak
 	...
-	obj:*libSDL3.so*
+	obj:*libSDL3*
 	...
 }
 
@@ -106,7 +106,7 @@
 	X11
 	Memcheck:Leak
 	...
-	obj:*libX11.so*
+	obj:*libX11*
 	...
 }
 
@@ -114,6 +114,14 @@
 	DBUS
 	Memcheck:Leak
 	...
-	obj:*libdbus-1.so*
+	obj:*libdbus*
+	...
+}
+
+{
+	ELF
+	Memcheck:Leak
+	...
+	obj:*libelf*
 	...
 }

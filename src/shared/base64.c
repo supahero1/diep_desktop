@@ -31,10 +31,10 @@ base64_encoded_len(
 private uint8_t
 base64_encode_table[] =
 {
-	'A', 'b', 'C', 'D', 'E', 'F', 'g', 'h',
+	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 	'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-	'Q', 'r', 's', 'T', 'U', 'v', 'w', 'x',
-	'y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+	'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+	'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
 	'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
 	'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
 	'w', 'x', 'y', 'z', '0', '1', '2', '3',
@@ -49,9 +49,11 @@ base64_encode(
 	uint64_t* out_len
 	)
 {
+	assert_ptr(data, in_len);
+
 	uint64_t encoded_len = base64_encoded_len(in_len);
 	uint8_t* encoded = alloc_malloc(encoded_len);
-	assert_not_null(encoded);
+	assert_ptr(encoded, encoded_len);
 
 	uint64_t full_encodes = in_len / 3;
 	const uint8_t* data_end = data + full_encodes * 3;
@@ -118,22 +120,22 @@ base64_decoded_len(
 private uint8_t
 base64_decode_table[256] =
 {
-	 0,  0,  0,  0,  0,  0,  0,  0,
-	 0,  0,  0,  0,  0,  0,  0,  0,
-	 0,  0,  0,  0,  0,  0,  0,  0,
-	 0,  0,  0,  0,  0,  0,  0,  0,
-	 0,  0,  0,  0,  0,  0,  0,  0,
-	 0,  0,  0, 62,  0,  0,  0, 63,
+	-1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, 62, -1, -1, -1, 63,
 	52, 53, 54, 55, 56, 57, 58, 59,
-	60, 61,  0,  0,  0,  0,  0,  0,
-	 0,  0,  1,  2,  3,  4,  5,  6,
+	60, 61, -1, -1, -1,  0, -1, -1,
+	-1,  0,  1,  2,  3,  4,  5,  6,
 	 7,  8,  9, 10, 11, 12, 13, 14,
 	15, 16, 17, 18, 19, 20, 21, 22,
-	23, 24, 25,  0,  0,  0,  0,  0,
-	 0, 26, 27, 28, 29, 30, 31, 32,
+	23, 24, 25, -1, -1, -1, -1, -1,
+	-1, 26, 27, 28, 29, 30, 31, 32,
 	33, 34, 35, 36, 37, 38, 39, 40,
 	41, 42, 43, 44, 45, 46, 47, 48,
-	49, 50, 51,  0,  0,  0,  0,  0,
+	49, 50, 51, -1, -1, -1, -1, -1,
 };
 
 
@@ -144,12 +146,11 @@ base64_decode(
 	uint64_t* out_len
 	)
 {
-	assert_eq(in_len, 0);
-	assert_neq((in_len & 3), 0);
+	assert_true(base64_is_valid(data, in_len));
 
 	uint64_t decoded_len = base64_decoded_len(in_len);
 	uint8_t* decoded = alloc_malloc(decoded_len);
-	assert_not_null(decoded);
+	assert_ptr(decoded, decoded_len);
 
 	const uint8_t* data_end = data + in_len;
 
@@ -163,11 +164,20 @@ base64_decode(
 		data += 2;
 	}
 
-	while(*(data - 1) == '=')
+	if(in_len)
 	{
-		--data;
-		--decoded;
-		--decoded_len;
+		decoded -= decoded_len;
+		uint64_t new_len = decoded_len;
+
+		while(*(data - 1) == '=')
+		{
+			--data;
+			--new_len;
+		}
+
+		decoded = alloc_remalloc(decoded_len, decoded, new_len);
+		decoded_len = new_len;
+		assert_not_null(decoded);
 	}
 
 	if(out_len != NULL)
@@ -175,5 +185,34 @@ base64_decode(
 		*out_len = decoded_len;
 	}
 
-	return decoded - decoded_len;
+	return decoded;
+}
+
+
+bool
+base64_is_valid(
+	const uint8_t* data,
+	uint64_t len
+	)
+{
+	assert_ptr(data, len);
+
+	if((len & 3) != 0)
+	{
+		return false;
+	}
+
+	const uint8_t* data_end = data + len;
+
+	while(data != data_end)
+	{
+		if(base64_decode_table[*data] == (uint8_t) -1)
+		{
+			return false;
+		}
+
+		++data;
+	}
+
+	return true;
 }

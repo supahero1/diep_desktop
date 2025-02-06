@@ -24,7 +24,7 @@ flags.extend(Split(freetype2_flags))
 
 release = int(ARGUMENTS["RELEASE"] if "RELEASE" in ARGUMENTS else os.environ.get("RELEASE", "0"))
 if release <= 0:
-	flags.extend(Split("-O0 -g3 -ggdb -D_FORTIFY_SOURCE=3"))
+	flags.extend(Split("-O0 -g3 -D_FORTIFY_SOURCE=3"))
 	if os.name != "nt":
 		flags.extend(Split("-rdynamic"))
 else:
@@ -182,10 +182,10 @@ def create_program(source, object, use_libtest=False):
 def create_test(test_source, source_object):
 	test_program = create_program(test_source, source_object, True)
 	output = str(test_program[0]) + ".out"
-	test = env.Command(output, test_program, "$SOURCE > $TARGET 2>&1")
+	test = env.Command(output, test_program, "$SOURCE --file > $TARGET 2>&1")
 	valgrind_output = output + ".val"
 	valgrind_test = env.Command(valgrind_output, test_program,
-		"valgrind --leak-check=full --show-leak-kinds=all --suppressions=val_sup.txt $SOURCE > $TARGET 2>&1")
+		"valgrind --leak-check=full --show-leak-kinds=all --suppressions=val_sup.txt -- $SOURCE --file > $TARGET 2>&1")
 	return [test, valgrind_test]
 
 def for_source_pairs(sources, objects, cb):
@@ -210,11 +210,18 @@ shared_test_outputs = create_tests(shared_tests, shared_objects)
 client_test_outputs = create_tests(client_tests, client_objects)
 server_test_outputs = create_tests(server_tests, server_objects)
 
-tests = env.Command("bin/tests/status",
-	shared_test_outputs + client_test_outputs + server_test_outputs,
-	"echo \"pass\" > $TARGET")
-env.Alias("test", tests)
-env.Depends([client, server], tests)
+if release <= 0:
+	tests = env.Command("bin/tests/status",
+		shared_test_outputs + client_test_outputs + server_test_outputs,
+		"echo \"pass\" > $TARGET")
+	env.Alias("test", tests)
+	env.Depends([client, server], tests)
+else:
+	def test_message(target, source, env):
+		print("\033[1m\033[35m[TEST]\033[39m > Tests are not available " +
+			"in release mode (because assertions are disabled). <\033[0m")
+
+	env.AlwaysBuild(env.Alias("test", [], test_message))
 
 def create_tex_program(source, object):
 	env.Alias(source[4:-2], create_program(source, object))

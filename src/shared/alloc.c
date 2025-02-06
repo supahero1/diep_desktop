@@ -18,7 +18,7 @@
 #include <DiepDesktop/shared/macro.h>
 #include <DiepDesktop/shared/alloc.h>
 
-#if !defined(NDEBUG) && (VALGRIND || __has_include(<valgrind/valgrind.h>))
+#if !defined(NDEBUG) && (defined(VALGRIND) || __has_include(<valgrind/valgrind.h>))
 	#define ALLOC_VALGRIND
 
 	#include <stdlib.h>
@@ -26,6 +26,7 @@
 	#include <valgrind/valgrind.h>
 #endif
 
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 
@@ -294,6 +295,16 @@ alloc_realloc_virtual_aligned(
 
 
 
+typedef struct alloc_header
+{
+	void* prev;
+	void* next;
+	uint32_t real_ptr_off;
+	uint32_t alloc_size;
+}
+alloc_header_t;
+
+
 #if __SIZEOF_POINTER__ == 8
 	#define ALLOC_1_MAX 250
 #else
@@ -319,7 +330,8 @@ struct _packed_ alloc_1_block
 {
 	alloc_1_block_t* prev;
 	alloc_1_block_t* next;
-	void* real_ptr;
+	uint32_t real_ptr_off;
+	uint32_t alloc_size;
 	uint16_t count;
 	uint16_t free;
 	alloc_1_t allocs[];
@@ -337,7 +349,8 @@ struct _packed_ alloc_2
 {
 	alloc_2_t* prev;
 	alloc_2_t* next;
-	void* real_ptr;
+	uint32_t real_ptr_off;
+	uint32_t alloc_size;
 	uint16_t used;
 	uint16_t count;
 	uint16_t free;
@@ -352,7 +365,8 @@ struct _packed_ alloc_4
 {
 	alloc_4_t* prev;
 	alloc_4_t* next;
-	void* real_ptr;
+	uint32_t real_ptr_off;
+	uint32_t alloc_size;
 	uint32_t used;
 	uint32_t count;
 	uint32_t free;
@@ -392,13 +406,7 @@ struct alloc_handle_internal
 
 	alloc_handle_flag_t flags;
 
-	struct
-	{
-		void* prev;
-		void* next;
-		void* real_ptr;
-	}
-	*head;
+	alloc_header_t* head;
 
 	alloc_alloc_fn_t alloc_fn;
 	alloc_free_fn_t free_fn;
@@ -634,7 +642,9 @@ aloc_alloc_1_fn(
 		block->prev = NULL;
 		block->next = NULL;
 		*/
-		block->real_ptr = real_ptr;
+		assert_lt((void*) block - (void*) real_ptr, UINT32_MAX);
+		block->real_ptr_off = (void*) block - (void*) real_ptr;
+		block->alloc_size = 1;
 		/*
 		block->count = 0;
 		block->free = 0;
@@ -693,6 +703,11 @@ aloc_alloc_1_fn(
 	if(alloc->free != UINT8_MAX)
 	{
 		uint8_t* ptr = alloc->data + alloc->free;
+
+#ifdef ALLOC_VALGRIND
+		VALGRIND_MALLOCLIKE_BLOCK(ptr, 1, 0, zero);
+#endif
+
 		alloc->free = *ptr;
 
 		if(zero)
@@ -703,7 +718,13 @@ aloc_alloc_1_fn(
 		return ptr;
 	}
 
-	return alloc->data + alloc->used++;
+	uint8_t* ptr = alloc->data + alloc->used++;
+
+#ifdef ALLOC_VALGRIND
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, 1, 0, true);
+#endif
+
+	return ptr;
 }
 
 
@@ -719,7 +740,7 @@ alloc_free_1_fn(
 
 	alloc_1_block_t* block = block_ptr;
 	alloc_1_t* alloc = &block->allocs[
-		((uintptr_t) ptr - (uintptr_t) block - sizeof(alloc_1_block_t))
+		((void*) ptr - (void*) block - sizeof(alloc_1_block_t))
 		/ sizeof(alloc_1_t)];
 
 	--handle->allocations;
@@ -753,7 +774,7 @@ alloc_free_1_fn(
 			block->next->prev = block->prev;
 		}
 
-		alloc_free_virtual_aligned(block->real_ptr,
+		alloc_free_virtual_aligned((void*) block - block->real_ptr_off,
 			handle->block_size, handle->block_size);
 
 		--handle->allocators;
@@ -804,7 +825,10 @@ alloc_alloc_2_fn(
 			return NULL;
 		}
 
-		alloc->real_ptr = real_ptr;
+		assert_lt((void*) alloc - (void*) real_ptr, UINT32_MAX);
+		alloc->real_ptr_off = (void*) alloc - (void*) real_ptr;
+		alloc->alloc_size = 2;
+
 		alloc->free = ALLOC_2_MAX;
 
 		++handle->allocators;
@@ -832,6 +856,10 @@ alloc_alloc_2_fn(
 	{
 		void* ptr = data + alloc->free * 2;
 
+#ifdef ALLOC_VALGRIND
+		VALGRIND_MALLOCLIKE_BLOCK(ptr, 2, 0, zero);
+#endif
+
 		(void) memcpy(&alloc->free, ptr, 2);
 
 		if(zero)
@@ -842,7 +870,13 @@ alloc_alloc_2_fn(
 		return ptr;
 	}
 
-	return data + alloc->used++ * 2;
+	void* ptr = data + alloc->used++ * 2;
+
+#ifdef ALLOC_VALGRIND
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, 2, 0, true);
+#endif
+
+	return ptr;
 }
 
 
@@ -888,7 +922,7 @@ alloc_free_2_fn(
 			alloc->next->prev = alloc->prev;
 		}
 
-		alloc_free_virtual_aligned(alloc->real_ptr,
+		alloc_free_virtual_aligned((void*) alloc - alloc->real_ptr_off,
 			handle->block_size, handle->block_size);
 
 		--handle->allocators;
@@ -911,7 +945,7 @@ alloc_free_2_fn(
 		(void) memcpy(ptr, &alloc->free, 2);
 
 		uint8_t* data = (uint8_t*) alloc + handle->padding;
-		alloc->free = ((uintptr_t) ptr - (uintptr_t) data) / 2;
+		alloc->free = ((void*) ptr - (void*) data) / 2;
 	}
 }
 
@@ -935,7 +969,10 @@ alloc_alloc_4_fn(
 			return NULL;
 		}
 
-		alloc->real_ptr = real_ptr;
+		assert_lt((void*) alloc - (void*) real_ptr, UINT32_MAX);
+		alloc->real_ptr_off = (void*) alloc - (void*) real_ptr;
+		alloc->alloc_size = handle->alloc_size;
+
 		alloc->free = ALLOC_4_MAX;
 
 		++handle->allocators;
@@ -963,6 +1000,10 @@ alloc_alloc_4_fn(
 	{
 		void* ptr = data + alloc->free * handle->alloc_size;
 
+#ifdef ALLOC_VALGRIND
+		VALGRIND_MALLOCLIKE_BLOCK(ptr, handle->alloc_size, 0, zero);
+#endif
+
 		(void) memcpy(&alloc->free, ptr, 4);
 
 		if(zero)
@@ -973,7 +1014,13 @@ alloc_alloc_4_fn(
 		return ptr;
 	}
 
-	return data + alloc->used++ * handle->alloc_size;
+	void* ptr =  data + alloc->used++ * handle->alloc_size;
+
+#ifdef ALLOC_VALGRIND
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, handle->alloc_size, 0, true);
+#endif
+
+	return ptr;
 }
 
 
@@ -1019,7 +1066,7 @@ alloc_free_4_fn(
 			alloc->next->prev = alloc->prev;
 		}
 
-		alloc_free_virtual_aligned(alloc->real_ptr,
+		alloc_free_virtual_aligned((void*) alloc - alloc->real_ptr_off,
 			handle->block_size, handle->block_size);
 
 		--handle->allocators;
@@ -1042,7 +1089,7 @@ alloc_free_4_fn(
 		(void) memcpy(ptr, &alloc->free, 4);
 
 		uint8_t* data = (uint8_t*) alloc + handle->padding;
-		alloc->free = ((uintptr_t) ptr - (uintptr_t) data) / handle->alloc_size;
+		alloc->free = ((void*) ptr - (void*) data) / handle->alloc_size;
 	}
 }
 
@@ -1057,7 +1104,13 @@ alloc_alloc_virtual_fn(
 	(void) handle;
 	(void) zero;
 
-	return alloc_alloc_virtual(size);
+	void* ptr = alloc_alloc_virtual(size);
+
+#ifdef ALLOC_VALGRIND
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, size, 0, true);
+#endif
+
+	return ptr;
 }
 
 
@@ -1243,7 +1296,7 @@ alloc_free_handle(
 
 	if(handle_internal->head)
 	{
-		alloc_free_virtual_aligned(handle_internal->head->real_ptr,
+		alloc_free_virtual_aligned((void*) handle_internal->head - handle_internal->head->real_ptr_off,
 			handle_internal->block_size, handle_internal->block_size);
 	}
 
@@ -1553,18 +1606,6 @@ alloc_alloc_uh(
 		return NULL;
 	}
 
-#ifdef ALLOC_VALGRIND
-	if(RUNNING_ON_VALGRIND)
-	{
-		if(zero)
-		{
-			return calloc(1, size);
-		}
-
-		return malloc(size);
-	}
-#endif
-
 	alloc_handle_internal_t* handle_internal = (void*) handle;
 
 	return handle_internal->alloc_fn(handle_internal, size, zero);
@@ -1578,10 +1619,26 @@ alloc_free_h(
 	alloc_t size
 	)
 {
-	if(!size)
+	assert_ptr(ptr, size);
+
+	if(!ptr)
 	{
 		return;
 	}
+
+	assert_not_null(handle, fprintf(stderr,
+		"Size 0 specified for non-empty pointer (you passed invalid parameters to alloc_free())\n"));
+
+	assert_eq((uintptr_t) ptr & MACRO_POWER_OF_2_MASK(size), 0,
+		{
+			char format[256];
+			snprintf(format, sizeof(format),
+				"Invalid pointer alignment, got ptr = %s and size = %s "
+				"(you passed invalid parameters to alloc_free())\n",
+				MACRO_FORMAT_TYPE(ptr), MACRO_FORMAT_TYPE(size));
+			fprintf(stderr, format, ptr, size);
+		}
+		);
 
 	alloc_handle_lock_h(handle);
 		alloc_free_uh(handle, ptr, size);
@@ -1596,51 +1653,49 @@ alloc_free_uh(
 	alloc_t size
 	)
 {
-	if(!size)
+	assert_ptr(ptr, size);
+
+	if(!ptr)
 	{
 		return;
 	}
 
-#ifdef ALLOC_VALGRIND
-	if(RUNNING_ON_VALGRIND)
-	{
-		free((void*) ptr);
-		return;
-	}
-#endif
+	assert_not_null(handle, fprintf(stderr,
+		"Size 0 specified for non-empty pointer (you passed invalid parameters to alloc_free())\n"));
+
+	assert_eq((uintptr_t) ptr & MACRO_POWER_OF_2_MASK(size), 0,
+		{
+			char format[256];
+			snprintf(format, sizeof(format),
+				"Invalid pointer alignment, got ptr = %s and size = %s "
+				"(you passed invalid parameters to alloc_free())\n",
+				MACRO_FORMAT_TYPE(ptr), MACRO_FORMAT_TYPE(size));
+			fprintf(stderr, format, ptr, size);
+		}
+		);
 
 	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_header_t* header = alloc_get_base_ptr(handle_internal, ptr);
+
+	assert_eq(header->alloc_size, handle_internal->alloc_size,
+		{
+			char format[256];
+			snprintf(format, sizeof(format),
+				"Mismatch between passed size %s and (next or equal power of 2) "
+				"pointer size %s (you passed invalid parameters to alloc_free())\n",
+				MACRO_FORMAT_TYPE(size), MACRO_FORMAT_TYPE(header->alloc_size));
+			fprintf(stderr, format, size, header->alloc_size);
+		}
+		);
 
 	handle_internal->free_fn(handle_internal,
 		alloc_get_base_ptr(handle_internal, ptr), (void*) ptr, size);
-}
-
 
 #ifdef ALLOC_VALGRIND
-	#define ALLOC_REALLOC_CHECK_VALGRIND()					\
-	do														\
-	{														\
-		if(RUNNING_ON_VALGRIND)								\
-		{													\
-			void* new_ptr = realloc((void*) ptr, new_size);	\
-			if(!new_ptr)									\
-			{												\
-				return NULL;								\
-			}												\
-															\
-			if(new_size > old_size && zero)					\
-			{												\
-				(void) memset((uint8_t*) new_ptr			\
-					+ old_size, 0, new_size - old_size);	\
-			}												\
-															\
-			return new_ptr;									\
-		}													\
-	}														\
-	while(0)
-#else
-	#define ALLOC_REALLOC_CHECK_VALGRIND()
+	VALGRIND_FREELIKE_BLOCK(ptr, 0);
 #endif
+}
+
 
 #define ALLOC_REALLOC(alloc_fn, free_fn)							\
 do																	\
@@ -1655,8 +1710,6 @@ do																	\
 	{																\
 		return alloc_fn(new_handle, new_size, zero);				\
 	}																\
-																	\
-	ALLOC_REALLOC_CHECK_VALGRIND();									\
 																	\
 	if(old_handle == new_handle)									\
 	{																\
@@ -1680,7 +1733,7 @@ do																	\
 		return NULL;												\
 	}																\
 																	\
-	(void) memcpy(new_ptr, ptr, MACRO_MIN(old_size, new_size));			\
+	(void) memcpy(new_ptr, ptr, MACRO_MIN(old_size, new_size));		\
 																	\
 	free_fn(old_handle, ptr, old_size);								\
 																	\

@@ -28,6 +28,8 @@
 
 
 static int tty_fd = 1;
+static bool has_file = false;
+static char* test_name = NULL;
 
 
 static void
@@ -47,8 +49,27 @@ test_say_common(
 	vdprintf(tty_fd, buffer, copy);
 	va_end(copy);
 
-	sprintf(buffer, important ? "[TEST] > %s <\n" : "[TEST] %s\n", format);
-	vfprintf(stderr, buffer, args);
+	if(has_file)
+	{
+		int len = strlen(buffer);
+		int new_len = 0;
+
+		for(int i = 0; i < len; ++i)
+		{
+			if(buffer[i] == '\033' && buffer[i + 1] == '[')
+			{
+				while(buffer[i] != 'm' && i < len) ++i;
+			}
+			else
+			{
+				buffer[new_len++] = buffer[i];
+			}
+		}
+
+		buffer[new_len] = '\0';
+
+		vfprintf(stderr, buffer, args);
+	}
 }
 
 
@@ -68,7 +89,7 @@ test_say(
 
 static void
 __attribute__((format(printf, 1, 2)))
-test_say_important(
+test_shout(
 	const char* format,
 	...
 	)
@@ -82,11 +103,31 @@ test_say_important(
 
 int
 main(
-	void
+	int argc,
+	char** argv
 	)
 {
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
+
+	for(int i = 1; i < argc; ++i)
+	{
+		if(!strcmp(argv[i], "--file"))
+		{
+			has_file = true;
+		}
+		else if(!strcmp(argv[i], "--name"))
+		{
+			if(i + 1 < argc)
+			{
+				test_name = argv[++i];
+			}
+			else
+			{
+				test_shout("Missing argument for --name");
+			}
+		}
+	}
 
 	int fd = open("/proc/self/exe", O_RDONLY);
 	assert_neq(fd, -1);
@@ -135,6 +176,11 @@ main(
 					continue;
 				}
 
+				if(test_name != NULL && strcmp(name, test_name))
+				{
+					continue;
+				}
+
 				++tests;
 				bool should_pass = !strcmp(method, "pass");
 
@@ -143,29 +189,64 @@ main(
 
 				test_say("Running test '%s', expecting %s", name, should_pass ? "success" : "failure");
 
-				int pid = fork();
-				if(pid == 0)
+				int pid;
+				if(!test_name)
 				{
-					test_func();
-					exit(0);
+					pid = fork();
 				}
 				else
 				{
-					int status;
+					pid = 0;
+				}
+
+				if(pid == 0)
+				{
+					test_func();
+
+					if(!test_name)
+					{
+						exit(0);
+					}
+				}
+
+				int status;
+				if(!test_name)
+				{
 					int wpid = waitpid(pid, &status, 0);
 					assert_eq(wpid, pid);
+				}
+				else
+				{
+					status = 0;
+				}
 
-					bool success = WIFEXITED(status) && WEXITSTATUS(status) == 0 && should_pass;
-					success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT && !should_pass;
+				bool success = WIFEXITED(status) && WEXITSTATUS(status) == 0 && should_pass;
+				success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT && !should_pass;
 
-					if(success)
+				if(success)
+				{
+					test_say("Test '%s' passed", name);
+					++passed;
+				}
+				else
+				{
+					test_shout("\033[31mTest '%s' FAILED !!!\033[39m", name);
+
+					if(WIFSIGNALED(status))
 					{
-						test_say("Test '%s' passed", name);
-						++passed;
+						test_shout("\033[31mTest '%s' was aborted with signal %d\033[39m", name, WTERMSIG(status));
+					}
+					else if(WIFEXITED(status))
+					{
+						test_shout("\033[31mTest '%s' exited with status %d\033[39m", name, WEXITSTATUS(status));
+					}
+					else if(WIFSTOPPED(status))
+					{
+						test_shout("\033[31mTest '%s' was stopped with signal %d\033[39m", name, WSTOPSIG(status));
 					}
 					else
 					{
-						test_say_important("\033[31mTest '%s' FAILED !!!\033[39m", name);
+						test_shout("\033[31mTest '%s' returned unknown status %d\033[39m", name, status);
 					}
 				}
 			}
@@ -175,7 +256,7 @@ main(
 	elf_end(elf);
 	close(fd);
 
-	test_say_important("Ran %d tests, %d passed, %d failed", tests, passed, tests - passed);
+	test_shout("Ran %d tests, \033[32m%d\033[39m passed, \033[31m%d\033[39m failed", tests, passed, tests - passed);
 
 	close(tty_fd);
 
