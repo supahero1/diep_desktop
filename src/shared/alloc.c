@@ -705,7 +705,7 @@ aloc_alloc_1_fn(
 		uint8_t* ptr = alloc->data + alloc->free;
 
 #ifdef ALLOC_VALGRIND
-		VALGRIND_MALLOCLIKE_BLOCK(ptr, 1, 0, zero);
+		VALGRIND_MALLOCLIKE_BLOCK(ptr, 1, 0, 0);
 #endif
 
 		alloc->free = *ptr;
@@ -721,7 +721,7 @@ aloc_alloc_1_fn(
 	uint8_t* ptr = alloc->data + alloc->used++;
 
 #ifdef ALLOC_VALGRIND
-	VALGRIND_MALLOCLIKE_BLOCK(ptr, 1, 0, true);
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, 1, 0, 1);
 #endif
 
 	return ptr;
@@ -857,7 +857,7 @@ alloc_alloc_2_fn(
 		void* ptr = data + alloc->free * 2;
 
 #ifdef ALLOC_VALGRIND
-		VALGRIND_MALLOCLIKE_BLOCK(ptr, 2, 0, zero);
+		VALGRIND_MALLOCLIKE_BLOCK(ptr, 2, 0, 0);
 #endif
 
 		(void) memcpy(&alloc->free, ptr, 2);
@@ -873,7 +873,7 @@ alloc_alloc_2_fn(
 	void* ptr = data + alloc->used++ * 2;
 
 #ifdef ALLOC_VALGRIND
-	VALGRIND_MALLOCLIKE_BLOCK(ptr, 2, 0, true);
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, 2, 0, 1);
 #endif
 
 	return ptr;
@@ -1001,7 +1001,7 @@ alloc_alloc_4_fn(
 		void* ptr = data + alloc->free * handle->alloc_size;
 
 #ifdef ALLOC_VALGRIND
-		VALGRIND_MALLOCLIKE_BLOCK(ptr, handle->alloc_size, 0, zero);
+		VALGRIND_MALLOCLIKE_BLOCK(ptr, handle->alloc_size, 0, 0);
 #endif
 
 		(void) memcpy(&alloc->free, ptr, 4);
@@ -1017,7 +1017,7 @@ alloc_alloc_4_fn(
 	void* ptr =  data + alloc->used++ * handle->alloc_size;
 
 #ifdef ALLOC_VALGRIND
-	VALGRIND_MALLOCLIKE_BLOCK(ptr, handle->alloc_size, 0, true);
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, handle->alloc_size, 0, 1);
 #endif
 
 	return ptr;
@@ -1107,7 +1107,7 @@ alloc_alloc_virtual_fn(
 	void* ptr = alloc_alloc_virtual(size);
 
 #ifdef ALLOC_VALGRIND
-	VALGRIND_MALLOCLIKE_BLOCK(ptr, size, 0, true);
+	VALGRIND_MALLOCLIKE_BLOCK(ptr, size, 0, 1);
 #endif
 
 	return ptr;

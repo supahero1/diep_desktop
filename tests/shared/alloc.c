@@ -20,6 +20,7 @@
  * ) Cannot test alloc_free_invalid_size_x_to_y where x or y are {1, 2, 3},
  *   because the results are unreliable (can easily get a segfault).
  *
+ * 1) Check for no Valgrind warnings in the output.
  */
 
 #include <DiepDesktop/shared/debug.h>
@@ -374,4 +375,54 @@ test_should_fail__alloc_free_unaligned_random_ptr(
 	)
 {
 	alloc_free(4, (void*) 0x11);
+}
+
+
+void assert_used
+test_should_pass__alloc_reuse_spot_malloc(
+	void
+	)
+{
+	/* 1) */
+
+	uint8_t* ptr = alloc_malloc(4);
+	assert_not_null(ptr);
+
+	volatile uint8_t val1 = *ptr;
+	(void) val1;
+
+	alloc_free(4, ptr);
+
+	ptr = alloc_malloc(4);
+	assert_not_null(ptr);
+
+	volatile uint8_t val2 = *ptr;
+	(void) val2;
+
+	alloc_free(4, ptr);
+}
+
+
+void assert_used
+test_should_pass__alloc_reuse_spot_calloc(
+	void
+	)
+{
+	/* 1) */
+
+	uint8_t* ptr = alloc_calloc(4);
+	assert_not_null(ptr);
+
+	volatile uint8_t val1 = *ptr;
+	(void) val1;
+
+	alloc_free(4, ptr);
+
+	ptr = alloc_calloc(4);
+	assert_not_null(ptr);
+
+	volatile uint8_t val2 = *ptr;
+	(void) val2;
+
+	alloc_free(4, ptr);
 }
