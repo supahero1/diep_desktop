@@ -187,12 +187,13 @@ main(
 				void (*test_func)() = (void*) symbol.st_value;
 				assert_not_null(test_func);
 
-				test_say("Running test '%s', expecting %s", name, should_pass ? "success" : "failure");
+				test_say("%-44s expecting %s", name, should_pass ? "success" : "failure");
 
 				int pid;
 				if(!test_name)
 				{
 					pid = fork();
+					assert_neq(pid, -1);
 				}
 				else
 				{
@@ -225,28 +226,28 @@ main(
 
 				if(success)
 				{
-					test_say("Test '%s' passed", name);
+					test_say("%-44s passed", name);
 					++passed;
 				}
 				else
 				{
-					test_shout("\033[31mTest '%s' FAILED !!!\033[39m", name);
+					test_shout("\033[31m%-44s FAILED !!!\033[39m", name);
 
 					if(WIFSIGNALED(status))
 					{
-						test_shout("\033[31mTest '%s' was aborted with signal %d\033[39m", name, WTERMSIG(status));
+						test_shout("\033[31m%-44s was aborted with signal %s\033[39m", name, sigabbrev_np(WTERMSIG(status)));
 					}
 					else if(WIFEXITED(status))
 					{
-						test_shout("\033[31mTest '%s' exited with status %d\033[39m", name, WEXITSTATUS(status));
+						test_shout("\033[31m%-44s exited with status %d\033[39m", name, WEXITSTATUS(status));
 					}
 					else if(WIFSTOPPED(status))
 					{
-						test_shout("\033[31mTest '%s' was stopped with signal %d\033[39m", name, WSTOPSIG(status));
+						test_shout("\033[31m%-44s was stopped with signal %s\033[39m", name, sigabbrev_np(WSTOPSIG(status)));
 					}
 					else
 					{
-						test_shout("\033[31mTest '%s' returned unknown status %d\033[39m", name, status);
+						test_shout("\033[31m%-44s returned unknown status %d\033[39m", name, status);
 					}
 				}
 			}

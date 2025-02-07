@@ -60,7 +60,7 @@ event_once_fn(
 	)
 {
 	event_once_data_t once = *(event_once_data_t*)(listener + 1);
-	event_target_del(once.target, listener);
+	event_target_del_once(once.target, listener);
 	once.data.fn(once.data.data, event_data);
 }
 
@@ -150,6 +150,24 @@ event_target_del_common(
 {
 	assert_not_null(target);
 	assert_not_null(listener);
+
+#ifndef NDEBUG
+	event_listener_t* current = target->head;
+	bool found = false;
+
+	while(current)
+	{
+		if(current == listener)
+		{
+			found = true;
+			break;
+		}
+
+		current = current->next;
+	}
+
+	assert_true(found);
+#endif
 
 	if(listener->prev)
 	{

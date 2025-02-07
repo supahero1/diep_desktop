@@ -20,8 +20,8 @@
 #include <string.h>
 
 
-static uint8_t data[] = "test\n";
-static uint64_t len = sizeof(data) - 1;
+uint8_t data[] = "test\n";
+uint64_t len = sizeof(data) - 1;
 
 
 void assert_used

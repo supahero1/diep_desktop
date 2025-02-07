@@ -17,7 +17,7 @@
 /*
  * Test comments:
  *
- * ) Cannot test alloc_free_invalid_size_x_to_y where x or y are {1, 2, 3},
+ * *) Cannot test alloc_free_invalid_size_x_to_y where x or y are {1, 2, 3},
  *   because the results are unreliable (can easily get a segfault).
  *
  * 1) Check for no Valgrind warnings in the output.

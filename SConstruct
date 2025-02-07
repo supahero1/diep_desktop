@@ -15,6 +15,8 @@
 import os
 import subprocess
 
+
+
 env = Environment(tools = ["mingw"] if os.name == "nt" else ["default"])
 
 flags = Split("-std=gnu23 -Wall -Iinclude/ -D_GNU_SOURCE")
@@ -26,7 +28,7 @@ release = int(ARGUMENTS["RELEASE"] if "RELEASE" in ARGUMENTS else os.environ.get
 if release <= 0:
 	flags.extend(Split("-O0 -g3 -D_FORTIFY_SOURCE=3"))
 	if os.name != "nt":
-		flags.extend(Split("-rdynamic"))
+		env.Append(LINKFLAGS=Split("-rdynamic"))
 else:
 	if release >= 1:
 		flags.extend(Split("-O3 -DNDEBUG -flto"))
@@ -41,6 +43,7 @@ if os.name == "nt":
 else:
 	libs.extend(Split("vulkan"))
 env.Append(LIBS=libs)
+
 
 
 def help(target, source, env):
@@ -59,160 +62,143 @@ env.AlwaysBuild(env.Alias("help", [], help))
 Default("help")
 
 
-def collect_sources(root, dir):
-	sources = []
-	for root, _, files in os.walk(os.path.join(root, dir)):
-		for file in files:
-			if file.endswith(".c"):
-				with open(os.path.join(root, file), "r") as f:
-					line = f.readline()
-					if not line.startswith("/* skip */"):
-						sources.append(os.path.join(root, file))
-	return sources
-
-shared_sources = collect_sources("src", "shared")
-client_sources = collect_sources("src", "client")
-server_sources = collect_sources("src", "server")
-tex_sources = collect_sources("tex", "")
-
-sources = {}
-
-def scan_file(file):
-	if file not in sources and "client/tex/" not in file:
-		path = "include/DiepDesktop/" + file[4:] if file.endswith(".h") else file
-		with open(path, "r") as f:
-			include_lines = [line for line in f if line.startswith("#include <DiepDesktop/")]
-			headers = ["src/" + line[22:-2] for line in include_lines]
-			sources[file] = headers
-			for header in headers:
-				scan_file(header)
-
-def source_to_object(source):
-	scan_file(source)
-	return env.Object("bin/" + source[:-1] + "o", source)
-
-def sources_to_objects(sources):
-	return [source_to_object(source) for source in sources]
-
-shared_objects = sources_to_objects(shared_sources)
-client_objects = sources_to_objects(client_sources)
-server_objects = sources_to_objects(server_sources)
-tex_objects = sources_to_objects(tex_sources)
-objects = shared_objects + client_objects + server_objects + tex_objects
-objects_str = { str(obj[0]): obj[0] for obj in objects }
-
-new_sources = {}
-for file in sources:
-	name =	file[:-1] + "h"
-	if name not in new_sources:
-		new_sources[name] = sources[file]
-	else:
-		new_sources[name].extend(sources[file])
-sources = new_sources
-
-def expand_sources(name, file):
-	if file not in sources[name]:
-		sources[name].append(file)
-		for header in sources[file]:
-			expand_sources(name, header)
-
-files = list(sources.keys())
-for file in files:
-	dependencies = list(sources[file])
-	for dependency in dependencies:
-		if dependency not in sources:
-			sources[dependency] = []
-		for header in sources[dependency]:
-			expand_sources(file, header)
 
 deps = {}
 
-def build_deps(name, file):
-	added = []
-	if name not in deps:
-		deps[name] = sources[file]
-		added = sources[file]
-	else:
-		for source in sources[file]:
-			if source not in deps[name]:
-				deps[name].append(source)
-				added.append(source)
-	for file in added:
-		build_deps(name, file)
+def prop_headers(dest, headers):
+	for header in headers:
+		if header not in dest:
+			dest.append(header)
+			if header in deps:
+				prop_headers(dest, deps[header])
 
-for file in sources:
-	name = "bin/" + file[:-1] + "o"
-	build_deps(name, file)
+def add_file(path):
+	if path in deps or "client/tex/" in path or "client/font/" in path:
+		return False
+	with open(path, "r") as f:
+		if f.readline().startswith("/* skip */"):
+			return False
+		include_lines = [line for line in f if line.startswith("#include <DiepDesktop/")]
+		headers = ["include/" + line[10:-2] for line in include_lines]
+		deps[path] = headers
+		for header in headers:
+			add_file(header)
+		for header in headers:
+			if header in deps:
+				prop_headers(headers, deps[header])
+		if path.startswith("tests/"):
+			sources = []
+			for header in headers:
+				source = "src/" + header[20:-1] + "c"
+				if source in deps:
+					sources.append(source)
+			headers.extend(sources)
+	return True
 
-for object_name in deps:
-	if object_name in objects_str:
-		env.Depends(objects_str[object_name], ["include/DiepDesktop/" + header[4:] for header in deps[object_name]])
+def add_files(path):
+	output = []
+	for root, _, files in os.walk(path):
+		for file in files:
+			if file.endswith(".c"):
+				filepath = os.path.join(root, file)
+				if add_file(filepath):
+					output.append(filepath)
+	return output
 
-checked = {}
-new_deps = {}
-for object_name in deps:
-	new_deps[object_name] = []
-	for header in deps[object_name]:
-		checked[header] = True
-		object = objects_str.get("bin/" + header[:-1] + "o", None)
-		if object is not None:
-			new_deps[object_name].append(object)
-deps = new_deps
+client_src_files = add_files("src/client")
+server_src_files = add_files("src/server")
+shared_src_files = add_files("src/shared")
 
-client = env.Program("bin/client", shared_objects + client_objects)
-server = env.Program("bin/server", shared_objects + server_objects)
+tex_src_files = add_files("tex")
+
+libtest_file = "tests/libtest.c"
+add_file(libtest_file)
+
+client_test_files = add_files("tests/client")
+server_test_files = add_files("tests/server")
+shared_test_files = add_files("tests/shared")
+
+
+
+objects = {}
+
+def add_object(file):
+	files = deps[file]
+	obj = env.Object("bin/" + file[:-1] + "o", file)[0]
+	objects[file] = obj
+	for file in files:
+		if file.endswith(".c"):
+			if file not in objects:
+				add_object(file)
+			env.Depends(obj, objects[file])
+		else:
+			env.Depends(obj, file)
+	return obj
+
+def add_objects(files):
+	return [add_object(file) for file in files]
+
+client_src_objects = add_objects(client_src_files)
+server_src_objects = add_objects(server_src_files)
+shared_src_objects = add_objects(shared_src_files)
+
+tex_src_objects = add_objects(tex_src_files)
+
+libtest_object = add_object(libtest_file)
+
+client_test_objects = add_objects(client_test_files)
+server_test_objects = add_objects(server_test_files)
+shared_test_objects = add_objects(shared_test_files)
+
+client = env.Program("bin/client", shared_src_objects + client_src_objects)
+server = env.Program("bin/server", shared_src_objects + server_src_objects)
 
 env.Alias("client", client)
 env.Alias("server", server)
 
-shared_tests = collect_sources("tests", "shared")
-client_tests = collect_sources("tests", "client")
-server_tests = collect_sources("tests", "server")
-
-libtest_object = source_to_object("tests/libtest.c")
 libtest = env.Library("bin/tests/libtest", libtest_object)
+env.Alias("libtest", libtest)
 
-def create_program(source, object, use_libtest=False):
-	program_object = source_to_object(source)
-	header_deps = ["include/DiepDesktop/" + header[4:] for header in sources[str(object)[4:-1] + "h"]]
-	env.Depends(program_object, deps[str(object)] + header_deps)
-	return env.Program("bin/" + source[:-2], [program_object] + deps[str(object)],
-		LIBPATH=Split("bin/tests/"), LIBS = Split("libtest elf") if use_libtest else [])
+def add_recur(obj_deps, obj):
+	if obj in obj_deps:
+		return
+	obj_deps.append(obj)
+	for header in deps[str(obj)[4:-1] + "c"]:
+		if header.endswith(".c"):
+			add_recur(obj_deps, objects[header])
+		else:
+			source = "src/" + header[20:-1] + "c"
+			if source in objects:
+				add_recur(obj_deps, objects[source])
 
-def create_test(test_source, source_object):
-	test_program = create_program(test_source, source_object, True)
-	output = str(test_program[0]) + ".out"
-	test = env.Command(output, test_program, "$SOURCE --file > $TARGET 2>&1")
+def add_program(object, use_libtest=False):
+	obj_deps = []
+	add_recur(obj_deps, object)
+	program = env.Program(str(object)[:-2], obj_deps,
+		LIBPATH = Split("bin/tests/") if use_libtest else [],
+		LIBS = Split("libtest elf") if use_libtest else [])
+	env.Alias(str(object)[4:-2], program)
+	return program
+
+def add_test(object):
+	program = add_program(object, True)
+	output = str(program[0]) + ".out"
+	test = env.Command(output, program, "$SOURCE --file > $TARGET 2>&1")
 	valgrind_output = output + ".val"
-	valgrind_test = env.Command(valgrind_output, test_program,
+	valgrind_test = env.Command(valgrind_output, program,
 		"valgrind --leak-check=full --show-leak-kinds=all --suppressions=val_sup.txt -- $SOURCE --file > $TARGET 2>&1")
 	return [test, valgrind_test]
 
-def for_source_pairs(sources, objects, cb):
-	for source in sources:
-		source_file = source.replace("tests/", "bin/src/").replace("tex/", "bin/tex/")
-		matching_source_object = None
-		for list in objects:
-			for obj in list:
-				if str(obj) == source_file[:-1] + "o":
-					matching_source_object = obj
-					break
-		if matching_source_object is None:
-			raise Exception("No matching source object for " + source)
-		cb(source, matching_source_object)
+def add_tests(objects):
+	return [add_test(object) for object in objects]
 
-def create_tests(tests, objects):
-	outputs = []
-	for_source_pairs(tests, objects, lambda source, object: outputs.extend(create_test(source, object)))
-	return outputs
-
-shared_test_outputs = create_tests(shared_tests, shared_objects)
-client_test_outputs = create_tests(client_tests, client_objects)
-server_test_outputs = create_tests(server_tests, server_objects)
+client_tests = add_tests(client_test_objects)
+server_tests = add_tests(server_test_objects)
+shared_tests = add_tests(shared_test_objects)
 
 if release <= 0:
 	tests = env.Command("bin/tests/status",
-		shared_test_outputs + client_test_outputs + server_test_outputs,
+		shared_tests + client_tests + server_tests,
 		"echo \"pass\" > $TARGET")
 	env.Alias("test", tests)
 	env.Depends([client, server], tests)
@@ -223,8 +209,5 @@ else:
 
 	env.AlwaysBuild(env.Alias("test", [], test_message))
 
-def create_tex_program(source, object):
-	env.Alias(source[4:-2], create_program(source, object))
-
-for_source_pairs(tex_sources, tex_objects, create_tex_program)
-
+for object in tex_src_objects:
+	env.Alias(str(object)[4:-2], add_program(object))

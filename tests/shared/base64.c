@@ -28,10 +28,10 @@
 #include <string.h>
 
 
-static uint8_t table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+uint8_t table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 
-static void
+void
 run_encode_test(
 	const uint8_t* data,
 	uint64_t in_len,
@@ -50,7 +50,7 @@ run_encode_test(
 }
 
 
-static void
+void
 run_decode_test(
 	const uint8_t* data,
 	uint64_t in_len,
