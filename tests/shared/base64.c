@@ -14,13 +14,6 @@
  *  limitations under the License.
  */
 
-/*
- * Test comments:
- *
- * 1) The point here is that instead of segfaulting, we get a meaningful assertion.
- *
- */
-
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/base64.h>
 #include <DiepDesktop/shared/alloc_ext.h>
@@ -230,7 +223,6 @@ test_should_fail__base64_encode_null_nonzero_len(
 	void
 	)
 {
-	/* 1) */
 	base64_encode(NULL, 1, NULL);
 }
 
@@ -396,7 +388,6 @@ test_should_fail__base64_decode_null_nonzero_len(
 	void
 	)
 {
-	/* 1) */
 	base64_decode(NULL, 1, NULL);
 }
 
@@ -406,7 +397,6 @@ test_should_fail__base64_decode_bad_input(
 	void
 	)
 {
-	/* 1) */
 	base64_decode((uint8_t[]){ ' ', ' ', ' ', ' ' }, 4, NULL);
 }
 
@@ -416,7 +406,6 @@ test_should_fail__base64_decode_bad_len_mod_1(
 	void
 	)
 {
-	/* 1) */
 	base64_decode((uint8_t[]){ 'A', 'A', 'A', 'A', 'A', 'A', 'A' }, 7, NULL);
 }
 
@@ -426,7 +415,6 @@ test_should_fail__base64_decode_bad_len_mod_2(
 	void
 	)
 {
-	/* 1) */
 	base64_decode((uint8_t[]){ 'A', 'A', 'A', 'A', 'A', 'A' }, 6, NULL);
 }
 
@@ -436,6 +424,5 @@ test_should_fail__base64_decode_bad_len_mod_3(
 	void
 	)
 {
-	/* 1) */
 	base64_decode((uint8_t[]){ 'A', 'A', 'A', 'A', 'A' }, 5, NULL);
 }

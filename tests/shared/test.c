@@ -37,7 +37,7 @@ test_should_fail__test_abort(
 
 
 void assert_used
-test_should_fail__test_timeout(
+test_should_timeout__test_timeout(
 	void
 	)
 {

@@ -17,9 +17,7 @@
 /*
  * Test comments:
  *
- * 1) The point here is that instead of segfaulting, we get a meaningful assertion.
- *
- * 2) To promote RAII, do not allow freeing a target with listeners still attached.
+ * 1) To promote RAII, do not allow freeing a target with listeners still attached.
  *
  */
 
@@ -45,7 +43,6 @@ test_should_fail__event_target_init_null(
 	void
 	)
 {
-	/* 1) */
 	event_target_init(NULL);
 }
 
@@ -55,7 +52,6 @@ test_should_fail__event_target_free_null(
 	void
 	)
 {
-	/* 1) */
 	event_target_free(NULL);
 }
 
@@ -65,8 +61,6 @@ test_should_fail__event_target_add_null_fn(
 	void
 	)
 {
-	/* 1) */
-
 	event_target_t target;
 	event_target_init(&target);
 
@@ -99,7 +93,7 @@ test_should_fail__event_target_free_while_non_empty(
 	void
 	)
 {
-	/* 2) */
+	/* 1) */
 
 	event_target_t target;
 	event_target_init(&target);
@@ -119,8 +113,6 @@ test_should_fail__event_target_add_null_target(
 	void
 	)
 {
-	/* 1) */
-
 	event_listener_data_t data =
 	{
 		.fn = (void*) 0x1
@@ -134,8 +126,6 @@ test_should_fail__event_target_del_null_target(
 	void
 	)
 {
-	/* 1) */
-
 	event_listener_t* listener = (void*) 0x1;
 	event_target_del(NULL, listener);
 }
@@ -146,8 +136,6 @@ test_should_fail__event_target_del_null_listener(
 	void
 	)
 {
-	/* 1) */
-
 	event_target_t target;
 	event_target_init(&target);
 
@@ -370,4 +358,25 @@ test_should_pass__event_target_wait(
 	thread_free(&thread);
 
 	event_target_free(&target);
+}
+
+
+void assert_used
+test_should_fail__event_target_wait_null(
+	void
+	)
+{
+	event_target_wait(NULL);
+}
+
+
+void assert_used
+test_should_timeout__event_target_wait_timeout(
+	void
+	)
+{
+	event_target_t target;
+	event_target_init(&target);
+
+	event_target_wait(&target);
 }

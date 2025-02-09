@@ -74,6 +74,8 @@ thread_free(
 	thread_t* thread
 	)
 {
+	assert_not_null(thread);
+
 	*thread = -1;
 }
 
