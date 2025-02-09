@@ -156,9 +156,6 @@ server = env.Program("bin/server", shared_src_objects + server_src_objects)
 env.Alias("client", client)
 env.Alias("server", server)
 
-libtest = env.Library("bin/tests/libtest", libtest_object)
-env.Alias("libtest", libtest)
-
 def add_recur(obj_deps, obj):
 	if obj in obj_deps:
 		return
@@ -170,6 +167,11 @@ def add_recur(obj_deps, obj):
 			source = "src/" + header[20:-1] + "c"
 			if source in objects:
 				add_recur(obj_deps, objects[source])
+
+libtest_obj_deps = []
+add_recur(libtest_obj_deps, libtest_object)
+libtest = env.Library("bin/tests/libtest", libtest_obj_deps)
+env.Alias("libtest", libtest)
 
 def add_program(object, use_libtest=False):
 	obj_deps = []

@@ -42,6 +42,12 @@ sync_mtx_lock(
 	);
 
 
+extern bool
+sync_mtx_try_lock(
+	sync_mtx_t* mtx
+	);
+
+
 extern void
 sync_mtx_unlock(
 	sync_mtx_t* mtx

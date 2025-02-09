@@ -19,13 +19,11 @@
 #include <DiepDesktop/shared/alloc_ext.h>
 
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 
 
 typedef struct thread_data_internal
 {
-	sync_mtx_t mtx;
 	thread_data_t data;
 }
 thread_data_internal_t;
@@ -37,11 +35,9 @@ thread_fn(
 	)
 {
 	thread_data_t data = internal->data;
-
-	sync_mtx_unlock(&internal->mtx);
+	alloc_free(sizeof(*internal), internal);
 
 	data.fn(data.data);
-
 	return NULL;
 }
 
@@ -56,24 +52,19 @@ thread_init(
 
 	thread_t id;
 
-	thread_data_internal_t internal;
-	internal.data = data;
+	thread_data_internal_t* internal = alloc_malloc(sizeof(*internal));
+	assert_not_null(internal);
 
-	sync_mtx_init(&internal.mtx);
-	sync_mtx_lock(&internal.mtx);
+	internal->data = data;
 
 	int status = pthread_create(&id, NULL,
-		(void* (*)(void*)) thread_fn, &internal);
+		(void* (*)(void*)) thread_fn, internal);
 	hard_assert_eq(status, 0);
 
 	if(thread)
 	{
 		*thread = id;
 	}
-
-	sync_mtx_lock(&internal.mtx);
-	sync_mtx_unlock(&internal.mtx);
-	sync_mtx_free(&internal.mtx);
 }
 
 
@@ -82,6 +73,8 @@ thread_free(
 	thread_t* thread
 	)
 {
+	assert_not_null(thread);
+
 	*thread = -1;
 }
 
@@ -131,6 +124,8 @@ thread_detach(
 	thread_t thread
 	)
 {
+	assert_neq(thread, -1);
+
 	int status = pthread_detach(thread);
 	hard_assert_eq(status, 0);
 }
@@ -141,6 +136,8 @@ thread_join(
 	thread_t thread
 	)
 {
+	assert_neq(thread, -1);
+
 	int status = pthread_join(thread, NULL);
 	hard_assert_eq(status, 0);
 }
@@ -151,6 +148,8 @@ thread_cancel(
 	thread_t thread
 	)
 {
+	assert_neq(thread, -1);
+
 	int status = pthread_cancel(thread);
 	hard_assert_eq(status, 0);
 }
@@ -232,8 +231,7 @@ thread_sleep(
 			continue;
 		}
 
-		fprintf(stderr, "nanosleep: %s\n", strerror(errno));
-		hard_assert_unreachable();
+		hard_assert_eq(errno, EINTR);
 	}
 }
 
@@ -269,6 +267,8 @@ threads_init(
 	threads_t* threads
 	)
 {
+	assert_not_null(threads);
+
 	threads->threads = NULL;
 	threads->used = 0;
 	threads->size = 0;
@@ -280,6 +280,8 @@ threads_free(
 	threads_t* threads
 	)
 {
+	assert_not_null(threads);
+
 	alloc_free(sizeof(thread_t) * threads->size, threads->threads);
 }
 
@@ -291,7 +293,7 @@ threads_add(
 	uint32_t count
 	)
 {
-	assert_gt(count, 0);
+	assert_not_null(threads);
 
 	threads_resize(threads, count);
 
@@ -313,7 +315,7 @@ threads_cancel_sync(
 	uint32_t count
 	)
 {
-	assert_gt(count, 0);
+	assert_not_null(threads);
 	assert_le(count, threads->used);
 
 	thread_t* thread_start = threads->threads + threads->used - count;
@@ -360,7 +362,7 @@ threads_cancel_async(
 	uint32_t count
 	)
 {
-	assert_gt(count, 0);
+	assert_not_null(threads);
 	assert_le(count, threads->used);
 
 	thread_t* thread_start = threads->threads + threads->used - count;
@@ -417,6 +419,7 @@ thread_pool_fn(
 	void* data
 	)
 {
+	assert_not_null(data);
 	thread_pool_t* pool = data;
 
 	while(1)
@@ -431,6 +434,8 @@ thread_pool_init(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_sem_init(&pool->sem, 0);
 	sync_mtx_init(&pool->mtx);
 
@@ -445,6 +450,8 @@ thread_pool_free(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	alloc_free(sizeof(thread_data_t) * pool->size, pool->queue);
 
 	sync_mtx_free(&pool->mtx);
@@ -457,6 +464,8 @@ thread_pool_lock(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_mtx_lock(&pool->mtx);
 }
 
@@ -466,6 +475,8 @@ thread_pool_unlock(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_mtx_unlock(&pool->mtx);
 }
 
@@ -503,6 +514,9 @@ thread_pool_add_common(
 	bool lock
 	)
 {
+	assert_not_null(pool);
+	assert_not_null(data.fn);
+
 	if(lock)
 	{
 		thread_pool_lock(pool);
@@ -541,12 +555,14 @@ thread_pool_add(
 }
 
 
-private void
+private bool
 thread_pool_try_work_common(
 	thread_pool_t* pool,
 	bool lock
 	)
 {
+	assert_not_null(pool);
+
 	if(lock)
 	{
 		thread_pool_lock(pool);
@@ -559,18 +575,19 @@ thread_pool_try_work_common(
 			thread_pool_unlock(pool);
 		}
 
-		return;
+		return false;
 	}
 
 	thread_data_t data = *pool->queue;
 
-	thread_pool_resize(pool, -1);
-
-	if(pool->used)
+	if(pool->used - 1)
 	{
 		(void) memmove(pool->queue, pool->queue + 1,
-			sizeof(*pool->queue) * pool->used);
+			sizeof(*pool->queue) * (pool->used - 1));
 	}
+
+	thread_pool_resize(pool, -1);
+	--pool->used;
 
 	if(lock)
 	{
@@ -578,24 +595,26 @@ thread_pool_try_work_common(
 	}
 
 	data.fn(data.data);
+
+	return true;
 }
 
 
-void
+bool
 thread_pool_try_work_u(
 	thread_pool_t* pool
 	)
 {
-	thread_pool_try_work_common(pool, false);
+	return thread_pool_try_work_common(pool, false);
 }
 
 
-void
+bool
 thread_pool_try_work(
 	thread_pool_t* pool
 	)
 {
-	thread_pool_try_work_common(pool, true);
+	return thread_pool_try_work_common(pool, true);
 }
 
 
@@ -604,9 +623,15 @@ thread_pool_work_u(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_sem_wait(&pool->sem);
 
-	thread_pool_try_work_u(pool);
+	thread_async_off();
+		thread_cancel_off();
+			(void) thread_pool_try_work_u(pool);
+		thread_cancel_on();
+	thread_async_on();
 }
 
 
@@ -615,11 +640,13 @@ thread_pool_work(
 	thread_pool_t* pool
 	)
 {
-	thread_async_off();
-		sync_sem_wait(&pool->sem);
+	assert_not_null(pool);
 
+	sync_sem_wait(&pool->sem);
+
+	thread_async_off();
 		thread_cancel_off();
-			thread_pool_try_work(pool);
+			(void) thread_pool_try_work(pool);
 		thread_cancel_on();
 	thread_async_on();
 }

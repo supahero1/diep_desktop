@@ -15,15 +15,15 @@
  */
 
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/alloc_ext.h>
 
 #include <gelf.h>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <libelf.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/wait.h>
 
 
@@ -107,6 +107,8 @@ main(
 	char** argv
 	)
 {
+	nice(20);
+
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
 
@@ -129,6 +131,9 @@ main(
 		}
 	}
 
+	void* handle = dlopen(NULL, RTLD_LAZY);
+	assert_not_null(handle);
+
 	int fd = open("/proc/self/exe", O_RDONLY);
 	assert_neq(fd, -1);
 
@@ -143,8 +148,18 @@ main(
 	Elf_Scn* scn = NULL;
 	GElf_Shdr shdr;
 
-	int tests = 0;
-	int passed = 0;
+	typedef struct test
+	{
+		char* name;
+		uint16_t name_len;
+		bool should_pass;
+		bool should_timeout;
+		int pid;
+	}
+	test_t;
+
+	test_t* tests = NULL;
+	uint32_t test_count = 0;
 
 	while((scn = elf_nextscn(elf, scn)) != NULL)
 	{
@@ -162,14 +177,15 @@ main(
 				if(gelf_getsym(data, i, &symbol) == NULL) continue;
 
 				const char* sym_name = elf_strptr(elf, shdr.sh_link, symbol.st_name);
-				char method[5];
+				char method[16];
 				char name[256];
-				int len = sscanf(sym_name, "test_should_%4[a-zA-Z0-9_]__%255[a-zA-Z0-9_]", method, name);
+				int len = sscanf(sym_name, "test_should_%15[^_]__%255[^(]", method, name);
 				if(len != 2) continue;
 
 				if(
 					strcmp(method, "fail") &&
-					strcmp(method, "pass")
+					strcmp(method, "pass") &&
+					strcmp(method, "timeout")
 					)
 				{
 					test_say("Invalid test method '%s'", method);
@@ -181,13 +197,15 @@ main(
 					continue;
 				}
 
-				++tests;
-				bool should_pass = !strcmp(method, "pass");
+				assert_eq(symbol.st_info, ELF32_ST_INFO(STB_GLOBAL, STT_FUNC));
 
-				void (*test_func)() = (void*) symbol.st_value;
+				bool should_pass = !strcmp(method, "pass");
+				bool should_timeout = !strcmp(method, "timeout");
+
+				void (*test_func)() = dlsym(handle, sym_name);
 				assert_not_null(test_func);
 
-				test_say("%-44s expecting %s", name, should_pass ? "success" : "failure");
+				test_say("%-44s expecting %s", name, should_pass ? "success" : should_timeout ? "timeout" : "failure");
 
 				int pid;
 				if(!test_name)
@@ -202,6 +220,8 @@ main(
 
 				if(pid == 0)
 				{
+					alarm(10);
+
 					test_func();
 
 					if(!test_name)
@@ -210,45 +230,28 @@ main(
 					}
 				}
 
-				int status;
-				if(!test_name)
-				{
-					int wpid = waitpid(pid, &status, 0);
-					assert_eq(wpid, pid);
-				}
-				else
-				{
-					status = 0;
-				}
+				tests = alloc_remalloc(sizeof(*tests) * test_count, tests, sizeof(*tests) * (test_count + 1));
+				assert_not_null(tests);
 
-				bool success = WIFEXITED(status) && WEXITSTATUS(status) == 0 && should_pass;
-				success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT && !should_pass;
+				uint16_t name_len = strlen(name) + 1;
+				char* name_copy = alloc_malloc(name_len);
+				assert_not_null(name_copy);
 
-				if(success)
-				{
-					test_say("%-44s passed", name);
-					++passed;
-				}
-				else
-				{
-					test_shout("\033[31m%-44s FAILED !!!\033[39m", name);
+				memcpy(name_copy, name, name_len);
 
-					if(WIFSIGNALED(status))
-					{
-						test_shout("\033[31m%-44s was aborted with signal %s\033[39m", name, sigabbrev_np(WTERMSIG(status)));
-					}
-					else if(WIFEXITED(status))
-					{
-						test_shout("\033[31m%-44s exited with status %d\033[39m", name, WEXITSTATUS(status));
-					}
-					else if(WIFSTOPPED(status))
-					{
-						test_shout("\033[31m%-44s was stopped with signal %s\033[39m", name, sigabbrev_np(WSTOPSIG(status)));
-					}
-					else
-					{
-						test_shout("\033[31m%-44s returned unknown status %d\033[39m", name, status);
-					}
+				tests[test_count++] =
+				(test_t)
+				{
+					.name = name_copy,
+					.name_len = name_len,
+					.should_pass = should_pass,
+					.should_timeout = should_timeout,
+					.pid = pid
+				};
+
+				if(test_name)
+				{
+					break;
 				}
 			}
 		}
@@ -256,10 +259,82 @@ main(
 
 	elf_end(elf);
 	close(fd);
+	dlclose(handle);
 
-	test_shout("Ran %d tests, \033[32m%d\033[39m passed, \033[31m%d\033[39m failed", tests, passed, tests - passed);
+	uint32_t passed = 0;
+
+	for(uint32_t i = 0; i < test_count; ++i)
+	{
+		int status;
+		test_t test;
+		test.pid = -1;
+
+		if(!test_name)
+		{
+			int pid = waitpid(-1, &status, 0);
+			assert_neq(pid, -1);
+
+			for(uint32_t j = 0; j < test_count; ++j)
+			{
+				if(tests[j].pid == pid)
+				{
+					test = tests[j];
+					break;
+				}
+			}
+		}
+		else
+		{
+			status = 0;
+			test = tests[0];
+		}
+
+		assert_neq(test.pid, -1);
+
+		bool success = WIFEXITED(status) && WEXITSTATUS(status) == 0 && test.should_pass;
+		success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT && !test.should_pass && !test.should_timeout;
+		success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGALRM && test.should_timeout;
+
+		if(success)
+		{
+			test_say("%-44s passed", test.name);
+			++passed;
+		}
+		else
+		{
+			test_shout("\033[31m%-44s FAILED !!!\033[39m", test.name);
+
+			if(WIFSIGNALED(status))
+			{
+				test_shout("\033[31m%-44s was aborted with signal %s\033[39m",
+					test.name, sigabbrev_np(WTERMSIG(status)));
+			}
+			else if(WIFEXITED(status))
+			{
+				test_shout("\033[31m%-44s exited with status %d\033[39m",
+					test.name, WEXITSTATUS(status));
+			}
+			else if(WIFSTOPPED(status))
+			{
+				test_shout("\033[31m%-44s was stopped with signal %s\033[39m",
+					test.name, sigabbrev_np(WSTOPSIG(status)));
+			}
+			else
+			{
+				test_shout("\033[31m%-44s returned unknown status %d\033[39m",
+					test.name, status);
+			}
+		}
+
+		alloc_free(test.name_len, test.name);
+	}
+
+	test_shout("Ran %d tests, \033[32m%d\033[39m passed, \033[31m%d\033[39m failed",
+		test_count, passed, test_count - passed);
+
+	alloc_free(sizeof(*tests) * test_count, tests);
 
 	close(tty_fd);
 
-	return tests == passed ? 0 : 1;
+	return test_count == passed ? 0 : 1;
 }
