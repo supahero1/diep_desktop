@@ -26,9 +26,8 @@ test_should_fail__thread_init_null_fn(
 	void
 	)
 {
-	thread_t thread;
 	thread_data_t data = {0};
-	thread_init(&thread, data);
+	thread_init(NULL, data);
 }
 
 
@@ -91,6 +90,8 @@ test_should_timeout__thread_cancel_off(
 
 	thread_sleep(time_ms_to_ns(10));
 	thread_cancel_sync(thread);
+
+	thread_free(&thread);
 }
 
 
@@ -143,6 +144,57 @@ test_should_pass__thread_cancel_on_self(
 	thread_cancel_on();
 	thread_cancel_async(thread_self());
 	thread_sleep(time_sec_to_ns(99));
+}
+
+
+void assert_used
+test_should_fail__thread_detach_freed(
+	void
+	)
+{
+	thread_t thread;
+	thread_data_t data =
+	{
+		.fn = dummy_thread_fn
+	};
+	thread_init(&thread, data);
+	thread_free(&thread);
+
+	thread_detach(thread);
+}
+
+
+void assert_used
+test_should_fail__thread_join_freed(
+	void
+	)
+{
+	thread_t thread;
+	thread_data_t data =
+	{
+		.fn = dummy_thread_fn
+	};
+	thread_init(&thread, data);
+	thread_free(&thread);
+
+	thread_join(thread);
+}
+
+
+void assert_used
+test_should_fail__thread_cancel_freed(
+	void
+	)
+{
+	thread_t thread;
+	thread_data_t data =
+	{
+		.fn = dummy_thread_fn
+	};
+	thread_init(&thread, data);
+	thread_free(&thread);
+
+	thread_cancel_sync(thread);
 }
 
 
@@ -289,6 +341,75 @@ test_should_fail__threads_free_null(
 
 
 void assert_used
+test_should_fail__threads_add_null(
+	void
+	)
+{
+	threads_add(NULL, (thread_data_t){0}, 0);
+}
+
+
+void assert_used
+test_should_fail__threads_cancel_sync_null(
+	void
+	)
+{
+	threads_cancel_sync(NULL, 0);
+}
+
+
+void assert_used
+test_should_fail__threads_cancel_sync_too_many(
+	void
+	)
+{
+	threads_t threads;
+	threads_init(&threads);
+
+	threads_cancel_sync(&threads, 1);
+}
+
+
+void assert_used
+test_should_fail__threads_cancel_async_null(
+	void
+	)
+{
+	threads_cancel_async(NULL, 0);
+}
+
+
+void assert_used
+test_should_fail__threads_cancel_async_too_many(
+	void
+	)
+{
+	threads_t threads;
+	threads_init(&threads);
+
+	threads_cancel_async(&threads, 1);
+}
+
+
+void assert_used
+test_should_pass__threads_cancel_zero(
+	void
+	)
+{
+	threads_t threads;
+	threads_init(&threads);
+
+	threads_cancel_sync(&threads, 0);
+	threads_cancel_async(&threads, 0);
+
+	threads_free(&threads);
+}
+
+
+
+
+
+void assert_used
 test_should_fail__thread_pool_init_null(
 	void
 	)
@@ -303,4 +424,100 @@ test_should_fail__thread_pool_free_null(
 	)
 {
 	thread_pool_free(NULL);
+}
+
+
+void assert_used
+test_should_fail__thread_pool_lock_null(
+	void
+	)
+{
+	thread_pool_lock(NULL);
+}
+
+
+void assert_used
+test_should_fail__thread_pool_unlock_null(
+	void
+	)
+{
+	thread_pool_unlock(NULL);
+}
+
+
+void assert_used
+test_should_fail__thread_pool_add_null(
+	void
+	)
+{
+	thread_pool_add(NULL, (thread_data_t){0});
+}
+
+
+void assert_used
+test_should_fail__thread_pool_add_u_null(
+	void
+	)
+{
+	thread_pool_add_u(NULL, (thread_data_t){0});
+}
+
+
+void assert_used
+test_should_fail__thread_pool_add_null_fn(
+	void
+	)
+{
+	thread_pool_t pool;
+	thread_pool_init(&pool);
+
+	thread_pool_add(&pool, (thread_data_t){0});
+}
+
+
+void assert_used
+test_should_fail__thread_pool_add_u_null_fn(
+	void
+	)
+{
+	thread_pool_t pool;
+	thread_pool_init(&pool);
+
+	thread_pool_add_u(&pool, (thread_data_t){0});
+}
+
+
+void assert_used
+test_should_fail__thread_pool_try_work_null(
+	void
+	)
+{
+	thread_pool_try_work(NULL);
+}
+
+
+void assert_used
+test_should_fail__thread_pool_try_work_u_null(
+	void
+	)
+{
+	thread_pool_try_work_u(NULL);
+}
+
+
+void assert_used
+test_should_fail__thread_pool_work_null(
+	void
+	)
+{
+	thread_pool_work(NULL);
+}
+
+
+void assert_used
+test_should_fail__thread_pool_work_u_null(
+	void
+	)
+{
+	thread_pool_work_u(NULL);
 }

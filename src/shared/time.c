@@ -371,6 +371,8 @@ time_timers_add_##name##_common (																\
 	bool lock																					\
 	)																							\
 {																								\
+	assert_not_null(timers);																	\
+																								\
 	if(lock)																					\
 	{																							\
 		time_timers_lock(timers);																\
@@ -537,6 +539,8 @@ time_timer_get_timeout_u(
 	time_timeout_t* timeout
 	)
 {
+	assert_not_null(timeout);
+
 	return timeout->time;
 }
 
@@ -580,6 +584,8 @@ time_timer_set_timeout_u(
 	uint64_t time
 	)
 {
+	assert_not_null(timeout);
+
 	timeout->time = time;
 }
 
@@ -627,6 +633,8 @@ time_timer_get_interval_u(
 	time_interval_t* interval
 	)
 {
+	assert_not_null(interval);
+
 	return interval->base_time + interval->interval * interval->count;
 }
 
@@ -672,6 +680,8 @@ time_timer_set_interval_u(
 	uint64_t count
 	)
 {
+	assert_not_null(interval);
+
 	interval->base_time = base_time;
 	interval->interval = interval_time;
 	interval->count = count;
@@ -725,6 +735,7 @@ time_timers_fn(
 	void* data
 	)
 {
+	assert_not_null(data);
 	time_timers_t* timers = data;
 
 	while(1)
@@ -809,6 +820,8 @@ time_timers_init(
 	time_timers_t* timers
 	)
 {
+	assert_not_null(timers);
+
 	timers->timeouts = NULL;
 	timers->timeouts_used = 1;
 	timers->timeouts_size = 0;
@@ -837,6 +850,8 @@ time_timers_free(
 	time_timers_t* timers
 	)
 {
+	assert_not_null(timers);
+
 	thread_cancel_sync(timers->thread);
 	thread_free(&timers->thread);
 
@@ -854,6 +869,8 @@ time_timers_lock(
 	time_timers_t* timers
 	)
 {
+	assert_not_null(timers);
+
 	sync_mtx_lock(&timers->mtx);
 }
 
@@ -863,6 +880,8 @@ time_timers_unlock(
 	time_timers_t* timers
 	)
 {
+	assert_not_null(timers);
+
 	sync_mtx_unlock(&timers->mtx);
 }
 
@@ -875,6 +894,8 @@ time_timer_init(
 	time_timer_t* timer
 	)
 {
+	assert_not_null(timer);
+
 	timer->idx = 0;
 }
 
@@ -885,6 +906,9 @@ time_timers_is_timer_expired_u(
 	time_timer_t* timer
 	)
 {
+	assert_not_null(timers);
+	assert_not_null(timer);
+
 	return timer->idx == 0;
 }
 
@@ -895,6 +919,8 @@ time_timers_is_timer_expired(
 	time_timer_t* timer
 	)
 {
+	assert_not_null(timers);
+
 	sync_mtx_lock(&timers->mtx);
 		bool status = time_timers_is_timer_expired_u(timers, timer);
 	sync_mtx_unlock(&timers->mtx);
@@ -908,5 +934,7 @@ time_timer_free(
 	time_timer_t* timer
 	)
 {
+	assert_not_null(timer);
+
 	assert_eq(timer->idx, 0);
 }

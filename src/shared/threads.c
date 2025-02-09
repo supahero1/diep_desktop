@@ -19,7 +19,6 @@
 #include <DiepDesktop/shared/alloc_ext.h>
 
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 
 
@@ -125,6 +124,8 @@ thread_detach(
 	thread_t thread
 	)
 {
+	assert_neq(thread, -1);
+
 	int status = pthread_detach(thread);
 	hard_assert_eq(status, 0);
 }
@@ -135,6 +136,8 @@ thread_join(
 	thread_t thread
 	)
 {
+	assert_neq(thread, -1);
+
 	int status = pthread_join(thread, NULL);
 	hard_assert_eq(status, 0);
 }
@@ -145,6 +148,8 @@ thread_cancel(
 	thread_t thread
 	)
 {
+	assert_neq(thread, -1);
+
 	int status = pthread_cancel(thread);
 	hard_assert_eq(status, 0);
 }
@@ -226,8 +231,7 @@ thread_sleep(
 			continue;
 		}
 
-		fprintf(stderr, "nanosleep: %s\n", strerror(errno));
-		hard_assert_unreachable();
+		hard_assert_eq(errno, EINTR);
 	}
 }
 
@@ -289,6 +293,8 @@ threads_add(
 	uint32_t count
 	)
 {
+	assert_not_null(threads);
+
 	threads_resize(threads, count);
 
 	thread_t* thread = threads->threads + threads->used;
@@ -309,6 +315,7 @@ threads_cancel_sync(
 	uint32_t count
 	)
 {
+	assert_not_null(threads);
 	assert_le(count, threads->used);
 
 	thread_t* thread_start = threads->threads + threads->used - count;
@@ -355,6 +362,7 @@ threads_cancel_async(
 	uint32_t count
 	)
 {
+	assert_not_null(threads);
 	assert_le(count, threads->used);
 
 	thread_t* thread_start = threads->threads + threads->used - count;
@@ -411,6 +419,7 @@ thread_pool_fn(
 	void* data
 	)
 {
+	assert_not_null(data);
 	thread_pool_t* pool = data;
 
 	while(1)
@@ -455,6 +464,8 @@ thread_pool_lock(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_mtx_lock(&pool->mtx);
 }
 
@@ -464,6 +475,8 @@ thread_pool_unlock(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_mtx_unlock(&pool->mtx);
 }
 
@@ -501,6 +514,9 @@ thread_pool_add_common(
 	bool lock
 	)
 {
+	assert_not_null(pool);
+	assert_not_null(data.fn);
+
 	if(lock)
 	{
 		thread_pool_lock(pool);
@@ -545,6 +561,8 @@ thread_pool_try_work_common(
 	bool lock
 	)
 {
+	assert_not_null(pool);
+
 	if(lock)
 	{
 		thread_pool_lock(pool);
@@ -605,9 +623,15 @@ thread_pool_work_u(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_sem_wait(&pool->sem);
 
-	thread_pool_try_work_u(pool);
+	thread_async_off();
+		thread_cancel_off();
+			(void) thread_pool_try_work_u(pool);
+		thread_cancel_on();
+	thread_async_on();
 }
 
 
@@ -616,6 +640,8 @@ thread_pool_work(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_sem_wait(&pool->sem);
 
 	thread_async_off();
