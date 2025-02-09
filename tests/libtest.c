@@ -107,6 +107,8 @@ main(
 	char** argv
 	)
 {
+	nice(20);
+
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
 

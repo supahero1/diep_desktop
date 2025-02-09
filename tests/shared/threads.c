@@ -17,7 +17,8 @@
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+
+#include <stdatomic.h>
 
 
 void assert_used
@@ -131,4 +132,158 @@ test_should_timeout__thread_cancel_off_self(
 	thread_cancel_off();
 	thread_cancel_async(thread_self());
 	thread_sleep(time_sec_to_ns(99));
+}
+
+
+void assert_used
+test_should_pass__thread_cancel_on_self(
+	void
+	)
+{
+	thread_cancel_on();
+	thread_cancel_async(thread_self());
+	thread_sleep(time_sec_to_ns(99));
+}
+
+
+typedef struct thread_pool_work_data
+{
+	_Atomic uint32_t counter;
+	uint32_t max;
+	sync_mtx_t mtx;
+}
+thread_pool_work_data_t;
+
+
+static void
+thread_pool_work_fn(
+	thread_pool_work_data_t* data
+	)
+{
+	if(atomic_fetch_add_explicit(&data->counter, 1, memory_order_relaxed) + 1 == data->max)
+	{
+		sync_mtx_unlock(&data->mtx);
+	}
+}
+
+
+void assert_used
+test_should_pass__thread_pool_and_threads(
+	void
+	)
+{
+	thread_pool_work_data_t data =
+	{
+		.counter = 0,
+		.max = 100
+	};
+	sync_mtx_init(&data.mtx);
+	sync_mtx_lock(&data.mtx);
+
+	thread_pool_t pool;
+	thread_pool_init(&pool);
+
+	thread_data_t thread_data =
+	{
+		.fn = (thread_fn_t) thread_pool_work_fn,
+		.data = &data
+	};
+
+	thread_pool_lock(&pool);
+
+	for(uint32_t i = 0; i < data.max; i++)
+	{
+		thread_pool_add_u(&pool, thread_data);
+	}
+
+	thread_pool_unlock(&pool);
+
+	threads_t threads;
+	threads_init(&threads);
+
+	thread_data_t threads_data =
+	{
+		.fn = thread_pool_fn,
+		.data = &pool
+	};
+
+	threads_add(&threads, threads_data, 16);
+
+	sync_mtx_lock(&data.mtx);
+
+	sync_mtx_unlock(&data.mtx);
+	sync_mtx_free(&data.mtx);
+
+	threads_cancel_all_sync(&threads);
+	threads_free(&threads);
+
+	thread_pool_free(&pool);
+
+	assert_eq(data.counter, data.max);
+}
+
+
+static void
+thread_pool_work_manually_fn(
+	uint32_t* counter
+	)
+{
+	(*counter)++;
+}
+
+
+void assert_used
+test_should_pass__thread_pool_try_work(
+	void
+	)
+{
+	thread_pool_t pool;
+	thread_pool_init(&pool);
+
+	uint32_t counter = 0;
+
+	thread_data_t thread_data =
+	{
+		.fn = (thread_fn_t) thread_pool_work_manually_fn,
+		.data = &counter
+	};
+
+	for(uint32_t i = 0; i < 100; i++)
+	{
+		thread_pool_add(&pool, thread_data);
+	}
+
+	while(thread_pool_try_work(&pool));
+
+	assert_eq(counter, 100);
+
+	thread_pool_add_u(&pool, thread_data);
+	bool status = thread_pool_try_work_u(&pool);
+	assert_true(status);
+
+	thread_pool_lock(&pool);
+	thread_pool_unlock(&pool);
+
+	thread_pool_free(&pool);
+
+	assert_eq(counter, 101);
+}
+
+
+void assert_used
+test_should_fail__thread_pool_init_null(
+	void
+	)
+{
+	thread_pool_init(NULL);
+}
+
+
+
+void assert_used
+test_should_fail__thread_pool_free_null(
+	void
+	)
+{
+	thread_pool_free(NULL);
 }

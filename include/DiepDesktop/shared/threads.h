@@ -231,13 +231,13 @@ thread_pool_add(
 	);
 
 
-extern void
+extern bool
 thread_pool_try_work_u(
 	thread_pool_t* pool
 	);
 
 
-extern void
+extern bool
 thread_pool_try_work(
 	thread_pool_t* pool
 	);

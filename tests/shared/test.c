@@ -28,7 +28,7 @@ test_should_pass__test_pass(
 
 
 void assert_used
-test_should_fail__test_abort(
+test_should_fail__test_fail(
 	void
 	)
 {

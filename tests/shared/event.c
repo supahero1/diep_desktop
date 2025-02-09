@@ -350,6 +350,11 @@ test_should_pass__event_target_wait(
 	};
 	thread_init(&thread, data);
 
+	while(!target.head)
+	{
+		thread_sleep(time_ms_to_ns(10));
+	}
+
 	thread_sleep(time_ms_to_ns(10));
 
 	event_target_fire(&target, (void*) 0x123);

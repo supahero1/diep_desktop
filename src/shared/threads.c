@@ -421,6 +421,8 @@ thread_pool_init(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	sync_sem_init(&pool->sem, 0);
 	sync_mtx_init(&pool->mtx);
 
@@ -435,6 +437,8 @@ thread_pool_free(
 	thread_pool_t* pool
 	)
 {
+	assert_not_null(pool);
+
 	alloc_free(sizeof(thread_data_t) * pool->size, pool->queue);
 
 	sync_mtx_free(&pool->mtx);
@@ -531,7 +535,7 @@ thread_pool_add(
 }
 
 
-private void
+private bool
 thread_pool_try_work_common(
 	thread_pool_t* pool,
 	bool lock
@@ -549,18 +553,19 @@ thread_pool_try_work_common(
 			thread_pool_unlock(pool);
 		}
 
-		return;
+		return false;
 	}
 
 	thread_data_t data = *pool->queue;
 
-	thread_pool_resize(pool, -1);
-
-	if(pool->used)
+	if(pool->used - 1)
 	{
 		(void) memmove(pool->queue, pool->queue + 1,
-			sizeof(*pool->queue) * pool->used);
+			sizeof(*pool->queue) * (pool->used - 1));
 	}
+
+	thread_pool_resize(pool, -1);
+	--pool->used;
 
 	if(lock)
 	{
@@ -568,24 +573,26 @@ thread_pool_try_work_common(
 	}
 
 	data.fn(data.data);
+
+	return true;
 }
 
 
-void
+bool
 thread_pool_try_work_u(
 	thread_pool_t* pool
 	)
 {
-	thread_pool_try_work_common(pool, false);
+	return thread_pool_try_work_common(pool, false);
 }
 
 
-void
+bool
 thread_pool_try_work(
 	thread_pool_t* pool
 	)
 {
-	thread_pool_try_work_common(pool, true);
+	return thread_pool_try_work_common(pool, true);
 }
 
 
@@ -605,11 +612,11 @@ thread_pool_work(
 	thread_pool_t* pool
 	)
 {
-	thread_async_off();
-		sync_sem_wait(&pool->sem);
+	sync_sem_wait(&pool->sem);
 
+	thread_async_off();
 		thread_cancel_off();
-			thread_pool_try_work(pool);
+			(void) thread_pool_try_work(pool);
 		thread_cancel_on();
 	thread_async_on();
 }
