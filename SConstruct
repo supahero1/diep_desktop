@@ -156,7 +156,7 @@ server = env.Program("bin/server", shared_src_objects + server_src_objects)
 env.Alias("client", client)
 env.Alias("server", server)
 
-libtest = env.Library("bin/tests/libtest", libtest_object)
+libtest = env.Library("bin/tests/libtest", libtest_object, CPPFLAGS=Split("-fPIC"))
 env.Alias("libtest", libtest)
 
 def add_recur(obj_deps, obj):

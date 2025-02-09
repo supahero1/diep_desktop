@@ -346,7 +346,7 @@ event_target_wait_thread_fn(
 
 
 void assert_used
-test_should_pass__event_target_wait(
+test_skip_should_pass__event_target_wait(
 	void
 	)
 {

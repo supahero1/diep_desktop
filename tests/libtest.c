@@ -17,6 +17,7 @@
 #include <DiepDesktop/shared/debug.h>
 
 #include <gelf.h>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <libelf.h>
@@ -129,6 +130,9 @@ main(
 		}
 	}
 
+	void* handle = dlopen(NULL, RTLD_LAZY);
+	assert_not_null(handle);
+
 	int fd = open("/proc/self/exe", O_RDONLY);
 	assert_neq(fd, -1);
 
@@ -181,11 +185,15 @@ main(
 					continue;
 				}
 
+				assert_eq(symbol.st_info, ELF32_ST_INFO(STB_GLOBAL, STT_FUNC));
+
 				++tests;
 				bool should_pass = !strcmp(method, "pass");
 
-				void (*test_func)() = (void*) symbol.st_value;
+				void (*test_func)() = dlsym(handle, sym_name);
 				assert_not_null(test_func);
+
+				test_say("test_func %p", test_func);
 
 				test_say("%-44s expecting %s", name, should_pass ? "success" : "failure");
 
@@ -256,6 +264,7 @@ main(
 
 	elf_end(elf);
 	close(fd);
+	dlclose(handle);
 
 	test_shout("Ran %d tests, \033[32m%d\033[39m passed, \033[31m%d\033[39m failed", tests, passed, tests - passed);
 
