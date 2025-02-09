@@ -25,7 +25,6 @@
 
 typedef struct thread_data_internal
 {
-	sync_mtx_t mtx;
 	thread_data_t data;
 }
 thread_data_internal_t;
@@ -37,11 +36,9 @@ thread_fn(
 	)
 {
 	thread_data_t data = internal->data;
-
-	sync_mtx_unlock(&internal->mtx);
+	alloc_free(sizeof(*internal), internal);
 
 	data.fn(data.data);
-
 	return NULL;
 }
 
@@ -56,24 +53,19 @@ thread_init(
 
 	thread_t id;
 
-	thread_data_internal_t internal;
-	internal.data = data;
+	thread_data_internal_t* internal = alloc_malloc(sizeof(*internal));
+	assert_not_null(internal);
 
-	sync_mtx_init(&internal.mtx);
-	sync_mtx_lock(&internal.mtx);
+	internal->data = data;
 
 	int status = pthread_create(&id, NULL,
-		(void* (*)(void*)) thread_fn, &internal);
+		(void* (*)(void*)) thread_fn, internal);
 	hard_assert_eq(status, 0);
 
 	if(thread)
 	{
 		*thread = id;
 	}
-
-	sync_mtx_lock(&internal.mtx);
-	sync_mtx_unlock(&internal.mtx);
-	sync_mtx_free(&internal.mtx);
 }
 
 
@@ -291,8 +283,6 @@ threads_add(
 	uint32_t count
 	)
 {
-	assert_gt(count, 0);
-
 	threads_resize(threads, count);
 
 	thread_t* thread = threads->threads + threads->used;
@@ -313,7 +303,6 @@ threads_cancel_sync(
 	uint32_t count
 	)
 {
-	assert_gt(count, 0);
 	assert_le(count, threads->used);
 
 	thread_t* thread_start = threads->threads + threads->used - count;
@@ -360,7 +349,6 @@ threads_cancel_async(
 	uint32_t count
 	)
 {
-	assert_gt(count, 0);
 	assert_le(count, threads->used);
 
 	thread_t* thread_start = threads->threads + threads->used - count;

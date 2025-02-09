@@ -23,6 +23,7 @@
  *
  */
 
+#include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/event.h>
 #include <DiepDesktop/shared/threads.h>
@@ -346,7 +347,7 @@ event_target_wait_thread_fn(
 
 
 void assert_used
-test_skip_should_pass__event_target_wait(
+test_should_pass__event_target_wait(
 	void
 	)
 {
@@ -360,6 +361,8 @@ test_skip_should_pass__event_target_wait(
 		.data = &target
 	};
 	thread_init(&thread, data);
+
+	thread_sleep(time_ms_to_ns(10));
 
 	event_target_fire(&target, (void*) 0x123);
 

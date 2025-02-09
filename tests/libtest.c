@@ -18,9 +18,11 @@
 
 #include <gelf.h>
 #include <dlfcn.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <libelf.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,12 +104,25 @@ test_shout(
 }
 
 
+static bool exited = false;
+
+static void
+child_exit(
+	int sig
+	)
+{
+	exited = true;
+}
+
+
 int
 main(
 	int argc,
 	char** argv
 	)
 {
+	signal(SIGCHLD, child_exit);
+
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
 
@@ -193,9 +208,9 @@ main(
 				void (*test_func)() = dlsym(handle, sym_name);
 				assert_not_null(test_func);
 
-				test_say("test_func %p", test_func);
-
 				test_say("%-44s expecting %s", name, should_pass ? "success" : "failure");
+
+				exited = false;
 
 				int pid;
 				if(!test_name)
@@ -221,8 +236,38 @@ main(
 				int status;
 				if(!test_name)
 				{
-					int wpid = waitpid(pid, &status, 0);
-					assert_eq(wpid, pid);
+					sigset_t sigset = {0};
+					sigemptyset(&sigset);
+					sigaddset(&sigset, SIGCHLD);
+
+					struct timespec timeout =
+					{
+						.tv_sec = 10,
+						.tv_nsec = 0
+					};
+
+					int sig = sigtimedwait(&sigset, NULL, &timeout);
+					if(sig == -1)
+					{
+						if(errno == EAGAIN)
+						{
+							test_say("%-44s timed out", name);
+							kill(pid, SIGKILL);
+							status = WTERMSIG(SIGABRT);
+						}
+						else
+						{
+							test_shout("%-44s sigtimedwait: %s", name, strerror(errno));
+							hard_assert_unreachable();
+						}
+					}
+					else
+					{
+						assert_eq(sig, SIGCHLD);
+
+						int wpid = waitpid(pid, &status, 0);
+						assert_eq(wpid, pid);
+					}
 				}
 				else
 				{
