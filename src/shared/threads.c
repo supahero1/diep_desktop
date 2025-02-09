@@ -263,6 +263,8 @@ threads_init(
 	threads_t* threads
 	)
 {
+	assert_not_null(threads);
+
 	threads->threads = NULL;
 	threads->used = 0;
 	threads->size = 0;
@@ -274,6 +276,8 @@ threads_free(
 	threads_t* threads
 	)
 {
+	assert_not_null(threads);
+
 	alloc_free(sizeof(thread_t) * threads->size, threads->threads);
 }
 

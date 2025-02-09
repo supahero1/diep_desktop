@@ -27,6 +27,8 @@ sync_mtx_init(
 	sync_mtx_t* mtx
 	)
 {
+	assert_not_null(mtx);
+
 	int status = pthread_mutex_init(mtx, NULL);
 	hard_assert_eq(status, 0);
 }
@@ -37,6 +39,8 @@ sync_mtx_free(
 	sync_mtx_t* mtx
 	)
 {
+	assert_not_null(mtx);
+
 	int status = pthread_mutex_destroy(mtx);
 	hard_assert_eq(status, 0);
 }
@@ -47,8 +51,34 @@ sync_mtx_lock(
 	sync_mtx_t* mtx
 	)
 {
+	assert_not_null(mtx);
+
 	int status = pthread_mutex_lock(mtx);
 	assert_eq(status, 0);
+}
+
+
+bool
+sync_mtx_try_lock(
+	sync_mtx_t* mtx
+	)
+{
+	assert_not_null(mtx);
+
+	int status = pthread_mutex_trylock(mtx);
+	if(status == 0)
+	{
+		return true;
+	}
+
+	if(status == EBUSY)
+	{
+		return false;
+	}
+
+	assert_eq(status, 0);
+	/* Compiler is stupid */
+	return false;
 }
 
 
@@ -57,6 +87,8 @@ sync_mtx_unlock(
 	sync_mtx_t* mtx
 	)
 {
+	assert_not_null(mtx);
+
 	int status = pthread_mutex_unlock(mtx);
 	assert_eq(status, 0);
 }
@@ -67,6 +99,8 @@ sync_cond_init(
 	sync_cond_t* cond
 	)
 {
+	assert_not_null(cond);
+
 	int status = pthread_cond_init(cond, NULL);
 	hard_assert_eq(status, 0);
 }
@@ -77,6 +111,8 @@ sync_cond_free(
 	sync_cond_t* cond
 	)
 {
+	assert_not_null(cond);
+
 	int status = pthread_cond_destroy(cond);
 	hard_assert_eq(status, 0);
 }
@@ -88,6 +124,9 @@ sync_cond_wait(
 	sync_mtx_t* mtx
 	)
 {
+	assert_not_null(cond);
+	assert_not_null(mtx);
+
 	int status = pthread_cond_wait(cond, mtx);
 	assert_eq(status, 0);
 }
@@ -98,6 +137,8 @@ sync_cond_wake(
 	sync_cond_t* cond
 	)
 {
+	assert_not_null(cond);
+
 	int status = pthread_cond_signal(cond);
 	assert_eq(status, 0);
 }
@@ -109,6 +150,8 @@ sync_sem_init(
 	uint32_t value
 	)
 {
+	assert_not_null(sem);
+
 	int status = sem_init(sem, 0, value);
 	hard_assert_eq(status, 0);
 }
@@ -119,6 +162,8 @@ sync_sem_free(
 	sync_sem_t* sem
 	)
 {
+	assert_not_null(sem);
+
 	int status = sem_destroy(sem);
 	hard_assert_eq(status, 0);
 }
@@ -129,6 +174,8 @@ sync_sem_wait(
 	sync_sem_t* sem
 	)
 {
+	assert_not_null(sem);
+
 	int status;
 	while((status = sem_wait(sem)))
 	{
@@ -149,6 +196,8 @@ sync_sem_timed_wait(
 	uint64_t ns
 	)
 {
+	assert_not_null(sem);
+
 	struct timespec time;
 	time.tv_sec = ns / 1000000000;
 	time.tv_nsec = ns % 1000000000;
@@ -177,6 +226,8 @@ sync_sem_post(
 	sync_sem_t* sem
 	)
 {
+	assert_not_null(sem);
+
 	int status = sem_post(sem);
 	assert_eq(status, 0);
 }

@@ -271,13 +271,30 @@ test_should_pass__thread_pool_try_work(
 
 
 void assert_used
+test_should_fail__threads_init_null(
+	void
+	)
+{
+	threads_init(NULL);
+}
+
+
+void assert_used
+test_should_fail__threads_free_null(
+	void
+	)
+{
+	threads_free(NULL);
+}
+
+
+void assert_used
 test_should_fail__thread_pool_init_null(
 	void
 	)
 {
 	thread_pool_init(NULL);
 }
-
 
 
 void assert_used
