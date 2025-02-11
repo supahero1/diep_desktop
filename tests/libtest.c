@@ -101,6 +101,96 @@ test_shout(
 }
 
 
+typedef struct test
+{
+	char* name;
+	uint16_t name_len;
+	bool should_pass;
+	bool should_timeout;
+	int pid;
+}
+test_t;
+
+static test_t* tests = NULL;
+static uint32_t tests_count = 0;
+static uint32_t tests_ran = 0;
+static uint32_t tests_passed = 0;
+static uint32_t tests_failed = 0;
+
+
+static void
+wait_and_run_tests(
+	void
+	)
+{
+	int status;
+	test_t test;
+	test.pid = -1;
+
+	if(!test_name)
+	{
+		int pid = waitpid(-1, &status, 0);
+		assert_neq(pid, -1);
+
+		for(uint32_t j = 0; j < tests_count; ++j)
+		{
+			if(tests[j].pid == pid)
+			{
+				test = tests[j];
+				break;
+			}
+		}
+	}
+	else
+	{
+		status = 0;
+		test = tests[0];
+	}
+
+	assert_neq(test.pid, -1);
+
+	bool success = WIFEXITED(status) && WEXITSTATUS(status) == 0 && test.should_pass;
+	success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT && !test.should_pass && !test.should_timeout;
+	success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGALRM && test.should_timeout;
+
+	if(success)
+	{
+		test_say("%-44s passed", test.name);
+		++tests_passed;
+	}
+	else
+	{
+		test_shout("\033[31m%-44s FAILED !!!\033[39m", test.name);
+
+		if(WIFSIGNALED(status))
+		{
+			test_shout("\033[31m%-44s was aborted with signal %s\033[39m",
+				test.name, sigabbrev_np(WTERMSIG(status)));
+		}
+		else if(WIFEXITED(status))
+		{
+			test_shout("\033[31m%-44s exited with status %d\033[39m",
+				test.name, WEXITSTATUS(status));
+		}
+		else if(WIFSTOPPED(status))
+		{
+			test_shout("\033[31m%-44s was stopped with signal %s\033[39m",
+				test.name, sigabbrev_np(WSTOPSIG(status)));
+		}
+		else
+		{
+			test_shout("\033[31m%-44s returned unknown status %d\033[39m",
+				test.name, status);
+		}
+
+		++tests_failed;
+	}
+
+	alloc_free(test.name_len, test.name);
+	++tests_ran;
+}
+
+
 int
 main(
 	int argc,
@@ -148,19 +238,6 @@ main(
 	Elf_Scn* scn = NULL;
 	GElf_Shdr shdr;
 
-	typedef struct test
-	{
-		char* name;
-		uint16_t name_len;
-		bool should_pass;
-		bool should_timeout;
-		int pid;
-	}
-	test_t;
-
-	test_t* tests = NULL;
-	uint32_t test_count = 0;
-
 	while((scn = elf_nextscn(elf, scn)) != NULL)
 	{
 		if(gelf_getshdr(scn, &shdr) == NULL) continue;
@@ -199,6 +276,11 @@ main(
 
 				assert_eq(symbol.st_info, ELF32_ST_INFO(STB_GLOBAL, STT_FUNC));
 
+				while(tests_count - tests_ran)
+				{
+					wait_and_run_tests();
+				}
+
 				bool should_pass = !strcmp(method, "pass");
 				bool should_timeout = !strcmp(method, "timeout");
 
@@ -230,7 +312,7 @@ main(
 					}
 				}
 
-				tests = alloc_remalloc(sizeof(*tests) * test_count, tests, sizeof(*tests) * (test_count + 1));
+				tests = alloc_remalloc(sizeof(*tests) * tests_count, tests, sizeof(*tests) * (tests_count + 1));
 				assert_not_null(tests);
 
 				uint16_t name_len = strlen(name) + 1;
@@ -239,7 +321,7 @@ main(
 
 				memcpy(name_copy, name, name_len);
 
-				tests[test_count++] =
+				tests[tests_count++] =
 				(test_t)
 				{
 					.name = name_copy,
@@ -261,80 +343,18 @@ main(
 	close(fd);
 	dlclose(handle);
 
-	uint32_t passed = 0;
-
-	for(uint32_t i = 0; i < test_count; ++i)
+	uint32_t left = tests_count - tests_ran;
+	for(uint32_t i = 0; i < left; ++i)
 	{
-		int status;
-		test_t test;
-		test.pid = -1;
-
-		if(!test_name)
-		{
-			int pid = waitpid(-1, &status, 0);
-			assert_neq(pid, -1);
-
-			for(uint32_t j = 0; j < test_count; ++j)
-			{
-				if(tests[j].pid == pid)
-				{
-					test = tests[j];
-					break;
-				}
-			}
-		}
-		else
-		{
-			status = 0;
-			test = tests[0];
-		}
-
-		assert_neq(test.pid, -1);
-
-		bool success = WIFEXITED(status) && WEXITSTATUS(status) == 0 && test.should_pass;
-		success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT && !test.should_pass && !test.should_timeout;
-		success |= WIFSIGNALED(status) && WTERMSIG(status) == SIGALRM && test.should_timeout;
-
-		if(success)
-		{
-			test_say("%-44s passed", test.name);
-			++passed;
-		}
-		else
-		{
-			test_shout("\033[31m%-44s FAILED !!!\033[39m", test.name);
-
-			if(WIFSIGNALED(status))
-			{
-				test_shout("\033[31m%-44s was aborted with signal %s\033[39m",
-					test.name, sigabbrev_np(WTERMSIG(status)));
-			}
-			else if(WIFEXITED(status))
-			{
-				test_shout("\033[31m%-44s exited with status %d\033[39m",
-					test.name, WEXITSTATUS(status));
-			}
-			else if(WIFSTOPPED(status))
-			{
-				test_shout("\033[31m%-44s was stopped with signal %s\033[39m",
-					test.name, sigabbrev_np(WSTOPSIG(status)));
-			}
-			else
-			{
-				test_shout("\033[31m%-44s returned unknown status %d\033[39m",
-					test.name, status);
-			}
-		}
-
-		alloc_free(test.name_len, test.name);
+		wait_and_run_tests();
 	}
 
 	test_shout("Ran %d tests, \033[32m%d\033[39m passed, \033[31m%d\033[39m failed",
-		test_count, passed, test_count - passed);
+		tests_count, tests_passed, tests_failed);
 
-	alloc_free(sizeof(*tests) * test_count, tests);
+	alloc_free(sizeof(*tests) * tests_count, tests);
 
 	close(tty_fd);
 
-	return test_count == passed ? 0 : 1;
+	return !!tests_failed;
 }

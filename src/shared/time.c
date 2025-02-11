@@ -372,6 +372,7 @@ time_timers_add_##name##_common (																\
 	)																							\
 {																								\
 	assert_not_null(timers);																	\
+	assert_not_null(name.data.fn);																\
 																								\
 	if(lock)																					\
 	{																							\

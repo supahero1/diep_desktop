@@ -32,7 +32,7 @@ test_should_fail__test_fail(
 	void
 	)
 {
-	assert_false(true);
+	assert_unreachable();
 }
 
 

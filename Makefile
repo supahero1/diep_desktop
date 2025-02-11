@@ -186,7 +186,7 @@ dds_wipe: dds_clean
 .PHONY: tex_reset
 tex_reset:
 	$(MAKE) wipe
-	RELEASE=2 scons font_gen var_gen tex_gen sort -j 8
+	RELEASE=2 scons font_gen var_gen tex_gen sort -j $(shell nproc)
 	RELEASE=2 $(MAKE) font_build var_build tex_build tex_gen
 	$(MAKE) dds_build
 
@@ -199,12 +199,12 @@ shaders: bin/shaders/vert.spv bin/shaders/frag.spv
 
 
 bin/tex/%:
-	scons $* -j 8
+	scons $* -j $(shell nproc)
 
 
 .PHONY: client
-client: shaders # dds_build
-	scons client -j 8
+client: shaders
+	scons client -j $(shell nproc)
 	$(RM) -r DiepDesktop
 	mkdir DiepDesktop
 
@@ -230,10 +230,10 @@ endif
 
 .PHONY: server
 server:
-	scons server -j 8
+	scons server -j $(shell nproc)
 	./bin/server
 
 
 .PHONY: test
 test:
-	scons test -j 8
+	scons test -j $(shell nproc)
