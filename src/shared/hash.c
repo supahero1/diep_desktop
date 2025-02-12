@@ -47,6 +47,9 @@ hash_table_init(
 	uint32_t bucket_count
 	)
 {
+	assert_not_null(table);
+	assert_gt(bucket_count, 0);
+
 	table->bucket_count = bucket_count;
 	assert_neq(table->bucket_count, 0);
 
@@ -66,6 +69,8 @@ hash_table_free(
 	hash_table_t* table
 	)
 {
+	assert_not_null(table);
+
 	alloc_free(sizeof(*table->buckets) * table->bucket_count, table->buckets);
 	alloc_free(sizeof(*table->entries) * table->entries_size, table->entries);
 }
@@ -76,6 +81,8 @@ hash_table_clear(
 	hash_table_t* table
 	)
 {
+	assert_not_null(table);
+
 	(void) memset(table->buckets, 0, sizeof(*table->buckets) * table->bucket_count);
 
 	alloc_free(sizeof(*table->entries) * table->entries_size, table->entries);
@@ -94,6 +101,9 @@ hash_table_for_each(
 	void* data
 	)
 {
+	assert_not_null(table);
+	assert_not_null(fn);
+
 	uint32_t* bucket = table->buckets;
 	uint32_t* bucket_end = bucket + table->bucket_count;
 
@@ -155,6 +165,9 @@ hash_table_has(
 	const char* key
 	)
 {
+	assert_not_null(table);
+	assert_not_null(key);
+
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
@@ -180,6 +193,9 @@ hash_table_add(
 	void* value
 	)
 {
+	assert_not_null(table);
+	assert_not_null(key);
+
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
@@ -199,6 +215,7 @@ hash_table_add(
 	(hash_table_entry_t)
 	{
 		.key = key,
+		.len = len,
 		.value = value,
 		.next = 0
 	};
@@ -215,6 +232,9 @@ hash_table_set(
 	void* value
 	)
 {
+	assert_not_null(table);
+	assert_not_null(key);
+
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
@@ -235,6 +255,7 @@ hash_table_set(
 	(hash_table_entry_t)
 	{
 		.key = key,
+		.len = len,
 		.value = value,
 		.next = 0
 	};
@@ -251,6 +272,9 @@ hash_table_modify(
 	void* value
 	)
 {
+	assert_not_null(table);
+	assert_not_null(key);
+
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
@@ -276,6 +300,9 @@ hash_table_get(
 	const char* key
 	)
 {
+	assert_not_null(table);
+	assert_not_null(key);
+
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
@@ -300,6 +327,9 @@ hash_table_del(
 	const char* key
 	)
 {
+	assert_not_null(table);
+	assert_not_null(key);
+
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
 
