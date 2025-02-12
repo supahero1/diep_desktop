@@ -523,6 +523,19 @@ time_timers_close_##name (																		\
 {																								\
 	time_timers_close_##name##_u (timers, timer);												\
 	time_timers_unlock(timers);																	\
+}																								\
+																								\
+																								\
+void																							\
+time_timers_update_##name##_timer_u (															\
+	time_timers_t* timers,																		\
+	time_##name##_t * name																		\
+	)																							\
+{																								\
+	assert_not_null(timers);																	\
+	assert_not_null(name);																		\
+																								\
+	name->timer->idx = name - timers-> names ;													\
 }
 
 
@@ -776,14 +789,35 @@ time_timers_fn(
 			goto goto_start;
 		}
 
+		time_timer_t current_timer;
+		time_timer_init(&current_timer);
+
+		timers->current_timer = NULL;
+
 		if(time & 1)
 		{
 			time_interval_t* interval = &timers->intervals[1];
 			data = interval->data;
 
+			if(interval->timer)
+			{
+				timers->current_timer = interval->timer;
+			}
+			else
+			{
+				interval->timer = &current_timer;
+				time_timers_update_interval_timer_u(timers, interval);
+			}
+
 			++interval->count;
 			time_timers_intervals_down(timers, 1);
 			sync_sem_post(&timers->work_sem);
+
+			if(interval->timer == &current_timer)
+			{
+				interval->timer = NULL;
+				timers->current_timer = &current_timer;
+			}
 		}
 		else
 		{
@@ -837,6 +871,8 @@ time_timers_init(
 	sync_sem_init(&timers->work_sem, 0);
 	sync_sem_init(&timers->updates_sem, 0);
 
+	timers->current_timer = NULL;
+
 	thread_data_t data =
 	{
 		.fn = time_timers_fn,
@@ -884,6 +920,17 @@ time_timers_unlock(
 	assert_not_null(timers);
 
 	sync_mtx_unlock(&timers->mtx);
+}
+
+
+time_timer_t*
+time_timers_get_current_timer(
+	time_timers_t* timers
+	)
+{
+	assert_not_null(timers);
+
+	return timers->current_timer;
 }
 
 

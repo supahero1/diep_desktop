@@ -175,6 +175,8 @@ typedef struct time_timers
 	sync_sem_t work_sem;
 	sync_sem_t updates_sem;
 
+	time_timer_t* current_timer;
+
 	_Atomic uint64_t latest;
 }
 time_timers_t;
@@ -206,6 +208,12 @@ time_timers_lock(
 
 extern void
 time_timers_unlock(
+	time_timers_t* timers
+	);
+
+
+extern time_timer_t*
+time_timers_get_current_timer(
 	time_timers_t* timers
 	);
 
@@ -337,6 +345,13 @@ time_timers_set_timeout(
 	);
 
 
+extern void
+time_timers_update_timeout_timer_u(
+	time_timers_t* timers,
+	time_timeout_t* timeout
+	);
+
+
 
 extern void
 time_timers_add_interval_u(
@@ -440,4 +455,11 @@ time_timers_set_interval(
 	uint64_t base_time,
 	uint64_t interval_time,
 	uint64_t count
+	);
+
+
+extern void
+time_timers_update_interval_timer_u(
+	time_timers_t* timers,
+	time_interval_t* interval
 	);

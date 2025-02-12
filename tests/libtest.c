@@ -26,6 +26,8 @@
 #include <string.h>
 #include <sys/wait.h>
 
+#include <valgrind/valgrind.h>
+
 
 static int tty_fd = 1;
 static bool has_file = false;
@@ -41,8 +43,8 @@ test_say_common(
 {
 	char buffer[4096];
 	sprintf(buffer, important ?
-		"\033[1m\033[35m[TEST]\033[39m > %s <\033[0m\n" :
-		"\033[1m\033[35m[TEST]\033[39m\033[0m %s\n", format);
+		"\033[1m\033[35m[%s]\033[39m > %s <\033[0m\n" :
+		"\033[1m\033[35m[%s]\033[39m\033[0m %s\n", RUNNING_ON_VALGRIND ? "VEST" : "TEST", format);
 
 	va_list copy;
 	va_copy(copy, args);
@@ -155,31 +157,31 @@ wait_and_run_tests(
 
 	if(success)
 	{
-		test_say("%-44s passed", test.name);
+		test_say("%-50s passed", test.name);
 		++tests_passed;
 	}
 	else
 	{
-		test_shout("\033[31m%-44s FAILED !!!\033[39m", test.name);
+		test_shout("\033[31m%-50s FAILED !!!\033[39m", test.name);
 
 		if(WIFSIGNALED(status))
 		{
-			test_shout("\033[31m%-44s was aborted with signal %s\033[39m",
+			test_shout("\033[31m%-50s was aborted with signal %s\033[39m",
 				test.name, sigabbrev_np(WTERMSIG(status)));
 		}
 		else if(WIFEXITED(status))
 		{
-			test_shout("\033[31m%-44s exited with status %d\033[39m",
+			test_shout("\033[31m%-50s exited with status %d\033[39m",
 				test.name, WEXITSTATUS(status));
 		}
 		else if(WIFSTOPPED(status))
 		{
-			test_shout("\033[31m%-44s was stopped with signal %s\033[39m",
+			test_shout("\033[31m%-50s was stopped with signal %s\033[39m",
 				test.name, sigabbrev_np(WSTOPSIG(status)));
 		}
 		else
 		{
-			test_shout("\033[31m%-44s returned unknown status %d\033[39m",
+			test_shout("\033[31m%-50s returned unknown status %d\033[39m",
 				test.name, status);
 		}
 
@@ -276,7 +278,7 @@ main(
 
 				assert_eq(symbol.st_info, ELF32_ST_INFO(STB_GLOBAL, STT_FUNC));
 
-				while(tests_count - tests_ran)
+				while(tests_count - tests_ran > (RUNNING_ON_VALGRIND ? 0 : 6))
 				{
 					wait_and_run_tests();
 				}
@@ -287,7 +289,7 @@ main(
 				void (*test_func)() = dlsym(handle, sym_name);
 				assert_not_null(test_func);
 
-				test_say("%-44s expecting %s", name, should_pass ? "success" : should_timeout ? "timeout" : "failure");
+				test_say("%-50s expecting %s", name, should_pass ? "success" : should_timeout ? "timeout" : "failure");
 
 				int pid;
 				if(!test_name)
@@ -302,7 +304,7 @@ main(
 
 				if(pid == 0)
 				{
-					alarm(10);
+					alarm(12);
 
 					test_func();
 
