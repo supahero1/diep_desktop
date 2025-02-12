@@ -648,6 +648,7 @@ time_timer_get_interval_u(
 	)
 {
 	assert_not_null(interval);
+	assert_gt(interval->base_time, TIME_IMMEDIATELY);
 
 	return interval->base_time + interval->interval * interval->count;
 }
@@ -695,6 +696,7 @@ time_timer_set_interval_u(
 	)
 {
 	assert_not_null(interval);
+	assert_gt(interval->base_time, TIME_IMMEDIATELY);
 
 	interval->base_time = base_time;
 	interval->interval = interval_time;

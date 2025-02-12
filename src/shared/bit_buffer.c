@@ -30,6 +30,9 @@ bit_buffer_set(
 	uint64_t len
 	)
 {
+	assert_not_null(bit_buffer);
+	assert_ptr(data, len);
+
 	bit_buffer->data = data;
 	bit_buffer->at = data;
 
@@ -43,6 +46,8 @@ bit_buffer_reset(
 	bit_buffer_t* bit_buffer
 	)
 {
+	assert_not_null(bit_buffer);
+
 	bit_buffer->at = bit_buffer->data;
 	bit_buffer->bit = 0;
 }
@@ -53,6 +58,8 @@ bit_buffer_available_bits(
 	bit_buffer_t* bit_buffer
 	)
 {
+	assert_not_null(bit_buffer);
+
 	return (bit_buffer->len << 3) - bit_buffer_consumed_bits(bit_buffer);
 }
 
@@ -62,6 +69,8 @@ bit_buffer_available_bytes(
 	bit_buffer_t* bit_buffer
 	)
 {
+	assert_not_null(bit_buffer);
+
 	return MACRO_TO_BYTES(bit_buffer_available_bits(bit_buffer));
 }
 
@@ -71,6 +80,8 @@ bit_buffer_consumed_bits(
 	bit_buffer_t* bit_buffer
 	)
 {
+	assert_not_null(bit_buffer);
+
 	return ((bit_buffer->at - bit_buffer->data) << 3) + bit_buffer->bit;
 }
 
@@ -80,6 +91,8 @@ bit_buffer_consumed_bytes(
 	bit_buffer_t* bit_buffer
 	)
 {
+	assert_not_null(bit_buffer);
+
 	return MACRO_TO_BYTES(bit_buffer_consumed_bits(bit_buffer));
 }
 
@@ -90,6 +103,8 @@ bit_buffer_skip_bits(
 	uint64_t bits
 	)
 {
+	assert_not_null(bit_buffer);
+
 	bit_buffer->bit += bits;
 	bit_buffer->at += bit_buffer->bit >> 3;
 	bit_buffer->bit &= 7;
@@ -103,6 +118,9 @@ bit_buffer_skip_bits_safe(
 	bool* status
 	)
 {
+	assert_not_null(bit_buffer);
+	assert_not_null(status);
+
 	if(bit_buffer_available_bits(bit_buffer) < bits)
 	{
 		*status = false;
@@ -120,6 +138,8 @@ bit_buffer_skip_bytes(
 	uint64_t bytes
 	)
 {
+	assert_not_null(bit_buffer);
+
 	bit_buffer->at += bytes;
 }
 
@@ -131,6 +151,9 @@ bit_buffer_skip_bytes_safe(
 	bool* status
 	)
 {
+	assert_not_null(bit_buffer);
+	assert_not_null(status);
+
 	if(bit_buffer_available_bytes(bit_buffer) < bytes)
 	{
 		*status = false;
@@ -147,6 +170,8 @@ bit_buffer_save(
 	bit_buffer_t* bit_buffer
 	)
 {
+	assert_not_null(bit_buffer);
+
 	return
 	(bit_buffer_ctx_t)
 	{
@@ -162,6 +187,9 @@ bit_buffer_restore(
 	const bit_buffer_ctx_t* ctx
 	)
 {
+	assert_not_null(bit_buffer);
+	assert_not_null(ctx);
+
 	bit_buffer->at = ctx->at;
 	bit_buffer->bit = ctx->bit;
 }
@@ -174,7 +202,7 @@ bit_buffer_set_bits(
 	uint64_t bits
 	)
 {
-	assert_ge(bits, 1);
+	assert_not_null(bit_buffer);
 	assert_le(bits, 64);
 
 	num &= UINT64_MAX >> (64 - bits);
@@ -212,7 +240,7 @@ bit_buffer_get_bits(
 	uint64_t bits
 	)
 {
-	assert_ge(bits, 1);
+	assert_not_null(bit_buffer);
 	assert_le(bits, 64);
 
 	uint64_t mask = UINT64_MAX >> (64 - bits);
@@ -256,8 +284,9 @@ bit_buffer_get_bits_safe(
 	bool* status
 	)
 {
-	assert_ge(bits, 1);
+	assert_not_null(bit_buffer);
 	assert_le(bits, 64);
+	assert_not_null(status);
 
 	if(bit_buffer_available_bits(bit_buffer) < bits)
 	{
@@ -275,7 +304,6 @@ bit_buffer_len_bits(
 	uint64_t bits
 	)
 {
-	assert_ge(bits, 1);
 	assert_le(bits, 64);
 
 	return bits;
@@ -289,16 +317,21 @@ bit_buffer_set_signed_bits(
 	uint64_t bits
 	)
 {
-	assert_ge(bits, 1);
+	assert_not_null(bit_buffer);
 	assert_le(bits, 63);
 
-	num <<= 1;
-	if(num < 0)
+	if(!bits)
 	{
-		num = ~num;
+		return;
 	}
 
-	bit_buffer_set_bits(bit_buffer, num, bits + 1);
+	uint64_t unum = num << 1;
+	if(num < 0)
+	{
+		unum = ~unum;
+	}
+
+	bit_buffer_set_bits(bit_buffer, unum, bits + 1);
 }
 
 
@@ -308,19 +341,24 @@ bit_buffer_get_signed_bits(
 	uint64_t bits
 	)
 {
-	assert_ge(bits, 1);
+	assert_not_null(bit_buffer);
 	assert_le(bits, 63);
 
-	int64_t num = bit_buffer_get_bits(bit_buffer, bits + 1);
-
-	if(num & 1)
+	if(!bits)
 	{
-		num = ~num;
+		return 0;
 	}
 
-	num >>= 1;
+	uint64_t unum = bit_buffer_get_bits(bit_buffer, bits + 1);
 
-	return num;
+	bool sign = unum & 1;
+	unum >>= 1;
+	if(sign)
+	{
+		unum = ~unum;
+	}
+
+	return unum;
 }
 
 
@@ -331,8 +369,15 @@ bit_buffer_get_signed_bits_safe(
 	bool* status
 	)
 {
-	assert_ge(bits, 1);
+	assert_not_null(bit_buffer);
 	assert_le(bits, 63);
+	assert_not_null(status);
+
+	if(!bits)
+	{
+		*status = true;
+		return 0;
+	}
 
 	if(bit_buffer_available_bits(bit_buffer) < 1 + bits)
 	{
@@ -350,8 +395,12 @@ bit_buffer_len_signed_bits(
 	uint64_t bits
 	)
 {
-	assert_ge(bits, 1);
 	assert_le(bits, 63);
+
+	if(!bits)
+	{
+		return 0;
+	}
 
 	return bit_buffer_len_bits(bits + 1);
 }
@@ -364,19 +413,21 @@ bit_buffer_set_bits_var(
 	uint64_t segment
 	)
 {
+	assert_not_null(bit_buffer);
 	assert_ge(segment, 1);
 	assert_le(segment, 63);
 
 	uint64_t segment_bit = (uint64_t) 1 << segment;
 	uint64_t segment_mask = segment_bit - 1;
 
-	do
+	while(num > segment_mask)
 	{
 		bit_buffer_set_bits(bit_buffer, (num & segment_mask) | segment_bit, segment + 1);
 
 		num >>= segment;
 	}
-	while(num);
+
+	bit_buffer_set_bits(bit_buffer, num, segment + 1);
 }
 
 
@@ -386,6 +437,7 @@ bit_buffer_get_bits_var(
 	uint64_t segment
 	)
 {
+	assert_not_null(bit_buffer);
 	assert_ge(segment, 1);
 	assert_le(segment, 63);
 
@@ -420,8 +472,10 @@ bit_buffer_get_bits_var_safe(
 	bool* status
 	)
 {
+	assert_not_null(bit_buffer);
 	assert_ge(segment, 1);
 	assert_le(segment, 63);
+	assert_not_null(status);
 
 	uint64_t num = 0;
 	uint64_t shift = 0;
@@ -467,12 +521,16 @@ bit_buffer_len_bits_var(
 
 	uint64_t len = 0;
 
-	do
+	uint64_t segment_bit = (uint64_t) 1 << segment;
+	uint64_t segment_mask = segment_bit - 1;
+
+	while(num > segment_mask)
 	{
 		len += segment + 1;
 		num >>= segment;
 	}
-	while(num);
+
+	len += segment + 1;
 
 	return len;
 }
@@ -485,16 +543,17 @@ bit_buffer_set_signed_bits_var(
 	uint64_t segment
 	)
 {
+	assert_not_null(bit_buffer);
 	assert_ge(segment, 1);
 	assert_le(segment, 63);
 
-	num <<= 1;
+	uint64_t unum = num << 1;
 	if(num < 0)
 	{
-		num = ~num;
+		unum = ~unum;
 	}
 
-	bit_buffer_set_bits_var(bit_buffer, num, segment + 1);
+	bit_buffer_set_bits_var(bit_buffer, unum, segment);
 }
 
 
@@ -504,19 +563,20 @@ bit_buffer_get_signed_bits_var(
 	uint64_t segment
 	)
 {
+	assert_not_null(bit_buffer);
 	assert_ge(segment, 1);
 	assert_le(segment, 63);
 
-	int64_t num = bit_buffer_get_bits_var(bit_buffer, segment);
+	uint64_t unum = bit_buffer_get_bits_var(bit_buffer, segment);
 
-	if(num & 1)
+	bool sign = unum & 1;
+	unum >>= 1;
+	if(sign)
 	{
-		num = ~num;
+		unum = ~unum;
 	}
 
-	num >>= 1;
-
-	return num;
+	return unum;
 }
 
 
@@ -527,23 +587,25 @@ bit_buffer_get_signed_bits_var_safe(
 	bool* status
 	)
 {
+	assert_not_null(bit_buffer);
 	assert_ge(segment, 1);
 	assert_le(segment, 63);
+	assert_not_null(status);
 
-	uint64_t num = bit_buffer_get_bits_var_safe(bit_buffer, segment, status);
+	uint64_t unum = bit_buffer_get_bits_var_safe(bit_buffer, segment, status);
 	if(!*status)
 	{
 		return 0;
 	}
 
-	if(num & 1)
+	bool sign = unum & 1;
+	unum >>= 1;
+	if(sign)
 	{
-		num = ~num;
+		unum = ~unum;
 	}
 
-	num >>= 1;
-
-	return num;
+	return unum;
 }
 
 
@@ -556,13 +618,13 @@ bit_buffer_len_signed_bits_var(
 	assert_ge(segment, 1);
 	assert_le(segment, 63);
 
-	num <<= 1;
+	uint64_t unum = num << 1;
 	if(num < 0)
 	{
-		num = ~num;
+		unum = ~unum;
 	}
 
-	return bit_buffer_len_bits_var(num, segment);
+	return bit_buffer_len_bits_var(unum, segment);
 }
 
 
@@ -574,11 +636,12 @@ bit_buffer_set_fixed_point(
 	uint64_t fraction_bits
 	)
 {
-	assert_ge(integer_bits, 1);
-	assert_ge(fraction_bits, 1);
+	assert_not_null(bit_buffer);
+	assert_le(fraction_bits, 23);
 	assert_le(integer_bits + fraction_bits, 31);
 
-	uint32_t num = roundf(value * MACRO_U32_TO_F32((fraction_bits + 127) << 23));
+	uint32_t mask = ((uint32_t) 1 << (integer_bits + fraction_bits)) - 1;
+	uint32_t num = (uint32_t) roundf(value * MACRO_U32_TO_F32((fraction_bits + 127) << 23)) & mask;
 	bit_buffer_set_bits(bit_buffer, num, integer_bits + fraction_bits);
 }
 
@@ -590,8 +653,8 @@ bit_buffer_get_fixed_point(
 	uint64_t fraction_bits
 	)
 {
-	assert_ge(integer_bits, 1);
-	assert_ge(fraction_bits, 1);
+	assert_not_null(bit_buffer);
+	assert_le(fraction_bits, 23);
 	assert_le(integer_bits + fraction_bits, 31);
 
 	uint32_t num = bit_buffer_get_bits(bit_buffer, integer_bits + fraction_bits);
@@ -607,9 +670,10 @@ bit_buffer_get_fixed_point_safe(
 	bool* status
 	)
 {
-	assert_ge(integer_bits, 1);
-	assert_ge(fraction_bits, 1);
+	assert_not_null(bit_buffer);
+	assert_le(fraction_bits, 23);
 	assert_le(integer_bits + fraction_bits, 31);
+	assert_not_null(status);
 
 	if(bit_buffer_available_bits(bit_buffer) < integer_bits + fraction_bits)
 	{
@@ -628,8 +692,7 @@ bit_buffer_len_fixed_point(
 	uint64_t fraction_bits
 	)
 {
-	assert_ge(integer_bits, 1);
-	assert_ge(fraction_bits, 1);
+	assert_le(fraction_bits, 23);
 	assert_le(integer_bits + fraction_bits, 31);
 
 	return integer_bits + fraction_bits;
@@ -644,9 +707,14 @@ bit_buffer_set_signed_fixed_point(
 	uint64_t fraction_bits
 	)
 {
-	assert_ge(integer_bits, 1);
-	assert_ge(fraction_bits, 1);
+	assert_not_null(bit_buffer);
+	assert_le(fraction_bits, 23);
 	assert_le(integer_bits + fraction_bits, 31);
+
+	if(!integer_bits && !fraction_bits)
+	{
+		return;
+	}
 
 	uint32_t num = MACRO_F32_TO_U32(value);
 	bit_buffer_set_bits(bit_buffer, num >> 31, 1);
@@ -662,9 +730,14 @@ bit_buffer_get_signed_fixed_point(
 	uint64_t fraction_bits
 	)
 {
-	assert_ge(integer_bits, 1);
-	assert_ge(fraction_bits, 1);
+	assert_not_null(bit_buffer);
+	assert_le(fraction_bits, 23);
 	assert_le(integer_bits + fraction_bits, 31);
+
+	if(!integer_bits && !fraction_bits)
+	{
+		return 0.0f;
+	}
 
 	uint64_t sign = bit_buffer_get_bits(bit_buffer, 1);
 	uint32_t value = MACRO_F32_TO_U32(bit_buffer_get_fixed_point(bit_buffer, integer_bits, fraction_bits));
@@ -681,9 +754,16 @@ bit_buffer_get_signed_fixed_point_safe(
 	bool* status
 	)
 {
-	assert_ge(integer_bits, 1);
-	assert_ge(fraction_bits, 1);
+	assert_not_null(bit_buffer);
+	assert_le(fraction_bits, 23);
 	assert_le(integer_bits + fraction_bits, 31);
+	assert_not_null(status);
+
+	if(!integer_bits && !fraction_bits)
+	{
+		*status = true;
+		return 0.0f;
+	}
 
 	if(bit_buffer_available_bits(bit_buffer) < 1 + integer_bits + fraction_bits)
 	{
@@ -702,6 +782,11 @@ bit_buffer_len_signed_fixed_point(
 	uint64_t fraction_bits
 	)
 {
+	if(!integer_bits && !fraction_bits)
+	{
+		return 0;
+	}
+
 	return 1 + bit_buffer_len_fixed_point(integer_bits, fraction_bits);
 }
 
@@ -713,6 +798,9 @@ bit_buffer_set_bytes(
 	uint64_t len
 	)
 {
+	assert_not_null(bit_buffer);
+	assert_ptr(data, len);
+
 	uint64_t bits = MACRO_TO_BITS(len);
 
 	while(bits >= 64)
@@ -741,6 +829,9 @@ bit_buffer_get_bytes(
 	uint64_t len
 	)
 {
+	assert_not_null(bit_buffer);
+	assert_ptr(data, len);
+
 	uint64_t bits = MACRO_TO_BITS(len);
 
 	while(bits >= 64)
@@ -770,6 +861,10 @@ bit_buffer_get_bytes_safe(
 	bool* status
 	)
 {
+	assert_not_null(bit_buffer);
+	assert_ptr(data, len);
+	assert_not_null(status);
+
 	if(bit_buffer_available_bytes(bit_buffer) < len)
 	{
 		*status = false;
@@ -797,7 +892,10 @@ bit_buffer_set_str(
 	uint64_t len
 	)
 {
-	bit_buffer_set_bits_var(bit_buffer, len, 7);
+	assert_not_null(bit_buffer);
+	assert_ptr(str, len);
+
+	bit_buffer_set_bits_var(bit_buffer, len, 6);
 	bit_buffer_set_bytes(bit_buffer, str, len);
 }
 
@@ -808,8 +906,11 @@ bit_buffer_get_str(
 	uint64_t* len
 	)
 {
-	uint64_t size = bit_buffer_get_bits_var(bit_buffer, 7);
-	size = MACRO_MIN(size, *len);
+	assert_not_null(bit_buffer);
+	assert_not_null(len);
+
+	uint64_t size = bit_buffer_get_bits_var(bit_buffer, 6);
+	assert_le(size, *len);
 	*len = size;
 
 	uint8_t* str = alloc_malloc(size);
@@ -828,13 +929,16 @@ bit_buffer_get_str_safe(
 	bool* status
 	)
 {
-	uint64_t size = bit_buffer_get_bits_var_safe(bit_buffer, 7, status);
-	if(!*status)
+	assert_not_null(bit_buffer);
+	assert_not_null(len);
+	assert_not_null(status);
+
+	uint64_t size = bit_buffer_get_bits_var_safe(bit_buffer, 6, status);
+	if(!*status || size > *len)
 	{
 		return NULL;
 	}
 
-	size = MACRO_MIN(size, *len);
 	*len = size;
 
 	uint8_t* str = alloc_malloc(size);
@@ -856,5 +960,5 @@ bit_buffer_len_str(
 	uint64_t len
 	)
 {
-	return bit_buffer_len_bits_var(len, 7) + bit_buffer_len_bytes(len);
+	return bit_buffer_len_bits_var(len, 6) + bit_buffer_len_bytes(len);
 }

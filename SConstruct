@@ -178,7 +178,7 @@ def add_program(object, use_libtest=False):
 	add_recur(obj_deps, object)
 	program = env.Program(str(object)[:-2], obj_deps,
 		LIBPATH = Split("bin/tests/") if use_libtest else [],
-		LIBS = Split("libtest elf") if use_libtest else [])
+		LIBS = libs + Split("libtest elf") if use_libtest else libs)
 	env.Alias(str(object)[4:-2], program)
 	return program
 

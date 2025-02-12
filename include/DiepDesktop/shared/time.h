@@ -18,8 +18,8 @@
 
 #include <DiepDesktop/shared/threads.h>
 
-#define TIME_IMMEDIATELY 2
-#define TIME_STEP 2
+#define TIME_IMMEDIATELY UINT32_C(2)
+#define TIME_STEP UINT32_C(2)
 
 
 extern uint64_t

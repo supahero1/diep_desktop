@@ -199,7 +199,7 @@ main(
 	char** argv
 	)
 {
-	nice(20);
+	nice(RUNNING_ON_VALGRIND ? 10 : 20);
 
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
@@ -215,10 +215,23 @@ main(
 			if(i + 1 < argc)
 			{
 				test_name = argv[++i];
+
+				if(
+					!strncmp(test_name, "test_should_pass__", 18) ||
+					!strncmp(test_name, "test_should_fail__", 18)
+					)
+				{
+					test_name += 18;
+				}
+				else if(!strncmp(test_name, "test_should_timeout__", 21))
+				{
+					test_name += 21;
+				}
 			}
 			else
 			{
 				test_shout("Missing argument for --name");
+				return 1;
 			}
 		}
 	}
@@ -278,7 +291,7 @@ main(
 
 				assert_eq(symbol.st_info, ELF32_ST_INFO(STB_GLOBAL, STT_FUNC));
 
-				while(tests_count - tests_ran > (RUNNING_ON_VALGRIND ? 0 : 6))
+				while(tests_count - tests_ran > 0)
 				{
 					wait_and_run_tests();
 				}
@@ -304,7 +317,7 @@ main(
 
 				if(pid == 0)
 				{
-					alarm(12);
+					alarm(8);
 
 					test_func();
 
