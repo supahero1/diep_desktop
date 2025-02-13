@@ -913,10 +913,11 @@ bit_buffer_get_str(
 	assert_le(size, *len);
 	*len = size;
 
-	uint8_t* str = alloc_malloc(size);
-	assert_ptr(str, size);
+	uint8_t* str = alloc_malloc(size + 1);
+	assert_not_null(str);
 
 	bit_buffer_get_bytes(bit_buffer, str, size);
+	str[size] = '\0';
 
 	return str;
 }
@@ -934,22 +935,28 @@ bit_buffer_get_str_safe(
 	assert_not_null(status);
 
 	uint64_t size = bit_buffer_get_bits_var_safe(bit_buffer, 6, status);
-	if(!*status || size > *len)
+	if(size > *len)
+	{
+		*status = false;
+	}
+	if(!*status)
 	{
 		return NULL;
 	}
 
 	*len = size;
 
-	uint8_t* str = alloc_malloc(size);
-	assert_ptr(str, size);
+	uint8_t* str = alloc_malloc(size + 1);
+	assert_not_null(str);
 
 	bit_buffer_get_bytes_safe(bit_buffer, str, size, status);
 	if(!*status)
 	{
-		alloc_free(size, str);
+		alloc_free(size + 1, str);
 		return NULL;
 	}
+
+	str[size] = '\0';
 
 	return str;
 }

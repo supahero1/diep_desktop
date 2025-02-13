@@ -23,6 +23,8 @@
 
 #include <zstd.h>
 
+#include <string.h>
+
 
 void
 settings_init(
@@ -31,6 +33,10 @@ settings_init(
 	time_timers_t* timers
 	)
 {
+	assert_not_null(settings);
+	assert_not_null(path);
+	assert_not_null(timers);
+
 	sync_mtx_init(&settings->mtx);
 	hash_table_init(&settings->table, 256);
 	settings->dirty = false;
@@ -45,11 +51,28 @@ settings_init(
 }
 
 
+private void
+settings_for_each_free_fn(
+	const char* name,
+	uint32_t len,
+	setting_t* setting,
+	void* data
+	)
+{
+	if(setting->type == SETTING_TYPE_STR)
+	{
+		alloc_free(setting->value.str.len + 1, setting->value.str.str);
+	}
+}
+
+
 void
 settings_free(
 	settings_t* settings
 	)
 {
+	assert_not_null(settings);
+
 	if(time_timers_cancel_timeout(settings->timers, &settings->save_timer))
 	{
 		settings_save(settings);
@@ -59,6 +82,9 @@ settings_free(
 	event_target_free(&settings->save_target);
 
 	time_timer_free(&settings->save_timer);
+
+	hash_table_for_each(&settings->table,
+		(hash_table_for_each_fn_t) settings_for_each_free_fn, NULL);
 
 	hash_table_free(&settings->table);
 	sync_mtx_free(&settings->mtx);
@@ -172,6 +198,8 @@ settings_save(
 	settings_t* settings
 	)
 {
+	assert_not_null(settings);
+
 	sync_mtx_lock(&settings->mtx);
 
 	if(!settings->dirty)
@@ -181,17 +209,19 @@ settings_save(
 	}
 
 	uint64_t sum = 0;
-	hash_table_for_each(&settings->table, (hash_table_for_each_fn_t) settings_for_each_sum_fn, &sum);
-	sum = MACRO_TO_BYTES(sum) + 60;
+	hash_table_for_each(&settings->table,
+		(hash_table_for_each_fn_t) settings_for_each_sum_fn, &sum);
+	sum = MACRO_TO_BYTES(sum + 60);
 
 	bit_buffer_t buffer;
-	bit_buffer_set(&buffer, alloc_malloc(sum), sum);
+	bit_buffer_set(&buffer, alloc_calloc(sum), sum);
 	assert_not_null(buffer.data);
 
 	uint32_t magic = 0x015FF510;
 	bit_buffer_set_bits(&buffer, magic, 60);
 
-	hash_table_for_each(&settings->table, (hash_table_for_each_fn_t) settings_for_each_set_fn, &buffer);
+	hash_table_for_each(&settings->table,
+		(hash_table_for_each_fn_t) settings_for_each_set_fn, &buffer);
 
 	sync_mtx_unlock(&settings->mtx);
 
@@ -241,6 +271,14 @@ settings_load(
 	settings_t* settings
 	)
 {
+	assert_not_null(settings);
+
+	settings_load_event_data_t load_data =
+	{
+		.settings = settings,
+		.success = false
+	};
+
 	file_t file;
 	bool status = file_read_cap(settings->path, &file, /* 1MiB */ 0x100000);
 	if(!status)
@@ -281,12 +319,6 @@ settings_load(
 		goto goto_failure_compressed;
 	}
 
-	settings_load_event_data_t load_data =
-	{
-		.settings = settings,
-		.success = false
-	};
-
 	while(bit_buffer_available_bits(&buffer) >= 8 + 8 + SETTING_TYPE__BITS + 1)
 	{
 		uint64_t name_len = 127;
@@ -296,20 +328,20 @@ settings_load(
 			goto goto_failure_compressed;
 		}
 
-		setting_t setting;
-		setting.type = bit_buffer_get_bits_var_safe(&buffer, SETTING_TYPE__BITS, &status);
+		setting_type_t type = bit_buffer_get_bits_var_safe(&buffer, SETTING_TYPE__BITS, &status);
 		if(!status)
 		{
 			goto goto_failure_compressed;
 		}
 
 
-		switch(setting.type)
+		setting_value_t value;
+		switch(type)
 		{
 
 		case SETTING_TYPE_I64:
 		{
-			setting.value.i64.value = bit_buffer_get_signed_bits_var_safe(&buffer, 7, &status);
+			value.i64.value = bit_buffer_get_signed_bits_var_safe(&buffer, 7, &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
@@ -320,7 +352,7 @@ settings_load(
 
 		case SETTING_TYPE_F32:
 		{
-			bit_buffer_get_bytes_safe(&buffer, &setting.value.f32.value, sizeof(float), &status);
+			bit_buffer_get_bytes_safe(&buffer, &value.f32.value, sizeof(float), &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
@@ -331,7 +363,7 @@ settings_load(
 
 		case SETTING_TYPE_BOOLEAN:
 		{
-			setting.value.boolean.value = bit_buffer_get_bits_safe(&buffer, 1, &status);
+			value.boolean.value = bit_buffer_get_bits_safe(&buffer, 1, &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
@@ -342,11 +374,10 @@ settings_load(
 
 		case SETTING_TYPE_STR:
 		{
-			setting.value.str.len = 16383;
-			setting.value.str.str = bit_buffer_get_str_safe(&buffer, &setting.value.str.len, &status);
+			value.str.len = 16383;
+			value.str.str = bit_buffer_get_str_safe(&buffer, &value.str.len, &status);
 			if(!status)
 			{
-				alloc_free(setting.value.str.len, setting.value.str.str);
 				goto goto_failure_compressed;
 			}
 
@@ -355,7 +386,7 @@ settings_load(
 
 		case SETTING_TYPE_COLOR:
 		{
-			bit_buffer_get_bytes_safe(&buffer, &setting.value.color.argb, sizeof(color_argb_t), &status);
+			bit_buffer_get_bytes_safe(&buffer, &value.color.argb, sizeof(color_argb_t), &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
@@ -369,7 +400,9 @@ settings_load(
 		}
 
 
-		hash_table_modify(&settings->table, (const char*) name, &setting);
+		settings_modify(settings, (const char*) name, value);
+
+		alloc_free(name_len + 1, name);
 	}
 
 	alloc_free(decompressed_size, decompressed);
@@ -398,6 +431,10 @@ settings_add(
 	setting_t* setting
 	)
 {
+	assert_not_null(settings);
+	assert_not_null(name);
+	assert_not_null(setting);
+
 	sync_mtx_lock(&settings->mtx);
 		bool status = hash_table_add(&settings->table, name, setting);
 		assert_true(status);
@@ -412,6 +449,9 @@ settings_modify(
 	setting_value_t value
 	)
 {
+	assert_not_null(settings);
+	assert_not_null(name);
+
 	sync_mtx_lock(&settings->mtx);
 		setting_t* setting = hash_table_get(&settings->table, name);
 		if(!setting)
@@ -465,6 +505,11 @@ settings_modify(
 				.new_value = value
 			};
 			event_target_fire(setting->change_target, &change_data);
+		}
+
+		if(setting->type == SETTING_TYPE_STR)
+		{
+			alloc_free(setting->value.str.len + 1, setting->value.str.str);
 		}
 
 		setting->value = value;

@@ -67,6 +67,7 @@ all:
 	client      generates the client, requires dds and all sources\n\
 	server      generates the server, no prerequisites\n\
 	test        runs any modified tests\n\
+	cloc        = everything - libraries - auto generated stuff\n\
 	\n\
 	clean       removes any built executables\n\
 	wipe        above + all textures + all sources (= everything)\n\
@@ -237,3 +238,11 @@ server:
 .PHONY: test
 test:
 	scons test -j $(shell nproc)
+
+
+.PHONY: cloc
+cloc:
+	cloc $(shell find . -type f \
+		\( -name "*.c" -o -name "*.h" \) \
+		! -name "volk.c" ! -name "volk.h" \
+		! -path "*client/tex/*" ! -path "*client/font/*")

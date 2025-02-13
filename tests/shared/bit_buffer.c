@@ -15,6 +15,7 @@
  */
 
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/shared/bit_buffer.h>
 
 #include <string.h>
@@ -333,11 +334,13 @@ test_should_pass__bit_buffer_set_get_bytes(
 		assert_eq(bit_buffer_get_bits(&buffer, i), 0);
 
 		uint64_t len = 256;
-		const uint8_t* str2 = bit_buffer_get_str(&buffer, &len);
+		const char* str2 = (void*) bit_buffer_get_str(&buffer, &len);
 		assert_not_null(str2);
 		assert_eq(len, strlen(str));
 
-		assert_false(memcmp(str, str2, strlen(str)));
+		assert_false(strcmp(str, str2));
+
+		alloc_free(len + 1, str2);
 
 		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + strlen(str) * 8);
 	}
