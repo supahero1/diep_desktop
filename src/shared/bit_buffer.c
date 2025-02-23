@@ -888,77 +888,79 @@ bit_buffer_len_bytes(
 void
 bit_buffer_set_str(
 	bit_buffer_t* bit_buffer,
-	const uint8_t* str,
-	uint64_t len
+	str_t str
 	)
 {
 	assert_not_null(bit_buffer);
-	assert_ptr(str, len);
+	assert_ptr(str.str, str.len);
 
-	bit_buffer_set_bits_var(bit_buffer, len, 6);
-	bit_buffer_set_bytes(bit_buffer, str, len);
+	bit_buffer_set_bits_var(bit_buffer, str.len, 6);
+	bit_buffer_set_bytes(bit_buffer, str.str, str.len);
 }
 
 
-uint8_t*
+str_t
 bit_buffer_get_str(
-	bit_buffer_t* bit_buffer,
-	uint64_t* len
+	bit_buffer_t* bit_buffer
 	)
 {
 	assert_not_null(bit_buffer);
-	assert_not_null(len);
 
-	uint64_t size = bit_buffer_get_bits_var(bit_buffer, 6);
-	assert_le(size, *len);
-	*len = size;
+	uint64_t len = bit_buffer_get_bits_var(bit_buffer, 6);
 
-	uint8_t* str = alloc_malloc(size + 1);
+	uint8_t* str = alloc_malloc(len + 1);
 	assert_not_null(str);
 
-	bit_buffer_get_bytes(bit_buffer, str, size);
-	str[size] = '\0';
+	bit_buffer_get_bytes(bit_buffer, str, len);
+	str[len] = '\0';
 
-	return str;
+	return
+	(str_t)
+	{
+		.str = str,
+		.len = len
+	};
 }
 
 
-uint8_t*
+str_t
 bit_buffer_get_str_safe(
 	bit_buffer_t* bit_buffer,
-	uint64_t* len,
+	uint64_t max_len,
 	bool* status
 	)
 {
 	assert_not_null(bit_buffer);
-	assert_not_null(len);
 	assert_not_null(status);
 
-	uint64_t size = bit_buffer_get_bits_var_safe(bit_buffer, 6, status);
-	if(size > *len)
+	uint64_t len = bit_buffer_get_bits_var_safe(bit_buffer, 6, status);
+	if(len > max_len)
 	{
 		*status = false;
 	}
 	if(!*status)
 	{
-		return NULL;
+		return (str_t){0};
 	}
 
-	*len = size;
-
-	uint8_t* str = alloc_malloc(size + 1);
+	uint8_t* str = alloc_malloc(len + 1);
 	assert_not_null(str);
 
-	bit_buffer_get_bytes_safe(bit_buffer, str, size, status);
+	bit_buffer_get_bytes_safe(bit_buffer, str, len, status);
 	if(!*status)
 	{
-		alloc_free(size + 1, str);
-		return NULL;
+		alloc_free(len + 1, str);
+		return (str_t){0};
 	}
 
-	str[size] = '\0';
+	str[len] = '\0';
 
-	return str;
+	return
+	(str_t)
+	{
+		.str = str,
+		.len = len
+	};
 }
 
 

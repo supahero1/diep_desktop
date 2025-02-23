@@ -112,7 +112,8 @@ hash_table_for_each(
 		uint32_t entry_idx = *bucket;
 		for(hash_table_entry_t* entry = &table->entries[entry_idx]; entry_idx; entry = &table->entries[entry_idx])
 		{
-			fn(entry->key, entry->len, entry->value, data);
+			str_t key = { (void*) entry->key, entry->len };
+			fn(key, entry->value, data);
 			entry_idx = entry->next;
 		}
 	}
@@ -170,11 +171,14 @@ hash_table_has(
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+	str_t search_key = { (void*) key, len };
 
 	uint32_t entry_idx = table->buckets[hash];
 	for(hash_table_entry_t* entry = &table->entries[entry_idx]; entry_idx; entry = &table->entries[entry_idx])
 	{
-		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		str_t entry_key = { (void*) entry->key, entry->len };
+
+		if(str_case_cmp(&search_key, &entry_key))
 		{
 			return true;
 		}
@@ -198,11 +202,14 @@ hash_table_add(
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+	str_t search_key = { (void*) key, len };
 
 	uint32_t* next = &table->buckets[hash];
 	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
 	{
-		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		str_t entry_key = { (void*) entry->key, entry->len };
+
+		if(str_case_cmp(&search_key, &entry_key))
 		{
 			return false;
 		}
@@ -215,8 +222,8 @@ hash_table_add(
 	(hash_table_entry_t)
 	{
 		.key = key,
-		.len = len,
 		.value = value,
+		.len = len,
 		.next = 0
 	};
 
@@ -237,11 +244,14 @@ hash_table_set(
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+	str_t search_key = { (void*) key, len };
 
 	uint32_t* next = &table->buckets[hash];
 	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
 	{
-		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		str_t entry_key = { (void*) entry->key, entry->len };
+
+		if(str_case_cmp(&search_key, &entry_key))
 		{
 			entry->value = value;
 			return true;
@@ -255,8 +265,8 @@ hash_table_set(
 	(hash_table_entry_t)
 	{
 		.key = key,
-		.len = len,
 		.value = value,
+		.len = len,
 		.next = 0
 	};
 
@@ -277,11 +287,14 @@ hash_table_modify(
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+	str_t search_key = { (void*) key, len };
 
 	uint32_t* next = &table->buckets[hash];
 	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
 	{
-		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		str_t entry_key = { (void*) entry->key, entry->len };
+
+		if(str_case_cmp(&search_key, &entry_key))
 		{
 			entry->value = value;
 			return true;
@@ -305,11 +318,14 @@ hash_table_get(
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+	str_t search_key = { (void*) key, len };
 
 	uint32_t entry_idx = table->buckets[hash];
 	for(hash_table_entry_t* entry = &table->entries[entry_idx]; entry_idx; entry = &table->entries[entry_idx])
 	{
-		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		str_t entry_key = { (void*) entry->key, entry->len };
+
+		if(str_case_cmp(&search_key, &entry_key))
 		{
 			return entry->value;
 		}
@@ -332,11 +348,14 @@ hash_table_del(
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
+	str_t search_key = { (void*) key, len };
 
 	uint32_t* next = &table->buckets[hash];
 	for(hash_table_entry_t* entry = &table->entries[*next]; *next; entry = &table->entries[*next])
 	{
-		if(len == entry->len && strcasecmp(key, entry->key) == 0)
+		str_t entry_key = { (void*) entry->key, entry->len };
+
+		if(str_case_cmp(&search_key, &entry_key))
 		{
 			uint32_t next_idx = *next;
 			*next = table->entries[next_idx].next;

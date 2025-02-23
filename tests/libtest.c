@@ -17,16 +17,15 @@
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 
+#include <valgrind/valgrind.h>
+
 #include <gelf.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
-
-#include <valgrind/valgrind.h>
 
 
 static int tty_fd = 1;

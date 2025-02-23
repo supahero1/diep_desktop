@@ -17,10 +17,10 @@
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/settings.h>
 
-#include <string.h>
-
 #include <valgrind/valgrind.h>
 #define FILENAME (RUNNING_ON_VALGRIND ? "bin/tests/shared/settings.bin.val" : "bin/tests/shared/settings.bin")
+
+#include <string.h>
 
 
 void assert_used
@@ -44,10 +44,7 @@ test_should_fail__settings_init_null_settings(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
-
-	settings_init(NULL, FILENAME, &timers);
+	settings_init(NULL, FILENAME, NULL);
 }
 
 
@@ -56,21 +53,17 @@ test_should_fail__settings_init_null_path(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
-
 	settings_t settings;
-	settings_init(&settings, NULL, &timers);
+	settings_init(&settings, NULL, NULL);
 }
 
 
 void assert_used
-test_should_fail__settings_init_null_timers(
+test_should_fail__settings_init_null(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, FILENAME, NULL);
+	settings_init(NULL, NULL, NULL);
 }
 
 
@@ -159,7 +152,7 @@ test_should_pass__settings_save_load(
 		.constraint = { .i64 = { .min = 0, .max = 100 } },
 		.change_target = &change_target
 	};
-	settings_add(&settings, "foo", &setting_foo);
+	settings_add(&settings, "foo", setting_foo);
 	assert_eq(change, 0);
 	assert_false(saved);
 	assert_false(loaded);
@@ -171,7 +164,7 @@ test_should_pass__settings_save_load(
 		.constraint = { .f32 = { .min = 0.0f, .max = 2.0f } },
 		.change_target = NULL
 	};
-	settings_add(&settings, "bar", &setting_bar);
+	settings_add(&settings, "bar", setting_bar);
 	assert_eq(change, 0);
 	assert_false(saved);
 	assert_false(loaded);
@@ -210,7 +203,7 @@ test_should_pass__settings_save_load(
 	save_listener = event_target_add(&settings.save_target, save_listener_data);
 	load_listener = event_target_add(&settings.load_target, load_listener_data);
 
-	settings_add(&settings, "foo", &setting_foo);
+	settings_add(&settings, "foo", setting_foo);
 	assert_eq(change, 0);
 	assert_false(saved);
 	assert_false(loaded);
@@ -256,11 +249,8 @@ test_should_fail__settings_add_null_settings(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
-
 	settings_t settings;
-	settings_init(&settings, FILENAME, &timers);
+	settings_init(&settings, FILENAME, NULL);
 
 	setting_t setting_foo =
 	{
@@ -269,7 +259,7 @@ test_should_fail__settings_add_null_settings(
 		.constraint = { .i64 = { .min = 0, .max = 100 } },
 		.change_target = NULL
 	};
-	settings_add(NULL, "foo", &setting_foo);
+	settings_add(NULL, "foo", setting_foo);
 }
 
 
@@ -278,11 +268,8 @@ test_should_fail__settings_add_null_name(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
-
 	settings_t settings;
-	settings_init(&settings, FILENAME, &timers);
+	settings_init(&settings, FILENAME, NULL);
 
 	setting_t setting_foo =
 	{
@@ -291,22 +278,19 @@ test_should_fail__settings_add_null_name(
 		.constraint = { .i64 = { .min = 0, .max = 100 } },
 		.change_target = NULL
 	};
-	settings_add(&settings, NULL, &setting_foo);
+	settings_add(&settings, NULL, setting_foo);
 }
 
 
 void assert_used
-test_should_fail__settings_add_null_setting(
+test_should_fail__settings_add_invalid_setting(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
-
 	settings_t settings;
-	settings_init(&settings, FILENAME, &timers);
+	settings_init(&settings, FILENAME, NULL);
 
-	settings_add(&settings, "foo", NULL);
+	settings_add(&settings, "foo", (setting_t){ .type = 0xFF });
 }
 
 
@@ -315,7 +299,7 @@ test_should_fail__settings_add_null(
 	void
 	)
 {
-	settings_add(NULL, NULL, NULL);
+	settings_add(NULL, NULL, (setting_t){ .type = 0xFF });
 }
 
 
@@ -333,11 +317,8 @@ test_should_fail__settings_modify_null_name(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
-
 	settings_t settings;
-	settings_init(&settings, FILENAME, &timers);
+	settings_init(&settings, FILENAME, NULL);
 
 	settings_modify(&settings, NULL, (setting_value_t){ .i64 = { .value = 42 } });
 }
@@ -349,4 +330,23 @@ test_should_fail__settings_modify_null(
 	)
 {
 	settings_modify(NULL, NULL, (setting_value_t){ .i64 = { .value = 42 } });
+}
+
+
+void assert_used
+test_should_fail__settings_add_violating_constraint(
+	void
+	)
+{
+	settings_t settings;
+	settings_init(&settings, FILENAME, NULL);
+
+	setting_t setting_foo =
+	{
+		.type = SETTING_TYPE_I64,
+		.value = { .i64 = { .value = 42 } },
+		.constraint = { .i64 = { .min = 0, .max = 40 } },
+		.change_target = NULL
+	};
+	settings_add(&settings, "foo", setting_foo);
 }

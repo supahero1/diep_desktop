@@ -317,32 +317,33 @@ test_should_pass__bit_buffer_set_get_bytes(
 		assert_eq(bit_buffer_consumed_bits(&buffer), i + 64);
 	}
 
-	const char* str = "Hello, World!";
+	const char* str_data = "Hello, World!";
 	for(uint32_t i = 0; i < 8; ++i)
 	{
 		memset(data, 0, sizeof(data));
 		bit_buffer_reset(&buffer);
 		bit_buffer_set_bits(&buffer, 0, i);
-		bit_buffer_set_str(&buffer, (const uint8_t*) str, strlen(str));
+
+		str_t str = { (void*) str_data, strlen(str_data) };
+		bit_buffer_set_str(&buffer, str);
 
 		assert_eq(bit_buffer_len_bytes(0), 0);
-		assert_eq(bit_buffer_len_str(strlen(str)), 7 + strlen(str) * 8);
+		assert_eq(bit_buffer_len_str(str.len), 7 + str.len * 8);
 
-		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + strlen(str) * 8);
+		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + str.len * 8);
 		bit_buffer_reset(&buffer);
 
 		assert_eq(bit_buffer_get_bits(&buffer, i), 0);
 
-		uint64_t len = 256;
-		const char* str2 = (void*) bit_buffer_get_str(&buffer, &len);
-		assert_not_null(str2);
-		assert_eq(len, strlen(str));
+		str_t str_out = bit_buffer_get_str(&buffer);
+		assert_not_null(str_out.str);
+		assert_eq(str_out.len, str.len);
 
-		assert_false(strcmp(str, str2));
+		assert_true(str_cmp(&str, &str_out));
 
-		alloc_free(len + 1, str2);
+		str_free(&str_out);
 
-		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + strlen(str) * 8);
+		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + str.len * 8);
 	}
 }
 
@@ -890,17 +891,18 @@ test_should_fail__bit_buffer_set_str_null_buffer(
 	void
 	)
 {
-	bit_buffer_set_str(NULL, NULL, 0);
+	str_t str = { (void*) "hello", 5 };
+	bit_buffer_set_str(NULL, str);
 }
 
 
 void assert_used
-test_should_fail__bit_buffer_set_str_null_str(
+test_should_fail__bit_buffer_set_str_null_str_non_zero_len(
 	void
 	)
 {
 	bit_buffer_t bit_buffer;
-	bit_buffer_set_str(&bit_buffer, NULL, 4);
+	bit_buffer_set_str(&bit_buffer, (str_t){ NULL, 5 });
 }
 
 
@@ -909,17 +911,7 @@ test_should_fail__bit_buffer_get_str_null_buffer(
 	void
 	)
 {
-	bit_buffer_get_str(NULL, NULL);
-}
-
-
-void assert_used
-test_should_fail__bit_buffer_get_str_null_len(
-	void
-	)
-{
-	bit_buffer_t bit_buffer;
-	bit_buffer_get_str(&bit_buffer, NULL);
+	bit_buffer_get_str(NULL);
 }
 
 
@@ -929,18 +921,7 @@ test_should_fail__bit_buffer_get_str_safe_null_buffer(
 	)
 {
 	bool status;
-	bit_buffer_get_str_safe(NULL, NULL, &status);
-}
-
-
-void assert_used
-test_should_fail__bit_buffer_get_str_safe_null_len(
-	void
-	)
-{
-	bit_buffer_t bit_buffer;
-	bool status;
-	bit_buffer_get_str_safe(&bit_buffer, NULL, &status);
+	bit_buffer_get_str_safe(NULL, 0, &status);
 }
 
 
@@ -950,7 +931,7 @@ test_should_fail__bit_buffer_get_str_safe_null_status(
 	)
 {
 	bit_buffer_t bit_buffer;
-	bit_buffer_get_str_safe(&bit_buffer, NULL, NULL);
+	bit_buffer_get_str_safe(&bit_buffer, 0, NULL);
 }
 
 
@@ -959,6 +940,6 @@ test_should_fail__bit_buffer_get_str_safe_null(
 	void
 	)
 {
-	bit_buffer_get_str_safe(NULL, NULL, NULL);
+	bit_buffer_get_str_safe(NULL, 0, NULL);
 }
 

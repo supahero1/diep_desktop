@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <DiepDesktop/shared/str.h>
 
 
 typedef struct hash_table_entry
@@ -45,8 +45,7 @@ hash_table_t;
 
 typedef void
 (*hash_table_for_each_fn_t)(
-	const char* key,
-	uint32_t len,
+	str_t key,
 	void* value,
 	void* data
 	);

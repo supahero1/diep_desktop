@@ -31,9 +31,6 @@ struct app
 	time_timers_t timers;
 	settings_t settings;
 
-	event_listener_t* settings_load_listener;
-	event_listener_t* settings_save_listener;
-
 	window_manager_t manager;
 	window_t window;
 };
@@ -63,36 +60,6 @@ app_window_free_once_fn(
 }
 
 
-private void
-app_settings_load_fn(
-	settings_t* settings,
-	settings_load_event_data_t* event_data
-	)
-{
-	printf("settings_load() = %d\n", event_data->success);
-}
-
-
-private void
-app_settings_save_fn(
-	settings_t* settings,
-	settings_save_event_data_t* event_data
-	)
-{
-	printf("settings_save() = %d\n", event_data->success);
-}
-
-
-private void
-app_setting_change_fn(
-	app_t* app,
-	setting_change_event_data_t* event_data
-	)
-{
-	printf("setting_change() = %s\n", event_data->name);
-}
-
-
 app_t*
 app_init(
 	void
@@ -104,22 +71,54 @@ app_init(
 	time_timers_init(&app->timers);
 	settings_init(&app->settings, "settings.bin", &app->timers);
 
-	event_listener_data_t settings_load_data =
-	{
-		.fn = (event_fn_t) app_settings_load_fn,
-		.data = &app->settings
-	};
-	app->settings_load_listener = event_target_add(&app->settings.load_target, settings_load_data);
+	settings_add(&app->settings, "main_window_pos_x",
+		(setting_t)
+		{
+			.type = SETTING_TYPE_F32,
+			.value = { .f32 = { 0.0f } },
+			.constraint = { .f32 = { .min = -16384.0f, .max = 16384.0f } }
+		}
+		);
 
-	event_listener_data_t settings_save_data =
-	{
-		.fn = (event_fn_t) app_settings_save_fn,
-		.data = &app->settings
-	};
-	app->settings_save_listener = event_target_add(&app->settings.save_target, settings_save_data);
+	settings_add(&app->settings, "main_window_pos_y",
+		(setting_t)
+		{
+			.type = SETTING_TYPE_F32,
+			.value = { .f32 = { 0.0f } },
+			.constraint = { .f32 = { .min = -16384.0f, .max = 16384.0f } }
+		}
+		);
+
+	settings_add(&app->settings, "main_window_w",
+		(setting_t)
+		{
+			.type = SETTING_TYPE_F32,
+			.value = { .f32 = { 1280.0f } },
+			.constraint = { .f32 = { .min = 480.0f, .max = 16384.0f } }
+		}
+		);
+
+	settings_add(&app->settings, "main_window_h",
+		(setting_t)
+		{
+			.type = SETTING_TYPE_F32,
+			.value = { .f32 = { 720.0f } },
+			.constraint = { .f32 = { .min = 270.0f, .max = 16384.0f } }
+		}
+		);
+
+	settings_add(&app->settings, "main_window_fullscreen",
+		(setting_t)
+		{
+			.type = SETTING_TYPE_BOOLEAN,
+			.value = { .boolean = { false } }
+		}
+		);
+
+	window_history_t history;
 
 	window_manager_init(&app->manager);
-	window_init(&app->window, &app->manager);
+	window_init(&app->window, &app->manager, "Game", &history);
 	window_show(&app->window);
 
 	event_listener_data_t close_once_data =
@@ -136,6 +135,10 @@ app_init(
 	};
 	event_target_once(&app->window.free_target, free_once_data);
 
+	// init ui
+
+	settings_load(&app->settings);
+
 	return app;
 }
 
@@ -145,11 +148,10 @@ app_free(
 	app_t* app
 	)
 {
+	assert_not_null(app);
+
 	window_free(&app->window);
 	window_manager_free(&app->manager);
-
-	event_target_del(&app->settings.save_target, app->settings_save_listener);
-	event_target_del(&app->settings.load_target, app->settings_load_listener);
 
 	settings_free(&app->settings);
 	time_timers_free(&app->timers);
@@ -163,25 +165,7 @@ app_run(
 	app_t* app
 	)
 {
-	setting_value_t val = { .str = { .str = (void*) "uwu", .len = 4 } };
-	setting_constraint_t constraint = { .str = { .max_len = 512 } };
-	event_target_t change_target;
-	event_target_init(&change_target);
-	setting_t setting = { .type = SETTING_TYPE_STR, .value = val, .constraint = constraint, .change_target = &change_target };
-
-	event_listener_data_t setting_change_data =
-	{
-		.fn = (event_fn_t) app_setting_change_fn,
-		.data = app
-	};
-	event_listener_t* listener = event_target_add(&change_target, setting_change_data);
-
-	settings_add(&app->settings, "hewwo", &setting);
-	// app->settings.dirty = true;
-	// settings_save(&app->settings);
-	settings_load(&app->settings);
+	assert_not_null(app);
 
 	window_manager_run(&app->manager);
-
-	event_target_del(&change_target, listener);
 }

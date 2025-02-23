@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <DiepDesktop/shared/str.h>
 
 
 typedef struct bit_buffer
@@ -337,22 +337,20 @@ bit_buffer_len_bytes(
 extern void
 bit_buffer_set_str(
 	bit_buffer_t* bit_buffer,
-	const uint8_t* str,
-	uint64_t len
+	str_t str
 	);
 
 
-extern uint8_t*
+extern str_t
 bit_buffer_get_str(
-	bit_buffer_t* bit_buffer,
-	uint64_t* len
+	bit_buffer_t* bit_buffer
 	);
 
 
-extern uint8_t*
+extern str_t
 bit_buffer_get_str_safe(
 	bit_buffer_t* bit_buffer,
-	uint64_t* len,
+	uint64_t max_len,
 	bool* status
 	);
 

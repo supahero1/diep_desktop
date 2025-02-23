@@ -70,8 +70,7 @@ for_each_data_t;
 
 static void
 hash_table_for_each_fn(
-	const char* key,
-	uint32_t len,
+	str_t key,
 	void* value,
 	void* data
 	)
@@ -79,8 +78,8 @@ hash_table_for_each_fn(
 	for_each_data_t** ptr = data;
 	for_each_data_t* cur = *ptr;
 
-	cur->key = key;
-	cur->len = len;
+	cur->key = (void*) key.str;
+	cur->len = key.len;
 	cur->value = value;
 
 	*ptr = cur + 1;

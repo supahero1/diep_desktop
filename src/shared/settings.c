@@ -35,11 +35,12 @@ settings_init(
 {
 	assert_not_null(settings);
 	assert_not_null(path);
-	assert_not_null(timers);
 
-	sync_mtx_init(&settings->mtx);
+	sync_rwlock_init(&settings->rwlock);
+
 	hash_table_init(&settings->table, 256);
 	settings->dirty = false;
+	settings->use_timers = !!timers;
 
 	settings->path = path;
 
@@ -53,16 +54,17 @@ settings_init(
 
 private void
 settings_for_each_free_fn(
-	const char* name,
-	uint32_t len,
+	str_t name,
 	setting_t* setting,
 	void* data
 	)
 {
 	if(setting->type == SETTING_TYPE_STR)
 	{
-		alloc_free(setting->value.str.len + 1, setting->value.str.str);
+		str_free(&setting->value.str);
 	}
+
+	alloc_free(sizeof(*setting), setting);
 }
 
 
@@ -73,7 +75,10 @@ settings_free(
 {
 	assert_not_null(settings);
 
-	if(time_timers_cancel_timeout(settings->timers, &settings->save_timer))
+	if(
+		settings->use_timers &&
+		time_timers_cancel_timeout(settings->timers, &settings->save_timer)
+		)
 	{
 		settings_save(settings);
 	}
@@ -87,19 +92,19 @@ settings_free(
 		(hash_table_for_each_fn_t) settings_for_each_free_fn, NULL);
 
 	hash_table_free(&settings->table);
-	sync_mtx_free(&settings->mtx);
+
+	sync_rwlock_free(&settings->rwlock);
 }
 
 
 private void
 settings_for_each_sum_fn(
-	const char* name,
-	uint32_t len,
+	str_t name,
 	setting_t* setting,
 	uint64_t* sum
 	)
 {
-	*sum += bit_buffer_len_str(len);
+	*sum += bit_buffer_len_str(name.len);
 	*sum += bit_buffer_len_bits_var(setting->type, SETTING_TYPE__BITS);
 
 
@@ -144,13 +149,12 @@ settings_for_each_sum_fn(
 
 private void
 settings_for_each_set_fn(
-	const char* name,
-	uint32_t len,
+	str_t name,
 	setting_t* setting,
 	bit_buffer_t* buffer
 	)
 {
-	bit_buffer_set_str(buffer, (const uint8_t*) name, len);
+	bit_buffer_set_str(buffer, name);
 	bit_buffer_set_bits_var(buffer, setting->type, SETTING_TYPE__BITS);
 
 
@@ -177,7 +181,7 @@ settings_for_each_set_fn(
 
 	case SETTING_TYPE_STR:
 	{
-		bit_buffer_set_str(buffer, setting->value.str.str, setting->value.str.len);
+		bit_buffer_set_str(buffer, setting->value.str);
 		break;
 	}
 
@@ -200,11 +204,11 @@ settings_save(
 {
 	assert_not_null(settings);
 
-	sync_mtx_lock(&settings->mtx);
+	sync_rwlock_wrlock(&settings->rwlock);
 
 	if(!settings->dirty)
 	{
-		sync_mtx_unlock(&settings->mtx);
+		sync_rwlock_unlock(&settings->rwlock);
 		return;
 	}
 
@@ -223,7 +227,7 @@ settings_save(
 	hash_table_for_each(&settings->table,
 		(hash_table_for_each_fn_t) settings_for_each_set_fn, &buffer);
 
-	sync_mtx_unlock(&settings->mtx);
+	sync_rwlock_unlock(&settings->rwlock);
 
 	uint64_t compressed_size = ZSTD_compressBound(buffer.len);
 	uint8_t* compressed = alloc_malloc(compressed_size);
@@ -322,8 +326,8 @@ settings_load(
 	while(bit_buffer_available_bits(&buffer) >= 8 + 8 + SETTING_TYPE__BITS + 1)
 	{
 		uint64_t name_len = 127;
-		uint8_t* name = bit_buffer_get_str_safe(&buffer, &name_len, &status);
-		if(!status || !name_len)
+		str_t name = bit_buffer_get_str_safe(&buffer, 127, &status);
+		if(!status || !name.str)
 		{
 			goto goto_failure_compressed;
 		}
@@ -374,9 +378,8 @@ settings_load(
 
 		case SETTING_TYPE_STR:
 		{
-			value.str.len = 16383;
-			value.str.str = bit_buffer_get_str_safe(&buffer, &value.str.len, &status);
-			if(!status)
+			value.str = bit_buffer_get_str_safe(&buffer, 16383, &status);
+			if(!status || !value.str.str)
 			{
 				goto goto_failure_compressed;
 			}
@@ -402,7 +405,7 @@ settings_load(
 
 		settings_modify(settings, (const char*) name, value);
 
-		alloc_free(name_len + 1, name);
+		str_free(&name);
 	}
 
 	alloc_free(decompressed_size, decompressed);
@@ -424,21 +427,179 @@ settings_load(
 }
 
 
-void
-settings_add(
+setting_t*
+settings_add_i64(
 	settings_t* settings,
 	const char* name,
-	setting_t* setting
+	int64_t value,
+	int64_t min,
+	int64_t max,
+	event_target_t* change_target
 	)
 {
 	assert_not_null(settings);
 	assert_not_null(name);
-	assert_not_null(setting);
 
-	sync_mtx_lock(&settings->mtx);
-		bool status = hash_table_add(&settings->table, name, setting);
+	assert_ge(value, min);
+	assert_le(value, max);
+
+	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	assert_not_null(setting_ptr);
+
+	*setting_ptr =
+	(setting_t)
+	{
+		.type = SETTING_TYPE_I64,
+		.value.i64.value = value,
+		.constraint.i64.min = min,
+		.constraint.i64.max = max,
+		.change_target = change_target
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		bool status = hash_table_add(&settings->table, name, setting_ptr);
 		assert_true(status);
-	sync_mtx_unlock(&settings->mtx);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	return setting_ptr;
+}
+
+
+setting_t*
+settings_add_f32(
+	settings_t* settings,
+	const char* name,
+	float value,
+	float min,
+	float max,
+	event_target_t* change_target
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(name);
+
+	assert_ge(value, min);
+	assert_le(value, max);
+
+	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	assert_not_null(setting_ptr);
+
+	*setting_ptr =
+	(setting_t)
+	{
+		.type = SETTING_TYPE_F32,
+		.value.f32.value = value,
+		.constraint.f32.min = min,
+		.constraint.f32.max = max,
+		.change_target = change_target
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		assert_true(status);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	return setting_ptr;
+}
+
+
+setting_t*
+settings_add_boolean(
+	settings_t* settings,
+	const char* name,
+	bool value,
+	event_target_t* change_target
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(name);
+
+	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	assert_not_null(setting_ptr);
+
+	*setting_ptr =
+	(setting_t)
+	{
+		.type = SETTING_TYPE_BOOLEAN,
+		.value.boolean.value = value,
+		.change_target = change_target
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		assert_true(status);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	return setting_ptr;
+}
+
+
+setting_t*
+settings_add_str(
+	settings_t* settings,
+	const char* name,
+	const str_t value,
+	uint64_t max_len,
+	event_target_t* change_target
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(name);
+
+	assert_le(value.len, max_len);
+
+	str_t str;
+	str_init_copy(&str, &value);
+
+	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	assert_not_null(setting_ptr);
+
+	*setting_ptr =
+	(setting_t)
+	{
+		.type = SETTING_TYPE_STR,
+		.value.str = str,
+		.constraint.str.max_len = max_len,
+		.change_target = change_target
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		assert_true(status);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	return setting_ptr;
+}
+
+
+setting_t*
+settings_add_color(
+	settings_t* settings,
+	const char* name,
+	color_argb_t value,
+	event_target_t* change_target
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(name);
+
+	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	assert_not_null(setting_ptr);
+
+	*setting_ptr =
+	(setting_t)
+	{
+		.type = SETTING_TYPE_COLOR,
+		.value.color.argb = value,
+		.change_target = change_target
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		assert_true(status);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	return setting_ptr;
 }
 
 
@@ -515,22 +676,25 @@ settings_modify(
 		setting->value = value;
 		settings->dirty = true;
 
-		time_timers_lock(settings->timers);
-			uint64_t time = time_get_with_sec(5);
-			if(!time_timers_set_timeout_u(settings->timers, &settings->save_timer, time))
-			{
-				time_timeout_t timeout =
+		if(settings->use_timers)
+		{
+			time_timers_lock(settings->timers);
+				uint64_t time = time_get_with_sec(5);
+				if(!time_timers_set_timeout_u(settings->timers, &settings->save_timer, time))
 				{
-					.timer = &settings->save_timer,
-					.data =
+					time_timeout_t timeout =
 					{
-						.fn = (time_fn_t) settings_save_fn,
-						.data = settings
-					},
-					.time = time
-				};
-				time_timers_add_timeout_u(settings->timers, timeout);
-			}
-		time_timers_unlock(settings->timers);
+						.timer = &settings->save_timer,
+						.data =
+						{
+							.fn = (time_fn_t) settings_save_fn,
+							.data = settings
+						},
+						.time = time
+					};
+					time_timers_add_timeout_u(settings->timers, timeout);
+				}
+			time_timers_unlock(settings->timers);
+		}
 	sync_mtx_unlock(&settings->mtx);
 }

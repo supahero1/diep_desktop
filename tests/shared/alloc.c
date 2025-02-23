@@ -91,6 +91,8 @@ test_should_pass__alloc_null(
 
 	ptr = alloc_recalloc(0, NULL, 0);
 	assert_null(ptr);
+
+	alloc_free(0, NULL);
 }
 
 

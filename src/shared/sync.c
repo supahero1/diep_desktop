@@ -71,13 +71,7 @@ sync_mtx_try_lock(
 		return true;
 	}
 
-	if(status == EBUSY)
-	{
-		return false;
-	}
-
-	assert_eq(status, 0);
-	/* Compiler is stupid */
+	assert_eq(status, EBUSY);
 	return false;
 }
 
@@ -90,6 +84,102 @@ sync_mtx_unlock(
 	assert_not_null(mtx);
 
 	int status = pthread_mutex_unlock(mtx);
+	assert_eq(status, 0);
+}
+
+
+void
+sync_rwlock_init(
+	sync_rwlock_t* rwlock
+	)
+{
+	assert_not_null(rwlock);
+
+	int status = pthread_rwlock_init(rwlock, NULL);
+	hard_assert_eq(status, 0);
+}
+
+
+void
+sync_rwlock_free(
+	sync_rwlock_t* rwlock
+	)
+{
+	assert_not_null(rwlock);
+
+	int status = pthread_rwlock_destroy(rwlock);
+	hard_assert_eq(status, 0);
+}
+
+
+void
+sync_rwlock_rdlock(
+	sync_rwlock_t* rwlock
+	)
+{
+	assert_not_null(rwlock);
+
+	int status = pthread_rwlock_rdlock(rwlock);
+	assert_eq(status, 0);
+}
+
+
+bool
+sync_rwlock_try_rdlock(
+	sync_rwlock_t* rwlock
+	)
+{
+	assert_not_null(rwlock);
+
+	int status = pthread_rwlock_tryrdlock(rwlock);
+	if(status == 0)
+	{
+		return true;
+	}
+
+	assert_eq(status, EBUSY);
+	return false;
+}
+
+
+void
+sync_rwlock_wrlock(
+	sync_rwlock_t* rwlock
+	)
+{
+	assert_not_null(rwlock);
+
+	int status = pthread_rwlock_wrlock(rwlock);
+	assert_eq(status, 0);
+}
+
+
+bool
+sync_rwlock_try_wrlock(
+	sync_rwlock_t* rwlock
+	)
+{
+	assert_not_null(rwlock);
+
+	int status = pthread_rwlock_trywrlock(rwlock);
+	if(status == 0)
+	{
+		return true;
+	}
+
+	assert_eq(status, EBUSY);
+	return false;
+}
+
+
+void
+sync_rwlock_unlock(
+	sync_rwlock_t* rwlock
+	)
+{
+	assert_not_null(rwlock);
+
+	int status = pthread_rwlock_unlock(rwlock);
 	assert_eq(status, 0);
 }
 

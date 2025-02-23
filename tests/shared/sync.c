@@ -47,6 +47,21 @@ test_should_pass__sync_mtx_lock_unlock(
 
 
 void assert_used
+test_should_pass__sync_mtx_try_lock_unlock(
+	void
+	)
+{
+	sync_mtx_t mtx;
+	sync_mtx_init(&mtx);
+
+	sync_mtx_try_lock(&mtx);
+	sync_mtx_unlock(&mtx);
+
+	sync_mtx_free(&mtx);
+}
+
+
+void assert_used
 test_should_fail__sync_mtx_init_null(
 	void
 	)
@@ -74,11 +89,154 @@ test_should_fail__sync_mtx_lock_null(
 
 
 void assert_used
+test_should_fail__sync_mtx_try_lock_null(
+	void
+	)
+{
+	sync_mtx_try_lock(NULL);
+}
+
+
+void assert_used
 test_should_fail__sync_mtx_unlock_null(
 	void
 	)
 {
 	sync_mtx_unlock(NULL);
+}
+
+
+void assert_used
+test_should_pass__sync_rwlock_init_free(
+	void
+	)
+{
+	sync_rwlock_t rwlock;
+	sync_rwlock_init(&rwlock);
+	sync_rwlock_free(&rwlock);
+}
+
+
+void assert_used
+test_should_pass__sync_rwlock_rdlock_unlock(
+	void
+	)
+{
+	sync_rwlock_t rwlock;
+	sync_rwlock_init(&rwlock);
+
+	sync_rwlock_rdlock(&rwlock);
+	sync_rwlock_unlock(&rwlock);
+
+	sync_rwlock_free(&rwlock);
+}
+
+
+void assert_used
+test_should_pass__sync_rwlock_try_rdlock_unlock(
+	void
+	)
+{
+	sync_rwlock_t rwlock;
+	sync_rwlock_init(&rwlock);
+
+	sync_rwlock_try_rdlock(&rwlock);
+	sync_rwlock_unlock(&rwlock);
+
+	sync_rwlock_free(&rwlock);
+}
+
+
+void assert_used
+test_should_pass__sync_rwlock_wrlock_unlock(
+	void
+	)
+{
+	sync_rwlock_t rwlock;
+	sync_rwlock_init(&rwlock);
+
+	sync_rwlock_wrlock(&rwlock);
+	sync_rwlock_unlock(&rwlock);
+
+	sync_rwlock_free(&rwlock);
+}
+
+
+void assert_used
+test_should_pass__sync_rwlock_try_wrlock_unlock(
+	void
+	)
+{
+	sync_rwlock_t rwlock;
+	sync_rwlock_init(&rwlock);
+
+	sync_rwlock_try_wrlock(&rwlock);
+	sync_rwlock_unlock(&rwlock);
+
+	sync_rwlock_free(&rwlock);
+}
+
+
+void assert_used
+test_should_fail__sync_rwlock_init_null(
+	void
+	)
+{
+	sync_rwlock_init(NULL);
+}
+
+
+void assert_used
+test_should_fail__sync_rwlock_free_null(
+	void
+	)
+{
+	sync_rwlock_free(NULL);
+}
+
+
+void assert_used
+test_should_fail__sync_rwlock_rdlock_null(
+	void
+	)
+{
+	sync_rwlock_rdlock(NULL);
+}
+
+
+void assert_used
+test_should_fail__sync_rwlock_try_rdlock_null(
+	void
+	)
+{
+	sync_rwlock_try_rdlock(NULL);
+}
+
+
+void assert_used
+test_should_fail__sync_rwlock_wrlock_null(
+	void
+	)
+{
+	sync_rwlock_wrlock(NULL);
+}
+
+
+void assert_used
+test_should_fail__sync_rwlock_try_wrlock_null(
+	void
+	)
+{
+	sync_rwlock_try_wrlock(NULL);
+}
+
+
+void assert_used
+test_should_fail__sync_rwlock_unlock_null(
+	void
+	)
+{
+	sync_rwlock_unlock(NULL);
 }
 
 

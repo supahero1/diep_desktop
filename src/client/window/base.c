@@ -76,11 +76,11 @@ window_map_sdl_mod(
 {
 	window_mod_t mods = 0;
 
-	if(sdl_mods & SDL_KMOD_SHIFT) mods |= MACRO_POWER_OF_2(WINDOW_MOD_SHIFT    );
-	if(sdl_mods & SDL_KMOD_CTRL ) mods |= MACRO_POWER_OF_2(WINDOW_MOD_CTRL     );
-	if(sdl_mods & SDL_KMOD_ALT  ) mods |= MACRO_POWER_OF_2(WINDOW_MOD_ALT      );
-	if(sdl_mods & SDL_KMOD_GUI  ) mods |= MACRO_POWER_OF_2(WINDOW_MOD_GUI      );
-	if(sdl_mods & SDL_KMOD_CAPS ) mods |= MACRO_POWER_OF_2(WINDOW_MOD_CAPS_LOCK);
+	if(sdl_mods & SDL_KMOD_SHIFT) mods |= WINDOW_MOD_SHIFT_BIT;
+	if(sdl_mods & SDL_KMOD_CTRL ) mods |= WINDOW_MOD_CTRL_BIT;
+	if(sdl_mods & SDL_KMOD_ALT  ) mods |= WINDOW_MOD_ALT_BIT;
+	if(sdl_mods & SDL_KMOD_GUI  ) mods |= WINDOW_MOD_GUI_BIT;
+	if(sdl_mods & SDL_KMOD_CAPS ) mods |= WINDOW_MOD_CAPS_LOCK_BIT;
 
 	return mods;
 }
@@ -140,9 +140,15 @@ window_sdl_free(
 void
 window_init(
 	window_t* window,
-	window_manager_t* manager
+	window_manager_t* manager,
+	const char* title,
+	const window_history_t* history
 	)
 {
+	assert_not_null(window);
+	assert_not_null(manager);
+	assert_not_null(title);
+
 	window->manager = manager;
 
 
@@ -151,28 +157,47 @@ window_init(
 
 	window->sdl_props = sdl_props;
 
-	bool status = SDL_SetBooleanProperty(sdl_props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
+	bool status = SDL_SetBooleanProperty(sdl_props,
+		SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
 	hard_assert_true(status, window_sdl_log_error());
 
-	status = SDL_SetBooleanProperty(sdl_props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
+	status = SDL_SetBooleanProperty(sdl_props,
+		SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
 	hard_assert_true(status, window_sdl_log_error());
 
-	status = SDL_SetBooleanProperty(sdl_props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
+	status = SDL_SetBooleanProperty(sdl_props,
+		SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
 	hard_assert_true(status, window_sdl_log_error());
 
-	status = SDL_SetBooleanProperty(sdl_props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
+	status = SDL_SetBooleanProperty(sdl_props,
+		SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
 	hard_assert_true(status, window_sdl_log_error());
 
-	status = SDL_SetNumberProperty(sdl_props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, 1280);
+	if(history)
+	{
+		status = SDL_SetNumberProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_X_NUMBER, history->extent.x);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetNumberProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_Y_NUMBER, history->extent.y);
+		hard_assert_true(status, window_sdl_log_error());
+	}
+
+	status = SDL_SetNumberProperty(sdl_props,
+		SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, history ? history->extent.w : 1280);
 	hard_assert_true(status, window_sdl_log_error());
 
-	status = SDL_SetNumberProperty(sdl_props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 720);
+	status = SDL_SetNumberProperty(sdl_props,
+		SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, history ? history->extent.h : 720);
 	hard_assert_true(status, window_sdl_log_error());
 
-	status = SDL_SetStringProperty(sdl_props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "Game");
+	status = SDL_SetStringProperty(sdl_props,
+		SDL_PROP_WINDOW_CREATE_TITLE_STRING, title);
 	hard_assert_true(status, window_sdl_log_error());
 
-	status = SDL_SetBooleanProperty(sdl_props, SDL_HINT_FORCE_RAISEWINDOW, true);
+	status = SDL_SetBooleanProperty(sdl_props,
+		SDL_HINT_FORCE_RAISEWINDOW, true);
 	hard_assert_true(status, window_sdl_log_error());
 
 
@@ -189,13 +214,17 @@ window_init(
 	hard_assert_true(status, window_sdl_log_error());
 
 
-	window->extent.size = (pair_t){{ 640, 360 }};
-
 	ipair_t pos = {0};
 	status = SDL_GetWindowPosition(window->sdl_window, &pos.x, &pos.y);
 	hard_assert_eq(status, true);
 
 	window->extent.pos = (pair_t){{ pos.x, pos.y }};
+
+	ipair_t size = {0};
+	status = SDL_GetWindowSize(window->sdl_window, &size.w, &size.h);
+	hard_assert_eq(status, true);
+
+	window->extent.size = (pair_t){{ size.w, size.h }};
 
 	window->mouse = (pair_t){{ 0, 0 }};
 

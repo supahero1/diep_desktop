@@ -55,12 +55,7 @@ typedef union setting_value
 	}
 	boolean;
 
-	struct
-	{
-		uint8_t* str;
-		uint64_t len;
-	}
-	str;
+	str_t str;
 
 	struct
 	{
@@ -109,6 +104,7 @@ setting_change_event_data_t;
 
 typedef struct setting
 {
+	sync_rwlock_t rwlock;
 	setting_type_t type;
 	setting_value_t value;
 	setting_constraint_t constraint;
@@ -134,9 +130,11 @@ settings_load_event_data_t;
 
 struct settings
 {
-	sync_mtx_t mtx;
+	sync_rwlock_t rwlock;
+
 	hash_table_t table;
 	bool dirty;
+	bool use_timers;
 
 	const char* path;
 
@@ -174,17 +172,126 @@ settings_load(
 	);
 
 
-extern void
-settings_add(
+extern setting_t*
+settings_add_i64(
 	settings_t* settings,
 	const char* name,
-	setting_t* setting
+	int64_t value,
+	int64_t min,
+	int64_t max,
+	event_target_t* change_target
+	);
+
+
+extern setting_t*
+settings_add_f32(
+	settings_t* settings,
+	const char* name,
+	float value,
+	float min,
+	float max,
+	event_target_t* change_target
+	);
+
+
+extern setting_t*
+settings_add_boolean(
+	settings_t* settings,
+	const char* name,
+	bool value,
+	event_target_t* change_target
+	);
+
+
+extern setting_t*
+settings_add_str(
+	settings_t* settings,
+	const char* name,
+	str_t value,
+	uint64_t max_len,
+	event_target_t* change_target
+	);
+
+
+extern setting_t*
+settings_add_color(
+	settings_t* settings,
+	const char* name,
+	color_argb_t value,
+	event_target_t* change_target
 	);
 
 
 extern void
-settings_modify(
+settings_modify_i64(
 	settings_t* settings,
-	const char* name,
-	setting_value_t value
+	setting_t* setting,
+	int64_t value
+	);
+
+
+extern void
+settings_modify_f32(
+	settings_t* settings,
+	setting_t* setting,
+	float value
+	);
+
+
+extern void
+settings_modify_boolean(
+	settings_t* settings,
+	setting_t* setting,
+	bool value
+	);
+
+
+extern void
+settings_modify_str(
+	settings_t* settings,
+	setting_t* setting,
+	str_t value
+	);
+
+
+extern void
+settings_modify_color(
+	settings_t* settings,
+	setting_t* setting,
+	color_argb_t value
+	);
+
+
+extern int64_t
+settings_get_i64(
+	settings_t* settings,
+	setting_t* setting
+	);
+
+
+extern float
+settings_get_f32(
+	settings_t* settings,
+	setting_t* setting
+	);
+
+
+extern bool
+settings_get_boolean(
+	settings_t* settings,
+	setting_t* setting
+	);
+
+
+extern str_t
+settings_get_str(
+	settings_t* settings,
+	setting_t* setting
+	);
+
+
+extern color_argb_t
+settings_get_color(
+	settings_t* settings,
+	setting_t* setting
 	);

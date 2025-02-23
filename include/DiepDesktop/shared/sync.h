@@ -54,6 +54,51 @@ sync_mtx_unlock(
 	);
 
 
+typedef pthread_rwlock_t sync_rwlock_t;
+
+
+extern void
+sync_rwlock_init(
+	sync_rwlock_t* rwlock
+	);
+
+
+extern void
+sync_rwlock_free(
+	sync_rwlock_t* rwlock
+	);
+
+
+extern void
+sync_rwlock_rdlock(
+	sync_rwlock_t* rwlock
+	);
+
+
+extern bool
+sync_rwlock_try_rdlock(
+	sync_rwlock_t* rwlock
+	);
+
+
+extern void
+sync_rwlock_wrlock(
+	sync_rwlock_t* rwlock
+	);
+
+
+extern bool
+sync_rwlock_try_wrlock(
+	sync_rwlock_t* rwlock
+	);
+
+
+extern void
+sync_rwlock_unlock(
+	sync_rwlock_t* rwlock
+	);
+
+
 typedef pthread_cond_t sync_cond_t;
 
 

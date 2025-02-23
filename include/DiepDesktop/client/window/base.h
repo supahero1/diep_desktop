@@ -91,7 +91,13 @@ typedef enum window_mod : uint32_t
 	WINDOW_MOD_ALT,
 	WINDOW_MOD_GUI,
 	WINDOW_MOD_CAPS_LOCK,
-	MACRO_ENUM_BITS_EXP(WINDOW_MOD)
+	MACRO_ENUM_BITS_EXP(WINDOW_MOD),
+
+	WINDOW_MOD_SHIFT_BIT		= MACRO_POWER_OF_2(WINDOW_MOD_SHIFT),
+	WINDOW_MOD_CTRL_BIT			= MACRO_POWER_OF_2(WINDOW_MOD_CTRL),
+	WINDOW_MOD_ALT_BIT			= MACRO_POWER_OF_2(WINDOW_MOD_ALT),
+	WINDOW_MOD_GUI_BIT			= MACRO_POWER_OF_2(WINDOW_MOD_GUI),
+	WINDOW_MOD_CAPS_LOCK_BIT	= MACRO_POWER_OF_2(WINDOW_MOD_CAPS_LOCK)
 }
 window_mod_t;
 
@@ -350,11 +356,20 @@ struct window
 	event_target_t mouse_scroll_target;
 };
 
+typedef struct window_history
+{
+	half_extent_t extent;
+	bool fullscreen;
+}
+window_history_t;
+
 
 extern void
 window_init(
 	window_t* window,
-	window_manager_t* manager
+	window_manager_t* manager,
+	const char* title,
+	const window_history_t* history
 	);
 
 
