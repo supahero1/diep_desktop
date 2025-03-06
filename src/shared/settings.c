@@ -41,7 +41,7 @@ settings_init(
 	hash_table_init(&settings->table, 256);
 	settings->dirty = false;
 	settings->use_timers = !!timers;
-	settings->complete = false;
+	settings->sealed = false;
 
 	settings->path = path;
 
@@ -64,6 +64,8 @@ settings_for_each_free_fn(
 	{
 		str_free(&setting->value.str);
 	}
+
+	sync_rwlock_free(&setting->rwlock);
 
 	alloc_free(sizeof(*setting), setting);
 }
@@ -204,7 +206,7 @@ settings_save(
 	)
 {
 	assert_not_null(settings);
-	assert_true(settings->complete);
+	assert_true(settings->sealed);
 
 	if(!settings->dirty)
 	{
@@ -227,6 +229,8 @@ settings_save(
 
 	hash_table_for_each(&settings->table,
 		(hash_table_for_each_fn_t) settings_for_each_set_fn, &buffer);
+
+	assert_eq(bit_buffer_consumed_bytes(&buffer), sum);
 
 	sync_rwlock_unlock(&settings->rwlock);
 
@@ -270,14 +274,14 @@ settings_save_fn(
 	thread_init(NULL, data);
 }
 
-
+#include <stdio.h>
 void
 settings_load(
 	settings_t* settings
 	)
 {
 	assert_not_null(settings);
-	assert_true(settings->complete);
+	assert_true(settings->sealed);
 
 	settings_load_event_data_t load_data =
 	{
@@ -325,7 +329,9 @@ settings_load(
 		goto goto_failure_compressed;
 	}
 
-	while(bit_buffer_available_bits(&buffer) >= 8 + 8 + SETTING_TYPE__BITS + 1)
+	uint64_t min_len = bit_buffer_len_str(1) + SETTING_TYPE__BITS + 1;
+
+	while(bit_buffer_available_bits(&buffer) >= min_len)
 	{
 		str_t name = bit_buffer_get_str_safe(&buffer, 127, &status);
 		if(!status || !name.str)
@@ -339,6 +345,7 @@ settings_load(
 			goto goto_failure_compressed;
 		}
 
+		printf("read name %s\n", (char*) name.str);
 		setting_t* setting = hash_table_get(&settings->table, name.str);
 		str_free(&name);
 		if(!setting)
@@ -442,14 +449,14 @@ settings_load(
 
 
 void
-settings_complete(
+settings_seal(
 	settings_t* settings
 	)
 {
 	assert_not_null(settings);
-	assert_false(settings->complete);
+	assert_false(settings->sealed);
 
-	settings->complete = true;
+	settings->sealed = true;
 }
 
 
@@ -465,8 +472,9 @@ settings_add_i64(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
-	assert_false(settings->complete);
+	assert_false(settings->sealed);
 
+	assert_le(min, max);
 	assert_ge(value, min);
 	assert_le(value, max);
 
@@ -482,6 +490,8 @@ settings_add_i64(
 		.constraint.i64.max = max,
 		.change_target = change_target
 	};
+
+	sync_rwlock_init(&setting_ptr->rwlock);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -504,8 +514,9 @@ settings_add_f32(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
-	assert_false(settings->complete);
+	assert_false(settings->sealed);
 
+	assert_le(min, max);
 	assert_ge(value, min);
 	assert_le(value, max);
 
@@ -521,6 +532,8 @@ settings_add_f32(
 		.constraint.f32.max = max,
 		.change_target = change_target
 	};
+
+	sync_rwlock_init(&setting_ptr->rwlock);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -541,7 +554,7 @@ settings_add_boolean(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
-	assert_false(settings->complete);
+	assert_false(settings->sealed);
 
 	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
 	assert_not_null(setting_ptr);
@@ -553,6 +566,8 @@ settings_add_boolean(
 		.value.boolean = value,
 		.change_target = change_target
 	};
+
+	sync_rwlock_init(&setting_ptr->rwlock);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -567,19 +582,16 @@ setting_t*
 settings_add_str(
 	settings_t* settings,
 	const char* name,
-	const str_t value,
+	str_t value,
 	uint64_t max_len,
 	event_target_t* change_target
 	)
 {
 	assert_not_null(settings);
 	assert_not_null(name);
-	assert_false(settings->complete);
+	assert_false(settings->sealed);
 
 	assert_le(value.len, max_len);
-
-	str_t str;
-	str_init_copy(&str, &value);
 
 	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
 	assert_not_null(setting_ptr);
@@ -588,10 +600,12 @@ settings_add_str(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_STR,
-		.value.str = str,
+		.value.str = value,
 		.constraint.str.max_len = max_len,
 		.change_target = change_target
 	};
+
+	sync_rwlock_init(&setting_ptr->rwlock);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -612,7 +626,7 @@ settings_add_color(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
-	assert_false(settings->complete);
+	assert_false(settings->sealed);
 
 	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
 	assert_not_null(setting_ptr);
@@ -624,6 +638,8 @@ settings_add_color(
 		.value.color = value,
 		.change_target = change_target
 	};
+
+	sync_rwlock_init(&setting_ptr->rwlock);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -673,7 +689,6 @@ settings_modify_i64(
 {
 	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	value = MACRO_CLAMP(value, setting->constraint.i64.min, setting->constraint.i64.max);
 
@@ -712,7 +727,6 @@ settings_modify_f32(
 {
 	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	value = MACRO_CLAMP(value, setting->constraint.f32.min, setting->constraint.f32.max);
 
@@ -751,7 +765,6 @@ settings_modify_boolean(
 {
 	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	setting_value_t new_value =
 	{
@@ -788,7 +801,6 @@ settings_modify_str(
 {
 	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	if(value.len > setting->constraint.str.max_len)
 	{
@@ -830,7 +842,6 @@ settings_modify_color(
 {
 	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	setting_value_t new_value =
 	{
@@ -859,14 +870,11 @@ settings_modify_color(
 
 
 int64_t
-settings_get_i64(
-	settings_t* settings,
+setting_get_i64(
 	setting_t* setting
 	)
 {
-	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	sync_rwlock_rdlock(&setting->rwlock);
 		int64_t value = setting->value.i64;
@@ -877,14 +885,11 @@ settings_get_i64(
 
 
 float
-settings_get_f32(
-	settings_t* settings,
+setting_get_f32(
 	setting_t* setting
 	)
 {
-	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	sync_rwlock_rdlock(&setting->rwlock);
 		float value = setting->value.f32;
@@ -895,14 +900,11 @@ settings_get_f32(
 
 
 bool
-settings_get_boolean(
-	settings_t* settings,
+setting_get_boolean(
 	setting_t* setting
 	)
 {
-	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	sync_rwlock_rdlock(&setting->rwlock);
 		bool value = setting->value.boolean;
@@ -913,14 +915,11 @@ settings_get_boolean(
 
 
 str_t
-settings_get_str(
-	settings_t* settings,
+setting_get_str(
 	setting_t* setting
 	)
 {
-	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	sync_rwlock_rdlock(&setting->rwlock);
 		str_t value = setting->value.str;
@@ -931,14 +930,11 @@ settings_get_str(
 
 
 color_argb_t
-settings_get_color(
-	settings_t* settings,
+setting_get_color(
 	setting_t* setting
 	)
 {
-	assert_not_null(settings);
 	assert_not_null(setting);
-	assert_true(settings->complete);
 
 	sync_rwlock_rdlock(&setting->rwlock);
 		color_argb_t value = setting->value.color;

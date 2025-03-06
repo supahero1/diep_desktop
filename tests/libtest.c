@@ -28,6 +28,7 @@
 #include <sys/wait.h>
 
 
+bool test_is_on_valgrind;
 static int tty_fd = 1;
 static bool has_file = false;
 static char* test_name = NULL;
@@ -43,7 +44,8 @@ test_say_common(
 	char buffer[4096];
 	sprintf(buffer, important ?
 		"\033[1m\033[35m[%s]\033[39m > %s <\033[0m\n" :
-		"\033[1m\033[35m[%s]\033[39m\033[0m %s\n", RUNNING_ON_VALGRIND ? "VEST" : "TEST", format);
+		"\033[1m\033[35m[%s]\033[39m\033[0m %s\n",
+		test_is_on_valgrind ? "VEST" : "TEST", format);
 
 	va_list copy;
 	va_copy(copy, args);
@@ -198,7 +200,8 @@ main(
 	char** argv
 	)
 {
-	nice(RUNNING_ON_VALGRIND ? 10 : 20);
+	test_is_on_valgrind = RUNNING_ON_VALGRIND;
+	nice(test_is_on_valgrind ? 10 : 20);
 
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);

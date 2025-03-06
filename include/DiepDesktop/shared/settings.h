@@ -114,7 +114,7 @@ struct settings
 	hash_table_t table;
 	bool dirty;
 	bool use_timers;
-	bool complete;
+	bool sealed;
 
 	const char* path;
 
@@ -153,7 +153,7 @@ settings_load(
 
 
 extern void
-settings_complete(
+settings_seal(
 	settings_t* settings
 	);
 
@@ -249,35 +249,30 @@ settings_modify_color(
 
 
 extern int64_t
-settings_get_i64(
-	settings_t* settings,
+setting_get_i64(
 	setting_t* setting
 	);
 
 
 extern float
-settings_get_f32(
-	settings_t* settings,
+setting_get_f32(
 	setting_t* setting
 	);
 
 
 extern bool
-settings_get_boolean(
-	settings_t* settings,
+setting_get_boolean(
 	setting_t* setting
 	);
 
 
 extern str_t
-settings_get_str(
-	settings_t* settings,
+setting_get_str(
 	setting_t* setting
 	);
 
 
 extern color_argb_t
-settings_get_color(
-	settings_t* settings,
+setting_get_color(
 	setting_t* setting
 	);
