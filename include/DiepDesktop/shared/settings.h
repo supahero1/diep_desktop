@@ -37,31 +37,11 @@ setting_type_t;
 
 typedef union setting_value
 {
-	struct
-	{
-		int64_t value;
-	}
-	i64;
-
-	struct
-	{
-		float value;
-	}
-	f32;
-
-	struct
-	{
-		bool value;
-	}
-	boolean;
-
+	int64_t i64;
+	float f32;
+	bool boolean;
 	str_t str;
-
-	struct
-	{
-		color_argb_t argb;
-	}
-	color;
+	color_argb_t color;
 }
 setting_value_t;
 
@@ -96,7 +76,6 @@ typedef struct settings settings_t;
 typedef struct setting_change_event_data
 {
 	settings_t* settings;
-	const char* name;
 	setting_value_t old_value;
 	setting_value_t new_value;
 }
@@ -135,6 +114,7 @@ struct settings
 	hash_table_t table;
 	bool dirty;
 	bool use_timers;
+	bool complete;
 
 	const char* path;
 
@@ -168,6 +148,12 @@ settings_save(
 
 extern void
 settings_load(
+	settings_t* settings
+	);
+
+
+extern void
+settings_complete(
 	settings_t* settings
 	);
 

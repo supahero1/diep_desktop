@@ -34,9 +34,9 @@ str_init(
 
 
 void
-str_init_cstr_copy(
+str_init_copy_cstr(
 	str_t* str,
-	const uint8_t* cstr
+	const void* cstr
 	)
 {
 	assert_not_null(cstr);
@@ -51,9 +51,9 @@ str_init_cstr_copy(
 
 
 void
-str_init_cstr_move(
+str_init_move_cstr(
 	str_t* str,
-	uint8_t* cstr
+	void* cstr
 	)
 {
 	assert_not_null(cstr);
@@ -68,9 +68,9 @@ str_init_cstr_move(
 
 
 void
-str_init_len_copy(
+str_init_copy_len(
 	str_t* str,
-	const uint8_t* cstr,
+	const void* cstr,
 	uint64_t len
 	)
 {
@@ -86,13 +86,13 @@ str_init_len_copy(
 
 
 void
-str_init_len_move(
+str_init_move_len(
 	str_t* str,
-	uint8_t* cstr,
+	void* cstr,
 	uint64_t len
 	)
 {
-	assert_not_null(cstr);
+	assert_ptr(cstr, len);
 
 	str_t other =
 	{
@@ -173,49 +173,65 @@ str_clear(
 }
 
 
-void
-str_set_cstr_copy(
-	str_t* str,
-	const uint8_t* cstr
+bool
+str_is_empty(
+	const str_t* str
 	)
 {
-	str_free(str);
-	str_init_cstr_copy(str, cstr);
+	assert_not_null(str);
+
+	if(str->len == 0)
+	{
+		assert_true(str->str == NULL || ((uint8_t*) str->str)[0] == '\0');
+	}
+
+	return str->len == 0;
 }
 
 
 void
-str_set_cstr_move(
+str_set_copy_cstr(
 	str_t* str,
-	uint8_t* cstr
+	const void* cstr
 	)
 {
 	str_free(str);
-	str_init_cstr_move(str, cstr);
+	str_init_copy_cstr(str, cstr);
 }
 
 
 void
-str_set_len_copy(
+str_set_move_cstr(
 	str_t* str,
-	const uint8_t* cstr,
+	void* cstr
+	)
+{
+	str_free(str);
+	str_init_move_cstr(str, cstr);
+}
+
+
+void
+str_set_copy_len(
+	str_t* str,
+	const void* cstr,
 	uint64_t len
 	)
 {
 	str_free(str);
-	str_init_len_copy(str, cstr, len);
+	str_init_copy_len(str, cstr, len);
 }
 
 
 void
-str_set_len_move(
+str_set_move_len(
 	str_t* str,
-	uint8_t* cstr,
+	void* cstr,
 	uint64_t len
 	)
 {
 	str_free(str);
-	str_init_len_move(str, cstr, len);
+	str_init_move_len(str, cstr, len);
 }
 
 
@@ -238,6 +254,33 @@ str_set_move(
 {
 	str_free(str);
 	str_init_move(str, other);
+}
+
+
+void
+str_resize(
+	str_t* str,
+	uint64_t len
+	)
+{
+	assert_not_null(str);
+
+	if(len == str->len)
+	{
+		return;
+	}
+
+	if(len == 0)
+	{
+		str_clear(str);
+		return;
+	}
+
+	str->str = alloc_remalloc(str->len + 1, str->str, len + 1);
+	assert_not_null(str->str);
+
+	str->len = len;
+	((uint8_t*) str->str)[len] = '\0';
 }
 
 
@@ -278,4 +321,46 @@ str_case_cmp(
 	}
 
 	return !strncasecmp((void*) str1->str, (void*) str2->str, str1->len);
+}
+
+
+bool
+str_cmp_cstr(
+	const str_t* str,
+	const void* cstr
+	)
+{
+	assert_not_null(str);
+	assert_not_null(cstr);
+	assert_ptr(str->str, str->len);
+
+	uint64_t cstr_len = strlen((void*) cstr);
+
+	if(str->len != cstr_len)
+	{
+		return false;
+	}
+
+	return !strncmp((void*) str->str, (void*) cstr, str->len);
+}
+
+
+bool
+str_case_cmp_cstr(
+	const str_t* str,
+	const void* cstr
+	)
+{
+	assert_not_null(str);
+	assert_not_null(cstr);
+	assert_ptr(str->str, str->len);
+
+	uint64_t cstr_len = strlen((void*) cstr);
+
+	if(str->len != cstr_len)
+	{
+		return false;
+	}
+
+	return !strncasecmp((void*) str->str, (void*) cstr, str->len);
 }

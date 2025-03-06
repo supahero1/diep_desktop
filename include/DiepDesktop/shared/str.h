@@ -21,7 +21,7 @@
 
 typedef struct str
 {
-	uint8_t* str;
+	void* str;
 	uint64_t len;
 }
 str_t;
@@ -34,31 +34,31 @@ str_init(
 
 
 extern void
-str_init_cstr_copy(
+str_init_copy_cstr(
 	str_t* str,
-	const uint8_t* cstr
+	const void* cstr
 	);
 
 
 extern void
-str_init_cstr_move(
+str_init_move_cstr(
 	str_t* str,
-	uint8_t* cstr
+	void* cstr
 	);
 
 
 extern void
-str_init_len_copy(
+str_init_copy_len(
 	str_t* str,
-	const uint8_t* cstr,
+	const void* cstr,
 	uint64_t len
 	);
 
 
 extern void
-str_init_len_move(
+str_init_move_len(
 	str_t* str,
-	uint8_t* cstr,
+	void* cstr,
 	uint64_t len
 	);
 
@@ -89,47 +89,60 @@ str_clear(
 	);
 
 
-extern void
-str_set_cstr_copy(
-	str_t* str,
-	const uint8_t* cstr
+extern bool
+str_is_empty(
+	const str_t* str
 	);
 
 
 extern void
-str_set_cstr_move(
+str_set_copy_cstr(
 	str_t* str,
-	uint8_t* cstr
+	const void* cstr
 	);
 
 
 extern void
-str_set_len_copy(
+str_set_move_cstr(
 	str_t* str,
-	const uint8_t* cstr,
+	void* cstr
+	);
+
+
+extern void
+str_set_copy_len(
+	str_t* str,
+	const void* cstr,
 	uint64_t len
 	);
 
 
 extern void
-str_set_len_move(
+str_set_move_len(
 	str_t* str,
-	uint8_t* cstr,
+	void* cstr,
 	uint64_t len
 	);
 
 
 extern void
-str_copy(
+str_set_copy(
 	str_t* str,
 	const str_t* other
 	);
 
 
 extern void
-str_move(
+str_set_move(
 	str_t* str,
 	str_t* other
+	);
+
+
+extern void
+str_resize(
+	str_t* str,
+	uint64_t len
 	);
 
 
@@ -144,4 +157,18 @@ extern bool
 str_case_cmp(
 	const str_t* str1,
 	const str_t* str2
+	);
+
+
+extern bool
+str_cmp_cstr(
+	const str_t* str,
+	const void* cstr
+	);
+
+
+extern bool
+str_case_cmp_cstr(
+	const str_t* str,
+	const void* cstr
 	);

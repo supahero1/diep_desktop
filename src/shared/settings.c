@@ -41,6 +41,7 @@ settings_init(
 	hash_table_init(&settings->table, 256);
 	settings->dirty = false;
 	settings->use_timers = !!timers;
+	settings->complete = false;
 
 	settings->path = path;
 
@@ -113,7 +114,7 @@ settings_for_each_sum_fn(
 
 	case SETTING_TYPE_I64:
 	{
-		*sum += bit_buffer_len_signed_bits_var(setting->value.i64.value, 7);
+		*sum += bit_buffer_len_signed_bits_var(setting->value.i64, 7);
 		break;
 	}
 
@@ -163,19 +164,19 @@ settings_for_each_set_fn(
 
 	case SETTING_TYPE_I64:
 	{
-		bit_buffer_set_signed_bits_var(buffer, setting->value.i64.value, 7);
+		bit_buffer_set_signed_bits_var(buffer, setting->value.i64, 7);
 		break;
 	}
 
 	case SETTING_TYPE_F32:
 	{
-		bit_buffer_set_bytes(buffer, &setting->value.f32.value, sizeof(float));
+		bit_buffer_set_bytes(buffer, &setting->value.f32, sizeof(float));
 		break;
 	}
 
 	case SETTING_TYPE_BOOLEAN:
 	{
-		bit_buffer_set_bits(buffer, setting->value.boolean.value, 1);
+		bit_buffer_set_bits(buffer, setting->value.boolean, 1);
 		break;
 	}
 
@@ -187,7 +188,7 @@ settings_for_each_set_fn(
 
 	case SETTING_TYPE_COLOR:
 	{
-		bit_buffer_set_bytes(buffer, &setting->value.color.argb, sizeof(color_argb_t));
+		bit_buffer_set_bytes(buffer, &setting->value.color, sizeof(color_argb_t));
 		break;
 	}
 
@@ -203,14 +204,14 @@ settings_save(
 	)
 {
 	assert_not_null(settings);
-
-	sync_rwlock_wrlock(&settings->rwlock);
+	assert_true(settings->complete);
 
 	if(!settings->dirty)
 	{
-		sync_rwlock_unlock(&settings->rwlock);
 		return;
 	}
+
+	sync_rwlock_wrlock(&settings->rwlock);
 
 	uint64_t sum = 0;
 	hash_table_for_each(&settings->table,
@@ -276,6 +277,7 @@ settings_load(
 	)
 {
 	assert_not_null(settings);
+	assert_true(settings->complete);
 
 	settings_load_event_data_t load_data =
 	{
@@ -325,7 +327,6 @@ settings_load(
 
 	while(bit_buffer_available_bits(&buffer) >= 8 + 8 + SETTING_TYPE__BITS + 1)
 	{
-		uint64_t name_len = 127;
 		str_t name = bit_buffer_get_str_safe(&buffer, 127, &status);
 		if(!status || !name.str)
 		{
@@ -338,62 +339,80 @@ settings_load(
 			goto goto_failure_compressed;
 		}
 
+		setting_t* setting = hash_table_get(&settings->table, name.str);
+		str_free(&name);
+		if(!setting)
+		{
+			continue;
+		}
 
-		setting_value_t value;
+
 		switch(type)
 		{
 
 		case SETTING_TYPE_I64:
 		{
-			value.i64.value = bit_buffer_get_signed_bits_var_safe(&buffer, 7, &status);
+			int64_t i64 = bit_buffer_get_signed_bits_var_safe(&buffer, 7, &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
 			}
+
+			settings_modify_i64(settings, setting, i64);
 
 			break;
 		}
 
 		case SETTING_TYPE_F32:
 		{
-			bit_buffer_get_bytes_safe(&buffer, &value.f32.value, sizeof(float), &status);
+			float f32;
+			bit_buffer_get_bytes_safe(&buffer, &f32, sizeof(float), &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
 			}
+
+			settings_modify_f32(settings, setting, f32);
 
 			break;
 		}
 
 		case SETTING_TYPE_BOOLEAN:
 		{
-			value.boolean.value = bit_buffer_get_bits_safe(&buffer, 1, &status);
+			bool boolean = bit_buffer_get_bits_safe(&buffer, 1, &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
 			}
+
+			settings_modify_boolean(settings, setting, boolean);
 
 			break;
 		}
 
 		case SETTING_TYPE_STR:
 		{
-			value.str = bit_buffer_get_str_safe(&buffer, 16383, &status);
-			if(!status || !value.str.str)
+			str_t str = bit_buffer_get_str_safe(&buffer, 16383, &status);
+			if(!status || !str.str)
 			{
 				goto goto_failure_compressed;
 			}
+
+			settings_modify_str(settings, setting, str);
 
 			break;
 		}
 
 		case SETTING_TYPE_COLOR:
 		{
-			bit_buffer_get_bytes_safe(&buffer, &value.color.argb, sizeof(color_argb_t), &status);
+			color_argb_t color;
+			bit_buffer_get_bytes_safe(&buffer, &color, sizeof(color_argb_t), &status);
 			if(!status)
 			{
 				goto goto_failure_compressed;
 			}
+
+			settings_modify_color(settings, setting, color);
 
 			break;
 		}
@@ -401,11 +420,6 @@ settings_load(
 		default: assert_unreachable();
 
 		}
-
-
-		settings_modify(settings, (const char*) name, value);
-
-		str_free(&name);
 	}
 
 	alloc_free(decompressed_size, decompressed);
@@ -427,6 +441,18 @@ settings_load(
 }
 
 
+void
+settings_complete(
+	settings_t* settings
+	)
+{
+	assert_not_null(settings);
+	assert_false(settings->complete);
+
+	settings->complete = true;
+}
+
+
 setting_t*
 settings_add_i64(
 	settings_t* settings,
@@ -439,6 +465,7 @@ settings_add_i64(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
+	assert_false(settings->complete);
 
 	assert_ge(value, min);
 	assert_le(value, max);
@@ -450,7 +477,7 @@ settings_add_i64(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_I64,
-		.value.i64.value = value,
+		.value.i64 = value,
 		.constraint.i64.min = min,
 		.constraint.i64.max = max,
 		.change_target = change_target
@@ -477,6 +504,7 @@ settings_add_f32(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
+	assert_false(settings->complete);
 
 	assert_ge(value, min);
 	assert_le(value, max);
@@ -488,7 +516,7 @@ settings_add_f32(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_F32,
-		.value.f32.value = value,
+		.value.f32 = value,
 		.constraint.f32.min = min,
 		.constraint.f32.max = max,
 		.change_target = change_target
@@ -513,6 +541,7 @@ settings_add_boolean(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
+	assert_false(settings->complete);
 
 	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
 	assert_not_null(setting_ptr);
@@ -521,7 +550,7 @@ settings_add_boolean(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_BOOLEAN,
-		.value.boolean.value = value,
+		.value.boolean = value,
 		.change_target = change_target
 	};
 
@@ -545,6 +574,7 @@ settings_add_str(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
+	assert_false(settings->complete);
 
 	assert_le(value.len, max_len);
 
@@ -582,6 +612,7 @@ settings_add_color(
 {
 	assert_not_null(settings);
 	assert_not_null(name);
+	assert_false(settings->complete);
 
 	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
 	assert_not_null(setting_ptr);
@@ -590,7 +621,7 @@ settings_add_color(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_COLOR,
-		.value.color.argb = value,
+		.value.color = value,
 		.change_target = change_target
 	};
 
@@ -603,98 +634,315 @@ settings_add_color(
 }
 
 
-void
+static void
 settings_modify(
+	settings_t* settings
+	)
+{
+	settings->dirty = true;
+
+	if(settings->use_timers)
+	{
+		time_timers_lock(settings->timers);
+			uint64_t time = time_get_with_sec(5);
+			if(!time_timers_set_timeout_u(settings->timers, &settings->save_timer, time))
+			{
+				time_timeout_t timeout =
+				{
+					.timer = &settings->save_timer,
+					.data =
+					{
+						.fn = (time_fn_t) settings_save_fn,
+						.data = settings
+					},
+					.time = time
+				};
+				time_timers_add_timeout_u(settings->timers, timeout);
+			}
+		time_timers_unlock(settings->timers);
+	}
+}
+
+
+void
+settings_modify_i64(
 	settings_t* settings,
-	const char* name,
-	setting_value_t value
+	setting_t* setting,
+	int64_t value
 	)
 {
 	assert_not_null(settings);
-	assert_not_null(name);
+	assert_not_null(setting);
+	assert_true(settings->complete);
 
-	sync_mtx_lock(&settings->mtx);
-		setting_t* setting = hash_table_get(&settings->table, name);
-		if(!setting)
-		{
-			sync_mtx_unlock(&settings->mtx);
-			return;
-		}
+	value = MACRO_CLAMP(value, setting->constraint.i64.min, setting->constraint.i64.max);
 
+	setting_value_t new_value =
+	{
+		.i64 = value
+	};
 
-		switch(setting->type)
-		{
-
-		case SETTING_TYPE_I64:
-		{
-			value.i64.value = MACRO_CLAMP(value.i64.value,
-				setting->constraint.i64.min, setting->constraint.i64.max);
-			break;
-		}
-
-		case SETTING_TYPE_F32:
-		{
-			value.f32.value = MACRO_CLAMP(value.f32.value,
-				setting->constraint.f32.min, setting->constraint.f32.max);
-			break;
-		}
-
-		case SETTING_TYPE_STR:
-		{
-			uint64_t new_len = MACRO_CLAMP(value.str.len, 0, setting->constraint.str.max_len);
-			uint8_t* new_str = alloc_recalloc(value.str.len, value.str.str, new_len);
-			assert_ptr(new_str, new_len);
-
-			value.str.str = new_str;
-			value.str.len = new_len;
-
-			break;
-		}
-
-		default: break;
-
-		}
-
-
-		if(setting->change_target)
-		{
-			setting_change_event_data_t change_data =
+	sync_rwlock_rdlock(&settings->rwlock);
+		sync_rwlock_wrlock(&setting->rwlock);
+			if(setting->change_target)
 			{
-				.settings = settings,
-				.name = name,
-				.old_value = setting->value,
-				.new_value = value
-			};
-			event_target_fire(setting->change_target, &change_data);
-		}
-
-		if(setting->type == SETTING_TYPE_STR)
-		{
-			alloc_free(setting->value.str.len + 1, setting->value.str.str);
-		}
-
-		setting->value = value;
-		settings->dirty = true;
-
-		if(settings->use_timers)
-		{
-			time_timers_lock(settings->timers);
-				uint64_t time = time_get_with_sec(5);
-				if(!time_timers_set_timeout_u(settings->timers, &settings->save_timer, time))
+				setting_change_event_data_t change_data =
 				{
-					time_timeout_t timeout =
-					{
-						.timer = &settings->save_timer,
-						.data =
-						{
-							.fn = (time_fn_t) settings_save_fn,
-							.data = settings
-						},
-						.time = time
-					};
-					time_timers_add_timeout_u(settings->timers, timeout);
-				}
-			time_timers_unlock(settings->timers);
-		}
-	sync_mtx_unlock(&settings->mtx);
+					.settings = settings,
+					.old_value = setting->value,
+					.new_value = new_value
+				};
+				event_target_fire(setting->change_target, &change_data);
+			}
+
+			setting->value = new_value;
+		sync_rwlock_unlock(&setting->rwlock);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	settings_modify(settings);
+}
+
+
+void
+settings_modify_f32(
+	settings_t* settings,
+	setting_t* setting,
+	float value
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	value = MACRO_CLAMP(value, setting->constraint.f32.min, setting->constraint.f32.max);
+
+	setting_value_t new_value =
+	{
+		.f32 = value
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		sync_rwlock_wrlock(&setting->rwlock);
+			if(setting->change_target)
+			{
+				setting_change_event_data_t change_data =
+				{
+					.settings = settings,
+					.old_value = setting->value,
+					.new_value = new_value
+				};
+				event_target_fire(setting->change_target, &change_data);
+			}
+
+			setting->value = new_value;
+		sync_rwlock_unlock(&setting->rwlock);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	settings_modify(settings);
+}
+
+
+void
+settings_modify_boolean(
+	settings_t* settings,
+	setting_t* setting,
+	bool value
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	setting_value_t new_value =
+	{
+		.boolean = value
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		sync_rwlock_wrlock(&setting->rwlock);
+			if(setting->change_target)
+			{
+				setting_change_event_data_t change_data =
+				{
+					.settings = settings,
+					.old_value = setting->value,
+					.new_value = new_value
+				};
+				event_target_fire(setting->change_target, &change_data);
+			}
+
+			setting->value = new_value;
+		sync_rwlock_unlock(&setting->rwlock);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	settings_modify(settings);
+}
+
+
+void
+settings_modify_str(
+	settings_t* settings,
+	setting_t* setting,
+	str_t value
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	if(value.len > setting->constraint.str.max_len)
+	{
+		str_resize(&value, setting->constraint.str.max_len);
+	}
+
+	setting_value_t new_value =
+	{
+		.str = value
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		sync_rwlock_wrlock(&setting->rwlock);
+			if(setting->change_target)
+			{
+				setting_change_event_data_t change_data =
+				{
+					.settings = settings,
+					.old_value = setting->value,
+					.new_value = new_value
+				};
+				event_target_fire(setting->change_target, &change_data);
+			}
+
+			setting->value = new_value;
+		sync_rwlock_unlock(&setting->rwlock);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	settings_modify(settings);
+}
+
+
+void
+settings_modify_color(
+	settings_t* settings,
+	setting_t* setting,
+	color_argb_t value
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	setting_value_t new_value =
+	{
+		.color = value
+	};
+
+	sync_rwlock_rdlock(&settings->rwlock);
+		sync_rwlock_wrlock(&setting->rwlock);
+			if(setting->change_target)
+			{
+				setting_change_event_data_t change_data =
+				{
+					.settings = settings,
+					.old_value = setting->value,
+					.new_value = new_value
+				};
+				event_target_fire(setting->change_target, &change_data);
+			}
+
+			setting->value = new_value;
+		sync_rwlock_unlock(&setting->rwlock);
+	sync_rwlock_unlock(&settings->rwlock);
+
+	settings_modify(settings);
+}
+
+
+int64_t
+settings_get_i64(
+	settings_t* settings,
+	setting_t* setting
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	sync_rwlock_rdlock(&setting->rwlock);
+		int64_t value = setting->value.i64;
+	sync_rwlock_unlock(&setting->rwlock);
+
+	return value;
+}
+
+
+float
+settings_get_f32(
+	settings_t* settings,
+	setting_t* setting
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	sync_rwlock_rdlock(&setting->rwlock);
+		float value = setting->value.f32;
+	sync_rwlock_unlock(&setting->rwlock);
+
+	return value;
+}
+
+
+bool
+settings_get_boolean(
+	settings_t* settings,
+	setting_t* setting
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	sync_rwlock_rdlock(&setting->rwlock);
+		bool value = setting->value.boolean;
+	sync_rwlock_unlock(&setting->rwlock);
+
+	return value;
+}
+
+
+str_t
+settings_get_str(
+	settings_t* settings,
+	setting_t* setting
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	sync_rwlock_rdlock(&setting->rwlock);
+		str_t value = setting->value.str;
+	sync_rwlock_unlock(&setting->rwlock);
+
+	return value;
+}
+
+
+color_argb_t
+settings_get_color(
+	settings_t* settings,
+	setting_t* setting
+	)
+{
+	assert_not_null(settings);
+	assert_not_null(setting);
+	assert_true(settings->complete);
+
+	sync_rwlock_rdlock(&setting->rwlock);
+		color_argb_t value = setting->value.color;
+	sync_rwlock_unlock(&setting->rwlock);
+
+	return value;
 }
