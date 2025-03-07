@@ -27,9 +27,18 @@
 struct app
 {
 	event_listener_t* window_close_once_listener;
+	event_listener_t* window_move_listener;
+	event_listener_t* window_resize_listener;
+	event_listener_t* window_fullscreen_listener;
 
 	time_timers_t timers;
 	settings_t settings;
+
+	setting_t* window_pos_x;
+	setting_t* window_pos_y;
+	setting_t* window_w;
+	setting_t* window_h;
+	setting_t* window_fullscreen;
 
 	window_manager_t manager;
 	window_t window;
@@ -53,10 +62,46 @@ app_window_free_once_fn(
 	window_free_event_data_t* event_data
 	)
 {
+	event_target_del(&app->window.fullscreen_target, app->window_fullscreen_listener);
+	event_target_del(&app->window.resize_target, app->window_resize_listener);
+	event_target_del(&app->window.move_target, app->window_move_listener);
+
 	if(app->window_close_once_listener)
 	{
 		event_target_del_once(&app->window.close_target, app->window_close_once_listener);
 	}
+}
+
+
+private void
+app_window_on_move_fn(
+	app_t* app,
+	window_move_event_data_t* event_data
+	)
+{
+	settings_modify_f32(&app->settings, app->window_pos_x, event_data->new_pos.x);
+	settings_modify_f32(&app->settings, app->window_pos_y, event_data->new_pos.y);
+}
+
+
+private void
+app_window_on_resize_fn(
+	app_t* app,
+	window_resize_event_data_t* event_data
+	)
+{
+	settings_modify_f32(&app->settings, app->window_w, event_data->new_size.w);
+	settings_modify_f32(&app->settings, app->window_h, event_data->new_size.h);
+}
+
+
+private void
+app_window_on_fullscreen_fn(
+	app_t* app,
+	window_focus_event_data_t* event_data
+	)
+{
+	settings_modify_boolean(&app->settings, app->window_fullscreen, true);
 }
 
 
@@ -71,54 +116,30 @@ app_init(
 	time_timers_init(&app->timers);
 	settings_init(&app->settings, "settings.bin", &app->timers);
 
-	settings_add(&app->settings, "main_window_pos_x",
-		(setting_t)
-		{
-			.type = SETTING_TYPE_F32,
-			.value = { .f32 = { 0.0f } },
-			.constraint = { .f32 = { .min = -16384.0f, .max = 16384.0f } }
-		}
-		);
+	app->window_pos_x = settings_add_f32(&app->settings, "main_window_pos_x", 0.0f, -16384.0f, 16384.0f, NULL);
+	app->window_pos_y = settings_add_f32(&app->settings, "main_window_pos_y", 0.0f, -16384.0f, 16384.0f, NULL);
+	app->window_w = settings_add_f32(&app->settings, "main_window_w", 1280.0f, 480.0f, 16384.0f, NULL);
+	app->window_h = settings_add_f32(&app->settings, "main_window_h", 720.0f, 270.0f, 16384.0f, NULL);
+	app->window_fullscreen = settings_add_boolean(&app->settings, "main_window_fullscreen", false, NULL);
 
-	settings_add(&app->settings, "main_window_pos_y",
-		(setting_t)
-		{
-			.type = SETTING_TYPE_F32,
-			.value = { .f32 = { 0.0f } },
-			.constraint = { .f32 = { .min = -16384.0f, .max = 16384.0f } }
-		}
-		);
+	settings_seal(&app->settings);
 
-	settings_add(&app->settings, "main_window_w",
-		(setting_t)
-		{
-			.type = SETTING_TYPE_F32,
-			.value = { .f32 = { 1280.0f } },
-			.constraint = { .f32 = { .min = 480.0f, .max = 16384.0f } }
-		}
-		);
+	settings_load(&app->settings);
 
-	settings_add(&app->settings, "main_window_h",
-		(setting_t)
+	window_history_t history =
+	{
+		.extent =
 		{
-			.type = SETTING_TYPE_F32,
-			.value = { .f32 = { 720.0f } },
-			.constraint = { .f32 = { .min = 270.0f, .max = 16384.0f } }
-		}
-		);
-
-	settings_add(&app->settings, "main_window_fullscreen",
-		(setting_t)
-		{
-			.type = SETTING_TYPE_BOOLEAN,
-			.value = { .boolean = { false } }
-		}
-		);
-
-	window_history_t history;
+			.x = setting_get_f32(app->window_pos_x),
+			.y = setting_get_f32(app->window_pos_y),
+			.w = setting_get_f32(app->window_w),
+			.h = setting_get_f32(app->window_h)
+		},
+		.fullscreen = setting_get_boolean(app->window_fullscreen)
+	};
 
 	window_manager_init(&app->manager);
-	window_init(&app->window, &app->manager, "Game", &history);
+	window_init(&app->window, &app->manager, "Test", &history);
 	window_show(&app->window);
 
 	event_listener_data_t close_once_data =
@@ -135,9 +156,30 @@ app_init(
 	};
 	event_target_once(&app->window.free_target, free_once_data);
 
+	event_listener_data_t move_data =
+	{
+		.fn = (event_fn_t) app_window_on_move_fn,
+		.data = app
+	};
+	app->window_move_listener = event_target_add(&app->window.move_target, move_data);
+
+	event_listener_data_t resize_data =
+	{
+		.fn = (event_fn_t) app_window_on_resize_fn,
+		.data = app
+	};
+	app->window_resize_listener = event_target_add(&app->window.resize_target, resize_data);
+
+	event_listener_data_t fullscreen_data =
+	{
+		.fn = (event_fn_t) app_window_on_fullscreen_fn,
+		.data = app
+	};
+	app->window_fullscreen_listener = event_target_add(&app->window.fullscreen_target, fullscreen_data);
+
 	// init ui
 
-	settings_load(&app->settings);
+	// settings_load(&app->settings); // bruh double load :sob:
 
 	return app;
 }

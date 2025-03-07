@@ -274,7 +274,7 @@ settings_save_fn(
 	thread_init(NULL, data);
 }
 
-#include <stdio.h>
+
 void
 settings_load(
 	settings_t* settings
@@ -345,12 +345,12 @@ settings_load(
 			goto goto_failure_compressed;
 		}
 
-		printf("read name %s\n", (char*) name.str);
+
 		setting_t* setting = hash_table_get(&settings->table, name.str);
 		str_free(&name);
 		if(!setting)
 		{
-			continue;
+			goto goto_failure_compressed;
 		}
 
 

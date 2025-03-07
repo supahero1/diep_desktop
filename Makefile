@@ -187,7 +187,7 @@ dds_wipe: dds_clean
 .PHONY: tex_reset
 tex_reset:
 	$(MAKE) wipe
-	RELEASE=2 scons font_gen var_gen tex_gen sort -j $(shell nproc)
+	RELEASE=2 scons tex/font_gen tex/var_gen tex/tex_gen tex/sort -j $(shell nproc)
 	RELEASE=2 $(MAKE) font_build var_build tex_build tex_gen
 	$(MAKE) dds_build
 
@@ -200,7 +200,7 @@ shaders: bin/shaders/vert.spv bin/shaders/frag.spv
 
 
 bin/tex/%:
-	scons $* -j $(shell nproc)
+	scons tex/$* -j $(shell nproc)
 
 
 .PHONY: client

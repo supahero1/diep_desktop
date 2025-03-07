@@ -202,6 +202,11 @@ test_should_pass__settings_save_load(
 	save_listener = event_target_add(&settings.save_target, save_listener_data);
 	load_listener = event_target_add(&settings.load_target, load_listener_data);
 
+	(void) settings_add_f32(&settings, "barfoo", 2.0f, 1.0f, 3.0f, NULL);
+	assert_eq(f32_change, 0.0f);
+	assert_false(saved);
+	assert_false(loaded);
+
 	i64_s = settings_add_i64(&settings, "foo", 44, 40, 45, &i64_change_target);
 	assert_eq(i64_change, 0);
 	assert_false(saved);
@@ -209,6 +214,11 @@ test_should_pass__settings_save_load(
 
 	f32_s = settings_add_f32(&settings, "bar", 1.5f, 1.0f, 3.0f, &f32_change_target);
 	assert_eq(f32_change, 0.0f);
+	assert_false(saved);
+	assert_false(loaded);
+
+	(void) settings_add_i64(&settings, "foobar", 2, 1, 3, NULL);
+	assert_eq(i64_change, 0);
 	assert_false(saved);
 	assert_false(loaded);
 

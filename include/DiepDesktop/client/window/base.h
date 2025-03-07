@@ -250,6 +250,13 @@ typedef struct window_close_event_data
 }
 window_close_event_data_t;
 
+typedef struct window_fullscreen_event_data
+{
+	window_t* window;
+	bool fullscreen;
+}
+window_fullscreen_event_data_t;
+
 typedef struct window_key_down_event_data
 {
 	window_t* window;
@@ -345,6 +352,7 @@ struct window
 	event_target_t focus_target;
 	event_target_t blur_target;
 	event_target_t close_target;
+	event_target_t fullscreen_target;
 	event_target_t key_down_target;
 	event_target_t key_up_target;
 	event_target_t text_target;

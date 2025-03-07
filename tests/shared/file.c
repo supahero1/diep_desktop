@@ -14,10 +14,14 @@
  *  limitations under the License.
  */
 
+#include <DiepDesktop/tests/base.h>
 #include <DiepDesktop/shared/file.h>
 #include <DiepDesktop/shared/debug.h>
 
 #include <string.h>
+
+#define TEST_WRITE_FILENAME	\
+(test_is_on_valgrind ? "bin/tests/shared/file_write.txt.val" : "bin/tests/shared/file_write.txt")
 
 
 uint8_t data[] = "test\n";
@@ -83,10 +87,10 @@ test_should_pass__file_write(
 		.data = data,
 		.len = len
 	};
-	bool status = file_write("bin/tests/shared/file_write.txt", file);
+	bool status = file_write(TEST_WRITE_FILENAME, file);
 	assert_true(status);
 
-	status = file_read("bin/tests/shared/file_write.txt", &file);
+	status = file_read(TEST_WRITE_FILENAME, &file);
 	assert_true(status);
 
 	assert_eq(file.len, len);
@@ -128,13 +132,13 @@ test_should_pass__file_write_multiple_should_not_append(
 		.data = data,
 		.len = len
 	};
-	bool status = file_write("bin/tests/shared/file_write.txt", file);
+	bool status = file_write(TEST_WRITE_FILENAME, file);
 	assert_true(status);
 
-	status = file_write("bin/tests/shared/file_write.txt", file);
+	status = file_write(TEST_WRITE_FILENAME, file);
 	assert_true(status);
 
-	status = file_read("bin/tests/shared/file_write.txt", &file);
+	status = file_read(TEST_WRITE_FILENAME, &file);
 	assert_true(status);
 
 	assert_eq(file.len, len);

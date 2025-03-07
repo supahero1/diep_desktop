@@ -237,6 +237,7 @@ window_init(
 	event_target_init(&window->focus_target);
 	event_target_init(&window->blur_target);
 	event_target_init(&window->close_target);
+	event_target_init(&window->fullscreen_target);
 	event_target_init(&window->key_down_target);
 	event_target_init(&window->key_up_target);
 	event_target_init(&window->text_target);
@@ -269,6 +270,7 @@ window_free(
 	event_target_free(&window->text_target);
 	event_target_free(&window->key_up_target);
 	event_target_free(&window->key_down_target);
+	event_target_free(&window->fullscreen_target);
 	event_target_free(&window->close_target);
 	event_target_free(&window->blur_target);
 	event_target_free(&window->focus_target);
@@ -458,7 +460,7 @@ window_set_clipboard(
 
 
 void
-window_toggle_fullscreen(
+window_toggle_fullscreen( // TODO this has to relay to main thread
 	window_t* window
 	)
 {
@@ -506,6 +508,13 @@ window_toggle_fullscreen(
 			window->old_extent.pos.x, window->old_extent.pos.y);
 		hard_assert_true(status, window_sdl_log_error());
 	}
+
+	window_fullscreen_event_data_t event_data =
+	{
+		.window = window,
+		.fullscreen = window->fullscreen
+	};
+	event_target_fire(&window->fullscreen_target, &event_data);
 }
 
 
