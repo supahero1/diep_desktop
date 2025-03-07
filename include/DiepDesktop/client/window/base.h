@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <DiepDesktop/shared/str.h>
 #include <DiepDesktop/shared/base.h>
 #include <DiepDesktop/shared/event.h>
 #include <DiepDesktop/shared/extent.h>
@@ -104,6 +105,10 @@ window_mod_t;
 
 typedef enum window_user_event : uint32_t
 {
+	WINDOW_USER_EVENT_WINDOW_INIT,
+	WINDOW_USER_EVENT_WINDOW_FREE,
+	WINDOW_USER_EVENT_WINDOW_CLOSE,
+	WINDOW_USER_EVENT_WINDOW_FULLSCREEN,
 	WINDOW_USER_EVENT_SET_CURSOR,
 	WINDOW_USER_EVENT_SHOW_WINDOW,
 	WINDOW_USER_EVENT_HIDE_WINDOW,
@@ -111,10 +116,33 @@ typedef enum window_user_event : uint32_t
 	WINDOW_USER_EVENT_STOP_TYPING,
 	WINDOW_USER_EVENT_SET_CLIPBOARD,
 	WINDOW_USER_EVENT_GET_CLIPBOARD,
-	WINDOW_USER_EVENT_WINDOW_CLOSE,
 	MACRO_ENUM_BITS(WINDOW_USER_EVENT)
 }
 window_user_event_t;
+
+typedef struct window_history window_history_t;
+
+typedef struct window_user_event_window_init_data
+{
+	str_t title;
+	const window_history_t* history;
+}
+window_user_event_window_init_data_t;
+
+typedef struct window_user_event_window_free_data
+{
+}
+window_user_event_window_free_data_t;
+
+typedef struct window_user_event_window_close_data
+{
+}
+window_user_event_window_close_data_t;
+
+typedef struct window_user_event_window_fullscreen_data
+{
+}
+window_user_event_window_fullscreen_data_t;
 
 typedef struct window_user_event_set_cursor_data
 {
@@ -152,11 +180,6 @@ typedef struct window_user_event_get_clipboard_data
 {
 }
 window_user_event_get_clipboard_data_t;
-
-typedef struct window_user_event_window_close
-{
-}
-window_user_event_window_close_t;
 
 
 typedef struct window_manager
@@ -209,6 +232,12 @@ window_manager_run(
 
 
 typedef struct window window_t;
+
+typedef struct window_init_event_data
+{
+	window_t* window;
+}
+window_init_event_data_t;
 
 typedef struct window_free_event_data
 {
@@ -334,7 +363,7 @@ window_mouse_scroll_event_data_t;
 struct window
 {
 	window_manager_t* manager;
-	event_listener_t* free_listener;
+	event_listener_t* free_once;
 
 	SDL_PropertiesID sdl_props;
 	SDL_Window* sdl_window;
@@ -346,6 +375,7 @@ struct window
 
 	bool fullscreen;
 
+	event_target_t init_target;
 	event_target_t free_target;
 	event_target_t move_target;
 	event_target_t resize_target;
@@ -364,12 +394,11 @@ struct window
 	event_target_t mouse_scroll_target;
 };
 
-typedef struct window_history
+struct window_history
 {
 	half_extent_t extent;
 	bool fullscreen;
-}
-window_history_t;
+};
 
 
 extern void

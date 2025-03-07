@@ -137,130 +137,12 @@ window_sdl_free(
 }
 
 
-void
-window_init(
+private void
+window_free_once_fn(
 	window_t* window,
-	window_manager_t* manager,
-	const char* title,
-	const window_history_t* history
+	window_free_event_data_t* event_data
 	)
 {
-	assert_not_null(window);
-	assert_not_null(manager);
-	assert_not_null(title);
-
-	window->manager = manager;
-
-
-	uint32_t sdl_props = SDL_CreateProperties();
-	hard_assert_neq(sdl_props, 0, window_sdl_log_error());
-
-	window->sdl_props = sdl_props;
-
-	bool status = SDL_SetBooleanProperty(sdl_props,
-		SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
-	hard_assert_true(status, window_sdl_log_error());
-
-	status = SDL_SetBooleanProperty(sdl_props,
-		SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
-	hard_assert_true(status, window_sdl_log_error());
-
-	status = SDL_SetBooleanProperty(sdl_props,
-		SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
-	hard_assert_true(status, window_sdl_log_error());
-
-	status = SDL_SetBooleanProperty(sdl_props,
-		SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
-	hard_assert_true(status, window_sdl_log_error());
-
-	if(history)
-	{
-		status = SDL_SetNumberProperty(sdl_props,
-			SDL_PROP_WINDOW_CREATE_X_NUMBER, history->extent.x);
-		hard_assert_true(status, window_sdl_log_error());
-
-		status = SDL_SetNumberProperty(sdl_props,
-			SDL_PROP_WINDOW_CREATE_Y_NUMBER, history->extent.y);
-		hard_assert_true(status, window_sdl_log_error());
-	}
-
-	status = SDL_SetNumberProperty(sdl_props,
-		SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, history ? history->extent.w : 1280);
-	hard_assert_true(status, window_sdl_log_error());
-
-	status = SDL_SetNumberProperty(sdl_props,
-		SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, history ? history->extent.h : 720);
-	hard_assert_true(status, window_sdl_log_error());
-
-	status = SDL_SetStringProperty(sdl_props,
-		SDL_PROP_WINDOW_CREATE_TITLE_STRING, title);
-	hard_assert_true(status, window_sdl_log_error());
-
-	status = SDL_SetBooleanProperty(sdl_props,
-		SDL_HINT_FORCE_RAISEWINDOW, true);
-	hard_assert_true(status, window_sdl_log_error());
-
-
-	window->sdl_window = SDL_CreateWindowWithProperties(sdl_props);
-	hard_assert_not_null(window->sdl_window, window_sdl_log_error());
-
-	uint32_t props = SDL_GetWindowProperties(window->sdl_window);
-	hard_assert_neq(props, 0, window_sdl_log_error());
-
-	window->props = props;
-	window_set(window, "WINDOW_PTR", window);
-
-	status = SDL_SetWindowMinimumSize(window->sdl_window, 480, 270);
-	hard_assert_true(status, window_sdl_log_error());
-
-
-	ipair_t pos = {0};
-	status = SDL_GetWindowPosition(window->sdl_window, &pos.x, &pos.y);
-	hard_assert_eq(status, true);
-
-	window->extent.pos = (pair_t){{ pos.x, pos.y }};
-
-	ipair_t size = {0};
-	status = SDL_GetWindowSize(window->sdl_window, &size.w, &size.h);
-	hard_assert_eq(status, true);
-
-	window->extent.size = (pair_t){{ size.w, size.h }};
-
-	window->mouse = (pair_t){{ 0, 0 }};
-
-	window->fullscreen = false;
-
-
-	event_target_init(&window->free_target);
-	event_target_init(&window->move_target);
-	event_target_init(&window->resize_target);
-	event_target_init(&window->focus_target);
-	event_target_init(&window->blur_target);
-	event_target_init(&window->close_target);
-	event_target_init(&window->fullscreen_target);
-	event_target_init(&window->key_down_target);
-	event_target_init(&window->key_up_target);
-	event_target_init(&window->text_target);
-	event_target_init(&window->get_clipboard_target);
-	event_target_init(&window->set_clipboard_target);
-	event_target_init(&window->mouse_down_target);
-	event_target_init(&window->mouse_up_target);
-	event_target_init(&window->mouse_move_target);
-	event_target_init(&window->mouse_scroll_target);
-}
-
-
-void
-window_free(
-	window_t* window
-	)
-{
-	window_free_event_data_t data =
-	{
-		.window = window
-	};
-	event_target_fire(&window->free_target, &data);
-
 	event_target_free(&window->mouse_scroll_target);
 	event_target_free(&window->mouse_move_target);
 	event_target_free(&window->mouse_up_target);
@@ -277,9 +159,91 @@ window_free(
 	event_target_free(&window->resize_target);
 	event_target_free(&window->move_target);
 	event_target_free(&window->free_target);
+	event_target_free(&window->init_target);
+}
 
-	SDL_DestroyWindow(window->sdl_window);
-	SDL_DestroyProperties(window->sdl_props);
+
+void
+window_init(
+	window_t* window,
+	window_manager_t* manager,
+	const char* title,
+	const window_history_t* history
+	)
+{
+	assert_not_null(window);
+	assert_not_null(manager);
+	assert_not_null(title);
+
+	window->manager = manager;
+
+	event_target_init(&window->init_target);
+	event_target_init(&window->free_target);
+	event_target_init(&window->move_target);
+	event_target_init(&window->resize_target);
+	event_target_init(&window->focus_target);
+	event_target_init(&window->blur_target);
+	event_target_init(&window->close_target);
+	event_target_init(&window->fullscreen_target);
+	event_target_init(&window->key_down_target);
+	event_target_init(&window->key_up_target);
+	event_target_init(&window->text_target);
+	event_target_init(&window->get_clipboard_target);
+	event_target_init(&window->set_clipboard_target);
+	event_target_init(&window->mouse_down_target);
+	event_target_init(&window->mouse_up_target);
+	event_target_init(&window->mouse_move_target);
+	event_target_init(&window->mouse_scroll_target);
+
+	event_listener_data_t free_data =
+	{
+		.fn = (event_fn_t) window_free_once_fn,
+		.data = window
+	};
+	window->free_once = event_target_once(&window->free_target, free_data);
+
+	window_user_event_window_init_data_t* data = alloc_malloc(sizeof(*data));
+	assert_ptr(data, sizeof(*data));
+
+	str_t title_str;
+	str_init_copy_cstr(&title_str, title);
+
+	window_history_t* history_copy;
+	if(history)
+	{
+		history_copy = alloc_malloc(sizeof(*history_copy));
+		assert_ptr(history_copy, sizeof(*history_copy));
+
+		*history_copy = *history;
+	}
+	else
+	{
+		history_copy = NULL;
+	}
+
+	*data =
+	(window_user_event_window_init_data_t)
+	{
+		.title = title_str,
+		.history = history_copy
+	};
+	window_push_event(window, WINDOW_USER_EVENT_WINDOW_INIT, data);
+}
+
+
+void
+window_free(
+	window_t* window
+	)
+{
+	window_user_event_window_free_data_t* data = alloc_malloc(sizeof(*data));
+	assert_ptr(data, sizeof(*data));
+
+	*data =
+	(window_user_event_window_free_data_t)
+	{
+	};
+	window_push_event(window, WINDOW_USER_EVENT_WINDOW_FREE, data);
 }
 
 
@@ -288,11 +252,11 @@ window_close(
 	window_t* window
 	)
 {
-	window_user_event_window_close_t* data = alloc_malloc(sizeof(*data));
+	window_user_event_window_close_data_t* data = alloc_malloc(sizeof(*data));
 	assert_ptr(data, sizeof(*data));
 
 	*data =
-	(window_user_event_window_close_t)
+	(window_user_event_window_close_data_t)
 	{
 	};
 
@@ -460,61 +424,19 @@ window_set_clipboard(
 
 
 void
-window_toggle_fullscreen( // TODO this has to relay to main thread
+window_toggle_fullscreen(
 	window_t* window
 	)
 {
-	window->fullscreen = !window->fullscreen;
+	window_user_event_window_fullscreen_data_t* data = alloc_malloc(sizeof(*data));
+	assert_ptr(data, sizeof(*data));
 
-	if(window->fullscreen)
+	*data =
+	(window_user_event_window_fullscreen_data_t)
 	{
-		ipair_t old_size;
-		bool status = SDL_GetWindowSize(window->sdl_window, &old_size.w, &old_size.h);
-		hard_assert_true(status, window_sdl_log_error());
-
-		window->old_extent.size =
-		(pair_t)
-		{
-			.w = old_size.w,
-			.h = old_size.h
-		};
-
-
-		ipair_t old_pos;
-		status = SDL_GetWindowPosition(window->sdl_window, &old_pos.x, &old_pos.y);
-		hard_assert_true(status, window_sdl_log_error());
-
-		window->old_extent.pos =
-		(pair_t)
-		{
-			.x = old_pos.x,
-			.y = old_pos.y
-		};
-
-
-		status = SDL_SetWindowFullscreen(window->sdl_window, true);
-		hard_assert_true(status, window_sdl_log_error());
-	}
-	else
-	{
-		bool status = SDL_SetWindowFullscreen(window->sdl_window, false);
-		hard_assert_true(status, window_sdl_log_error());
-
-		status = SDL_SetWindowSize(window->sdl_window,
-			window->old_extent.size.w, window->old_extent.size.h);
-		hard_assert_true(status, window_sdl_log_error());
-
-		status = SDL_SetWindowPosition(window->sdl_window,
-			window->old_extent.pos.x, window->old_extent.pos.y);
-		hard_assert_true(status, window_sdl_log_error());
-	}
-
-	window_fullscreen_event_data_t event_data =
-	{
-		.window = window,
-		.fullscreen = window->fullscreen
 	};
-	event_target_fire(&window->fullscreen_target, &event_data);
+
+	window_push_event(window, WINDOW_USER_EVENT_WINDOW_FULLSCREEN, data);
 }
 
 
@@ -538,6 +460,7 @@ window_process_event(
 		window->extent.pos = event_data.new_pos;
 
 		event_target_fire(&window->move_target, &event_data);
+
 		break;
 	}
 
@@ -552,6 +475,7 @@ window_process_event(
 		window->extent.size = event_data.new_size;
 
 		event_target_fire(&window->resize_target, &event_data);
+
 		break;
 	}
 
@@ -562,6 +486,7 @@ window_process_event(
 			.window = window
 		};
 		event_target_fire(&window->focus_target, &event_data);
+
 		break;
 	}
 
@@ -572,6 +497,7 @@ window_process_event(
 			.window = window
 		};
 		event_target_fire(&window->blur_target, &event_data);
+
 		break;
 	}
 
@@ -582,6 +508,7 @@ window_process_event(
 			.window = window
 		};
 		event_target_fire(&window->close_target, &event_data);
+
 		break;
 	}
 
@@ -595,6 +522,7 @@ window_process_event(
 			.repeat = event->key.repeat
 		};
 		event_target_fire(&window->key_down_target, &event_data);
+
 		break;
 	}
 
@@ -607,6 +535,7 @@ window_process_event(
 			.mods = window_map_sdl_mod(event->key.mod)
 		};
 		event_target_fire(&window->key_up_target, &event_data);
+
 		break;
 	}
 
@@ -622,6 +551,7 @@ window_process_event(
 			};
 			event_target_fire(&window->text_target, &event_data);
 		}
+
 		break;
 	}
 
@@ -637,6 +567,7 @@ window_process_event(
 			.clicks = event->button.clicks
 		};
 		event_target_fire(&window->mouse_down_target, &event_data);
+
 		break;
 	}
 
@@ -652,6 +583,7 @@ window_process_event(
 			.pos = {{ event->button.x, event->button.y }}
 		};
 		event_target_fire(&window->mouse_up_target, &event_data);
+
 		break;
 	}
 
@@ -666,6 +598,7 @@ window_process_event(
 		window->mouse = event_data.new_pos;
 
 		event_target_fire(&window->mouse_move_target, &event_data);
+
 		break;
 	}
 
@@ -677,6 +610,7 @@ window_process_event(
 			.offset_y = event->wheel.y * (event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1.0f : 1.0f)
 		};
 		event_target_fire(&window->mouse_scroll_target, &event_data);
+
 		break;
 	}
 
@@ -775,6 +709,197 @@ window_manager_process_user_event(
 
 	switch(event->user.code)
 	{
+
+	case WINDOW_USER_EVENT_WINDOW_INIT:
+	{
+		window_user_event_window_init_data_t* data = event_data;
+
+		uint32_t sdl_props = SDL_CreateProperties();
+		hard_assert_neq(sdl_props, 0, window_sdl_log_error());
+
+		window->sdl_props = sdl_props;
+
+		bool status = SDL_SetBooleanProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetBooleanProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetBooleanProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetBooleanProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
+		hard_assert_true(status, window_sdl_log_error());
+
+		if(data->history)
+		{
+			printf("x %.02f y %.02f w %.02f h %.02f\n",
+				data->history->extent.x, data->history->extent.y,
+				data->history->extent.w, data->history->extent.h);
+
+			status = SDL_SetNumberProperty(sdl_props,
+				SDL_PROP_WINDOW_CREATE_X_NUMBER, data->history->extent.x);
+			hard_assert_true(status, window_sdl_log_error());
+
+			status = SDL_SetNumberProperty(sdl_props,
+				SDL_PROP_WINDOW_CREATE_Y_NUMBER, data->history->extent.y);
+			hard_assert_true(status, window_sdl_log_error());
+		}
+
+		status = SDL_SetNumberProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER,
+			data->history ? data->history->extent.w : 1280);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetNumberProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER,
+			data->history ? data->history->extent.h : 720);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetStringProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_TITLE_STRING, data->title.str);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetBooleanProperty(sdl_props,
+			SDL_HINT_FORCE_RAISEWINDOW, true);
+		hard_assert_true(status, window_sdl_log_error());
+
+
+		window->sdl_window = SDL_CreateWindowWithProperties(sdl_props);
+		hard_assert_not_null(window->sdl_window, window_sdl_log_error());
+
+		uint32_t props = SDL_GetWindowProperties(window->sdl_window);
+		hard_assert_neq(props, 0, window_sdl_log_error());
+
+		window->props = props;
+		window_set(window, "WINDOW_PTR", window);
+
+		status = SDL_SetWindowMinimumSize(window->sdl_window, 480, 270);
+		hard_assert_true(status, window_sdl_log_error());
+
+
+		ipair_t pos = {0};
+		status = SDL_GetWindowPosition(window->sdl_window, &pos.x, &pos.y);
+		hard_assert_eq(status, true);
+
+		window->extent.pos = (pair_t){{ pos.x, pos.y }};
+
+		ipair_t size = {0};
+		status = SDL_GetWindowSize(window->sdl_window, &size.w, &size.h);
+		hard_assert_eq(status, true);
+
+		window->extent.size = (pair_t){{ size.w, size.h }};
+
+		window->mouse = (pair_t){{ 0, 0 }};
+
+		window->fullscreen = false;
+
+		window_init_event_data_t event_data =
+		{
+			.window = window
+		};
+		event_target_fire(&window->init_target, &event_data);
+
+		alloc_free(sizeof(*data->history), data->history);
+		str_free(&data->title);
+		alloc_free(sizeof(*data), data);
+
+		break;
+	}
+
+	case WINDOW_USER_EVENT_WINDOW_FREE:
+	{
+		window_user_event_window_free_data_t* data = event_data;
+
+		SDL_DestroyWindow(window->sdl_window);
+		SDL_DestroyProperties(window->sdl_props);
+
+		window_free_event_data_t event_data =
+		{
+			.window = window
+		};
+		event_target_fire(&window->free_target, &event_data);
+
+		alloc_free(sizeof(*data), data);
+
+		break;
+	}
+
+	case WINDOW_USER_EVENT_WINDOW_CLOSE:
+	{
+		window_user_event_window_close_data_t* data = event_data;
+
+		window_free(window);
+
+		alloc_free(sizeof(*data), data);
+
+		break;
+	}
+
+	case WINDOW_USER_EVENT_WINDOW_FULLSCREEN:
+	{
+		window_user_event_window_fullscreen_data_t* data = event_data;
+
+		window->fullscreen = !window->fullscreen;
+
+		if(window->fullscreen)
+		{
+			ipair_t old_size;
+			bool status = SDL_GetWindowSize(window->sdl_window, &old_size.w, &old_size.h);
+			hard_assert_true(status, window_sdl_log_error());
+
+			window->old_extent.size =
+			(pair_t)
+			{
+				.w = old_size.w,
+				.h = old_size.h
+			};
+
+
+			ipair_t old_pos;
+			status = SDL_GetWindowPosition(window->sdl_window, &old_pos.x, &old_pos.y);
+			hard_assert_true(status, window_sdl_log_error());
+
+			window->old_extent.pos =
+			(pair_t)
+			{
+				.x = old_pos.x,
+				.y = old_pos.y
+			};
+
+
+			status = SDL_SetWindowFullscreen(window->sdl_window, true);
+			hard_assert_true(status, window_sdl_log_error());
+		}
+		else
+		{
+			bool status = SDL_SetWindowFullscreen(window->sdl_window, false);
+			hard_assert_true(status, window_sdl_log_error());
+
+			status = SDL_SetWindowSize(window->sdl_window,
+				window->old_extent.size.w, window->old_extent.size.h);
+			hard_assert_true(status, window_sdl_log_error());
+
+			status = SDL_SetWindowPosition(window->sdl_window,
+				window->old_extent.pos.x, window->old_extent.pos.y);
+			hard_assert_true(status, window_sdl_log_error());
+		}
+
+		window_fullscreen_event_data_t event_data =
+		{
+			.window = window,
+			.fullscreen = window->fullscreen
+		};
+		event_target_fire(&window->fullscreen_target, &event_data);
+
+		alloc_free(sizeof(*data), data);
+
+		break;
+	}
 
 	case WINDOW_USER_EVENT_SET_CURSOR:
 	{
@@ -881,17 +1006,6 @@ window_manager_process_user_event(
 
 			SDL_free(str);
 		}
-
-		alloc_free(sizeof(*data), data);
-
-		break;
-	}
-
-	case WINDOW_USER_EVENT_WINDOW_CLOSE:
-	{
-		window_user_event_window_close_t* data = event_data;
-
-		window_free(window);
 
 		alloc_free(sizeof(*data), data);
 
