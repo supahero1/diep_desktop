@@ -22,11 +22,6 @@
 #include <DiepDesktop/shared/extent.h>
 
 
-typedef uint32_t SDL_PropertiesID;
-typedef struct SDL_Window SDL_Window;
-typedef struct SDL_Cursor SDL_Cursor;
-
-
 typedef enum window_cursor : uint32_t
 {
 	WINDOW_CURSOR_DEFAULT,
@@ -185,15 +180,11 @@ typedef struct window_user_event_get_clipboard_data
 window_user_event_get_clipboard_data_t;
 
 
+typedef struct window_manager_internal window_manager_internal_t;
+
 typedef struct window_manager
 {
-	_Atomic bool running;
-
-	window_t* window_head;
-	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
-
-	uint32_t window_count;
-	window_cursor_t current_cursor;
+	window_manager_internal_t* internal;
 }
 window_manager_t;
 
@@ -373,6 +364,8 @@ typedef struct window_mouse_scroll_event_data
 window_mouse_scroll_event_data_t;
 
 
+typedef struct window_internal window_internal_t;
+
 struct window
 {
 	window_manager_t* manager;
@@ -380,9 +373,7 @@ struct window
 	window_t* next;
 	window_t* prev;
 
-	SDL_PropertiesID sdl_props;
-	SDL_Window* sdl_window;
-	SDL_PropertiesID props;
+	window_internal_t* internal;
 
 	half_extent_t old_extent;
 	half_extent_t extent;

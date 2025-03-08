@@ -65,6 +65,10 @@ thread_init(
 	{
 		*thread = id;
 	}
+	else
+	{
+		thread_detach(id);
+	}
 }
 
 

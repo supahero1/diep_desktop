@@ -22,7 +22,8 @@ typedef struct app app_t;
 
 extern app_t*
 app_init(
-	void
+	int argc,
+	char** argv
 	);
 
 

@@ -28,6 +28,12 @@ file_t;
 
 
 extern bool
+file_exists(
+	const char* path
+	);
+
+
+extern bool
 file_write(
 	const char* path,
 	file_t file
@@ -49,7 +55,31 @@ file_read(
 	);
 
 
+extern bool
+file_remove(
+	const char* path
+	);
+
+
 extern void
 file_free(
 	file_t file
+	);
+
+
+extern bool
+dir_exists(
+	const char* path
+	);
+
+
+extern bool
+dir_create(
+	const char* path
+	);
+
+
+extern bool
+dir_remove(
+	const char* path
 	);

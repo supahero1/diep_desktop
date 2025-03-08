@@ -14,6 +14,7 @@
  *  limitations under the License.
  */
 
+#include <DiepDesktop/shared/sync.h>
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/threads.h>
@@ -195,6 +196,38 @@ test_should_fail__thread_cancel_freed(
 	thread_free(&thread);
 
 	thread_cancel_sync(thread);
+}
+
+
+static void
+sync_thread_fn(
+	sync_mtx_t* mtx
+	)
+{
+	sync_mtx_unlock(mtx);
+}
+
+
+void assert_used
+test_should_pass__thread_auto_detach(
+	void
+	)
+{
+	sync_mtx_t mtx;
+	sync_mtx_init(&mtx);
+	sync_mtx_lock(&mtx);
+
+	thread_data_t data =
+	{
+		.fn = (thread_fn_t) sync_thread_fn,
+		.data = &mtx
+	};
+
+	thread_init(NULL, data);
+
+	sync_mtx_lock(&mtx);
+	sync_mtx_unlock(&mtx);
+	sync_mtx_free(&mtx);
 }
 
 

@@ -23,9 +23,47 @@
 #define TEST_WRITE_FILENAME	\
 (test_is_on_valgrind ? "bin/tests/shared/file_write.txt.val" : "bin/tests/shared/file_write.txt")
 
+#define TEST_EXISTS_FILENAME	\
+(test_is_on_valgrind ? "bin/tests/shared/file_exists.txt.val" : "bin/tests/shared/file_exists.txt")
+
+#define TEST_EXISTS_DIRNAME	\
+(test_is_on_valgrind ? "bin/tests/shared/dir_exists" : "bin/tests/shared/dir_exists")
+
 
 uint8_t data[] = "test\n";
 uint64_t len = sizeof(data) - 1;
+
+
+void assert_used
+test_should_pass__file_exists_remove(
+	void
+	)
+{
+	file_remove(TEST_EXISTS_FILENAME);
+
+	bool status = file_exists(TEST_EXISTS_FILENAME);
+	assert_false(status);
+
+	file_t file =
+	{
+		.data = data,
+		.len = len
+	};
+	status = file_write(TEST_EXISTS_FILENAME, file);
+	assert_true(status);
+
+	status = file_exists(TEST_EXISTS_FILENAME);
+	assert_true(status);
+
+	status = file_remove(TEST_EXISTS_FILENAME);
+	assert_true(status);
+
+	status = file_exists(TEST_EXISTS_FILENAME);
+	assert_false(status);
+
+	status = file_remove(TEST_EXISTS_FILENAME);
+	assert_true(status);
+}
 
 
 void assert_used
@@ -145,4 +183,37 @@ test_should_pass__file_write_multiple_should_not_append(
 	assert_false(memcmp(file.data, data, len));
 
 	file_free(file);
+}
+
+
+void assert_used
+test_should_pass__dir_exists_create(
+	void
+	)
+{
+	dir_remove(TEST_EXISTS_DIRNAME);
+
+	bool status = dir_exists("tests/shared");
+	assert_true(status);
+
+	status = dir_exists(TEST_EXISTS_DIRNAME);
+	assert_false(status);
+
+	status = dir_create(TEST_EXISTS_DIRNAME);
+	assert_true(status);
+
+	status = dir_exists(TEST_EXISTS_DIRNAME);
+	assert_true(status);
+
+	status = dir_create(TEST_EXISTS_DIRNAME);
+	assert_true(status);
+
+	status = dir_remove(TEST_EXISTS_DIRNAME);
+	assert_true(status);
+
+	status = dir_exists(TEST_EXISTS_DIRNAME);
+	assert_false(status);
+
+	status = dir_remove(TEST_EXISTS_DIRNAME);
+	assert_true(status);
 }

@@ -18,9 +18,25 @@
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+
+
+bool
+file_exists(
+	const char* path
+	)
+{
+	struct stat info;
+	if(stat(path, &info) != 0)
+	{
+		return false;
+	}
+
+	return S_ISREG(info.st_mode);
+}
 
 
 bool
@@ -72,13 +88,13 @@ file_read_cap(
 		goto goto_end;
 	}
 
-	struct stat Stat;
-	if(fstat(fd, &Stat) != 0)
+	struct stat info;
+	if(fstat(fd, &info) != 0)
 	{
 		goto goto_end;
 	}
 
-	file->len = Stat.st_size;
+	file->len = info.st_size;
 	if(file->len > cap)
 	{
 		goto goto_end;
@@ -114,10 +130,52 @@ file_read(
 }
 
 
+bool
+file_remove(
+	const char* path
+	)
+{
+	return unlink(path) == 0 || errno == ENOENT;
+}
+
+
 void
 file_free(
 	file_t file
 	)
 {
 	alloc_free(file.data, file.len);
+}
+
+
+bool
+dir_exists(
+	const char* path
+	)
+{
+	struct stat info;
+	if(stat(path, &info) != 0)
+	{
+		return false;
+	}
+
+	return S_ISDIR(info.st_mode);
+}
+
+
+bool
+dir_create(
+	const char* path
+	)
+{
+	return mkdir(path, S_IRWXU) == 0 || errno == EEXIST;
+}
+
+
+bool
+dir_remove(
+	const char* path
+	)
+{
+	return rmdir(path) == 0 || errno == ENOENT;
 }

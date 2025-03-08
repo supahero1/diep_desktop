@@ -163,6 +163,14 @@ window_free_once_fn(
 }
 
 
+struct window_internal
+{
+	SDL_PropertiesID sdl_props;
+	SDL_Window* sdl_window;
+	SDL_PropertiesID props;
+};
+
+
 void
 window_init(
 	window_t* window
@@ -171,6 +179,9 @@ window_init(
 	assert_not_null(window);
 
 	window->manager = NULL;
+
+	window->internal = alloc_malloc(sizeof(*window->internal));
+	assert_not_null(window->internal);
 
 	event_target_init(&window->init_target);
 	event_target_init(&window->free_target);
@@ -206,14 +217,16 @@ window_free(
 {
 	assert_not_null(window);
 
-	SDL_DestroyWindow(window->sdl_window);
-	SDL_DestroyProperties(window->sdl_props);
-
 	window_free_event_data_t event_data =
 	{
 		.window = window
 	};
 	event_target_fire(&window->free_target, &event_data);
+
+	SDL_DestroyWindow(window->internal->sdl_window);
+	SDL_DestroyProperties(window->internal->sdl_props);
+
+	alloc_free(window->internal, sizeof(*window->internal));
 }
 
 
@@ -246,7 +259,7 @@ window_set(
 	assert_not_null(window);
 	assert_not_null(name);
 
-	bool status = SDL_SetPointerProperty(window->props, name, window);
+	bool status = SDL_SetPointerProperty(window->internal->props, name, window);
 	hard_assert_true(status, window_sdl_log_error());
 }
 
@@ -260,7 +273,7 @@ window_get(
 	assert_not_null(window);
 	assert_not_null(name);
 
-	return SDL_GetPointerProperty(window->props, name, NULL);
+	return SDL_GetPointerProperty(window->internal->props, name, NULL);
 }
 
 
@@ -618,6 +631,18 @@ window_process_event(
 
 
 
+struct window_manager_internal
+{
+	_Atomic bool running;
+
+	window_t* window_head;
+	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
+
+	uint32_t window_count;
+	window_cursor_t current_cursor;
+};
+
+
 void
 window_manager_init(
 	window_manager_t* manager
@@ -625,24 +650,27 @@ window_manager_init(
 {
 	assert_not_null(manager);
 
-	atomic_init(&manager->running, true);
+	manager->internal = alloc_malloc(sizeof(*manager->internal));
+	assert_not_null(manager->internal);
 
-	manager->window_head = NULL;
-	manager->window_count = 0;
+	atomic_init(&manager->internal->running, true);
+
+	manager->internal->window_head = NULL;
+	manager->internal->window_count = 0;
 
 	SDL_Cursor* cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
 	hard_assert_not_null(cursor, window_sdl_log_error());
-	manager->cursors[WINDOW_CURSOR_DEFAULT] = cursor;
+	manager->internal->cursors[WINDOW_CURSOR_DEFAULT] = cursor;
 
 	cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
 	hard_assert_not_null(cursor, window_sdl_log_error());
-	manager->cursors[WINDOW_CURSOR_TYPING] = cursor;
+	manager->internal->cursors[WINDOW_CURSOR_TYPING] = cursor;
 
 	cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
 	hard_assert_not_null(cursor, window_sdl_log_error());
-	manager->cursors[WINDOW_CURSOR_POINTING] = cursor;
+	manager->internal->cursors[WINDOW_CURSOR_POINTING] = cursor;
 
-	manager->current_cursor = WINDOW_CURSOR_DEFAULT;
+	manager->internal->current_cursor = WINDOW_CURSOR_DEFAULT;
 }
 
 
@@ -653,12 +681,14 @@ window_manager_free(
 {
 	assert_not_null(manager);
 
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_POINTING]);
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_TYPING]);
-	SDL_DestroyCursor(manager->cursors[WINDOW_CURSOR_DEFAULT]);
+	SDL_DestroyCursor(manager->internal->cursors[WINDOW_CURSOR_POINTING]);
+	SDL_DestroyCursor(manager->internal->cursors[WINDOW_CURSOR_TYPING]);
+	SDL_DestroyCursor(manager->internal->cursors[WINDOW_CURSOR_DEFAULT]);
 
-	assert_null(manager->window_head);
-	assert_eq(manager->window_count, 0);
+	assert_null(manager->internal->window_head);
+	assert_eq(manager->internal->window_count, 0);
+
+	alloc_free(manager->internal, sizeof(*manager->internal));
 }
 
 
@@ -677,15 +707,15 @@ window_manager_add(
 	assert_null(window->manager);
 	window->manager = manager;
 
-	window->next = manager->window_head;
+	window->next = manager->internal->window_head;
 	window->prev = NULL;
-	if(manager->window_head)
+	if(manager->internal->window_head)
 	{
-		manager->window_head->prev = window;
+		manager->internal->window_head->prev = window;
 	}
 
-	manager->window_head = window;
-	++manager->window_count;
+	manager->internal->window_head = window;
+	++manager->internal->window_count;
 
 	window_user_event_window_init_data_t* data = alloc_malloc(sizeof(*data));
 	assert_ptr(data, sizeof(*data));
@@ -747,7 +777,7 @@ window_manager_is_running(
 {
 	assert_not_null(manager);
 
-	return atomic_load_explicit(&manager->running, memory_order_acquire);
+	return atomic_load_explicit(&manager->internal->running, memory_order_acquire);
 }
 
 
@@ -758,7 +788,7 @@ window_manager_stop_running(
 {
 	assert_not_null(manager);
 
-	atomic_store_explicit(&manager->running, false, memory_order_release);
+	atomic_store_explicit(&manager->internal->running, false, memory_order_release);
 }
 
 
@@ -782,7 +812,7 @@ window_manager_process_user_event(
 		uint32_t sdl_props = SDL_CreateProperties();
 		hard_assert_neq(sdl_props, 0, window_sdl_log_error());
 
-		window->sdl_props = sdl_props;
+		window->internal->sdl_props = sdl_props;
 
 		bool status = SDL_SetBooleanProperty(sdl_props,
 			SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
@@ -830,27 +860,27 @@ window_manager_process_user_event(
 		hard_assert_true(status, window_sdl_log_error());
 
 
-		window->sdl_window = SDL_CreateWindowWithProperties(sdl_props);
-		hard_assert_not_null(window->sdl_window, window_sdl_log_error());
+		window->internal->sdl_window = SDL_CreateWindowWithProperties(sdl_props);
+		hard_assert_not_null(window->internal->sdl_window, window_sdl_log_error());
 
-		uint32_t props = SDL_GetWindowProperties(window->sdl_window);
+		uint32_t props = SDL_GetWindowProperties(window->internal->sdl_window);
 		hard_assert_neq(props, 0, window_sdl_log_error());
 
-		window->props = props;
+		window->internal->props = props;
 		window_set(window, "WINDOW_PTR", window);
 
-		status = SDL_SetWindowMinimumSize(window->sdl_window, 480, 270);
+		status = SDL_SetWindowMinimumSize(window->internal->sdl_window, 480, 270);
 		hard_assert_true(status, window_sdl_log_error());
 
 
 		ipair_t pos = {0};
-		status = SDL_GetWindowPosition(window->sdl_window, &pos.x, &pos.y);
+		status = SDL_GetWindowPosition(window->internal->sdl_window, &pos.x, &pos.y);
 		hard_assert_eq(status, true);
 
 		window->extent.pos = (pair_t){{ pos.x, pos.y }};
 
 		ipair_t size = {0};
-		status = SDL_GetWindowSize(window->sdl_window, &size.w, &size.h);
+		status = SDL_GetWindowSize(window->internal->sdl_window, &size.w, &size.h);
 		hard_assert_eq(status, true);
 
 		window->extent.size = (pair_t){{ size.w, size.h }};
@@ -882,7 +912,7 @@ window_manager_process_user_event(
 		}
 		else
 		{
-			manager->window_head = window->next;
+			manager->internal->window_head = window->next;
 		}
 
 		if(window->next)
@@ -890,7 +920,7 @@ window_manager_process_user_event(
 			window->next->prev = window->prev;
 		}
 
-		if(--manager->window_count == 0)
+		if(--manager->internal->window_count == 0)
 		{
 			window_manager_stop_running(manager);
 		}
@@ -929,7 +959,7 @@ window_manager_process_user_event(
 		if(window->fullscreen)
 		{
 			ipair_t old_size;
-			bool status = SDL_GetWindowSize(window->sdl_window, &old_size.w, &old_size.h);
+			bool status = SDL_GetWindowSize(window->internal->sdl_window, &old_size.w, &old_size.h);
 			hard_assert_true(status, window_sdl_log_error());
 
 			window->old_extent.size =
@@ -941,7 +971,7 @@ window_manager_process_user_event(
 
 
 			ipair_t old_pos;
-			status = SDL_GetWindowPosition(window->sdl_window, &old_pos.x, &old_pos.y);
+			status = SDL_GetWindowPosition(window->internal->sdl_window, &old_pos.x, &old_pos.y);
 			hard_assert_true(status, window_sdl_log_error());
 
 			window->old_extent.pos =
@@ -952,19 +982,19 @@ window_manager_process_user_event(
 			};
 
 
-			status = SDL_SetWindowFullscreen(window->sdl_window, true);
+			status = SDL_SetWindowFullscreen(window->internal->sdl_window, true);
 			hard_assert_true(status, window_sdl_log_error());
 		}
 		else
 		{
-			bool status = SDL_SetWindowFullscreen(window->sdl_window, false);
+			bool status = SDL_SetWindowFullscreen(window->internal->sdl_window, false);
 			hard_assert_true(status, window_sdl_log_error());
 
-			status = SDL_SetWindowSize(window->sdl_window,
+			status = SDL_SetWindowSize(window->internal->sdl_window,
 				window->old_extent.size.w, window->old_extent.size.h);
 			hard_assert_true(status, window_sdl_log_error());
 
-			status = SDL_SetWindowPosition(window->sdl_window,
+			status = SDL_SetWindowPosition(window->internal->sdl_window,
 				window->old_extent.pos.x, window->old_extent.pos.y);
 			hard_assert_true(status, window_sdl_log_error());
 		}
@@ -987,10 +1017,10 @@ window_manager_process_user_event(
 		assert_ge(data->cursor, 0);
 		assert_lt(data->cursor, WINDOW_CURSOR__COUNT);
 
-		if(manager->current_cursor != data->cursor)
+		if(manager->internal->current_cursor != data->cursor)
 		{
-			manager->current_cursor = data->cursor;
-			SDL_SetCursor(manager->cursors[data->cursor]);
+			manager->internal->current_cursor = data->cursor;
+			SDL_SetCursor(manager->internal->cursors[data->cursor]);
 		}
 
 		alloc_free(data, sizeof(*data));
@@ -1002,7 +1032,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_show_window_data_t* data = event_data;
 
-		bool status = SDL_ShowWindow(window->sdl_window);
+		bool status = SDL_ShowWindow(window->internal->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1014,7 +1044,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_hide_window_data_t* data = event_data;
 
-		bool status = SDL_HideWindow(window->sdl_window);
+		bool status = SDL_HideWindow(window->internal->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1026,7 +1056,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_start_typing_data_t* data = event_data;
 
-		bool status = SDL_StartTextInput(window->sdl_window);
+		bool status = SDL_StartTextInput(window->internal->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1038,7 +1068,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_stop_typing_data_t* data = event_data;
 
-		bool status = SDL_StopTextInput(window->sdl_window);
+		bool status = SDL_StopTextInput(window->internal->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1172,7 +1202,7 @@ window_manager_run(
 		}
 	}
 
-	window_t* window = manager->window_head;
+	window_t* window = manager->internal->window_head;
 	while(window)
 	{
 		window_t* next = window->next;
@@ -1180,6 +1210,6 @@ window_manager_run(
 		window = next;
 	}
 
-	manager->window_head = NULL;
-	manager->window_count = 0;
+	manager->internal->window_head = NULL;
+	manager->internal->window_count = 0;
 }

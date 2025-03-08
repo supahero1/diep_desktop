@@ -125,3 +125,11 @@
 	obj:*libelf*
 	...
 }
+
+{
+	Valgrind garbage
+	Memcheck:Leak
+	...
+	obj:*valgrind*
+	...
+}

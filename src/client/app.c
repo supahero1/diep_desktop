@@ -15,6 +15,7 @@
  */
 
 #include <DiepDesktop/client/app.h>
+#include <DiepDesktop/shared/file.h>
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/settings.h>
@@ -22,6 +23,10 @@
 #include <DiepDesktop/client/window/base.h>
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <libgen.h>
+#include <limits.h>
+#include <unistd.h>
 
 
 struct app
@@ -112,14 +117,28 @@ app_window_on_fullscreen_fn(
 
 app_t*
 app_init(
-	void
+	int argc,
+	char** argv
 	)
 {
 	app_t* app = alloc_malloc(sizeof(*app));
 	assert_ptr(app, sizeof(*app));
 
+	assert_ge(argc, 1);
+	assert_not_null(argv);
+	assert_not_null(argv[0]);
+
+	char exe_path[PATH_MAX];
+	realpath(argv[0], exe_path);
+	char* dir = dirname(exe_path);
+
+	int status = chdir(dir);
+	hard_assert_eq(status, 0);
+
+	dir_create("settings");
+
 	time_timers_init(&app->timers);
-	settings_init(&app->settings, "settings.bin", &app->timers);
+	settings_init(&app->settings, "settings/window.bin", &app->timers);
 
 	app->window_pos_x = settings_add_f32(&app->settings, "main_window_pos_x", 0.0f, -16384.0f, 16384.0f, NULL);
 	app->window_pos_y = settings_add_f32(&app->settings, "main_window_pos_y", 0.0f, -16384.0f, 16384.0f, NULL);
@@ -183,9 +202,7 @@ app_init(
 	};
 	app->window_fullscreen_listener = event_target_add(&app->window.fullscreen_target, fullscreen_data);
 
-	// init ui
-
-	// settings_load(&app->settings); // bruh double load :sob:
+	// ui
 
 	return app;
 }

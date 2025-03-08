@@ -26,11 +26,11 @@ endif
 
 ifeq ($(VALGRIND),1)
 VALGRIND_CALL := valgrind --leak-check=full --show-leak-kinds=all \
-	--suppressions=../val_sup.txt --log-file="val_log.txt"
+	--suppressions=../val_sup.txt --log-file="val_log.txt" --
 endif
 
 ifeq ($(KCACHEGRIND),1)
-VALGRIND_CALL := valgrind --tool=callgrind
+VALGRIND_CALL := valgrind --tool=callgrind --
 endif
 
 
@@ -199,13 +199,18 @@ bin/shaders/%.spv: shaders/%.glsl | bin/shaders/
 shaders: bin/shaders/vert.spv bin/shaders/frag.spv
 
 
-bin/tex/%:
+bin/tex/%: | bin/tex/
 	scons tex/$* -j $(shell nproc)
 
-
-.PHONY: client
-client: shaders
+.PHONY: build_client
+build_client:
 	scons client -j $(shell nproc)
+
+bin/client: build_client
+
+bin/client.build: bin/client
+	sha256sum bin/client | cut -d' ' -f1 > bin/client.build
+
 	$(RM) -r DiepDesktop
 	mkdir DiepDesktop
 
@@ -226,6 +231,9 @@ else
 		DiepDesktop/
 endif
 
+
+.PHONY: client
+client: bin/client.build shaders
 	cd DiepDesktop; $(VALGRIND_CALL) ./client
 
 

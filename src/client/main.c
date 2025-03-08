@@ -19,10 +19,11 @@
 
 int
 main(
-	void
+	int argc,
+	char** argv
 	)
 {
-	app_t* app = app_init();
+	app_t* app = app_init(argc, argv);
 
 	app_run(app);
 
