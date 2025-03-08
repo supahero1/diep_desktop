@@ -63,7 +63,7 @@ dds_free(
 	dds_tex_t* tex
 	)
 {
-	alloc_free(sizeof(dds_tex_t) + dds_data_size(tex), tex);
+	alloc_free(tex, sizeof(dds_tex_t) + dds_data_size(tex));
 }
 
 

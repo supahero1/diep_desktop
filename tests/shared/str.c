@@ -488,6 +488,7 @@ test_should_fail__str_set_copy_cstr_null_cstr(
 	)
 {
 	str_t str;
+	str_init(&str);
 	str_set_copy_cstr(&str, NULL);
 }
 
@@ -516,6 +517,7 @@ test_should_fail__str_set_move_cstr_null_cstr(
 	)
 {
 	str_t str;
+	str_init(&str);
 	str_set_move_cstr(&str, NULL);
 }
 
@@ -546,6 +548,7 @@ test_should_fail__str_set_copy_null_other(
 	)
 {
 	str_t str;
+	str_init(&str);
 	str_set_copy(&str, NULL);
 }
 
@@ -576,6 +579,7 @@ test_should_fail__str_set_move_null_other(
 	)
 {
 	str_t str;
+	str_init(&str);
 	str_set_move(&str, NULL);
 }
 

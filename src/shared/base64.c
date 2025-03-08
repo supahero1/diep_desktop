@@ -175,7 +175,7 @@ base64_decode(
 			--new_len;
 		}
 
-		decoded = alloc_remalloc(decoded_len, decoded, new_len);
+		decoded = alloc_remalloc(decoded, decoded_len, new_len);
 		decoded_len = new_len;
 		assert_not_null(decoded);
 	}

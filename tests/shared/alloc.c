@@ -68,10 +68,10 @@ test_should_pass__alloc_4096_sizes(
 
 	for(uint64_t i = 1; i <= 4096; ++i)
 	{
-		alloc_free(i, ptrs[i]);
+		alloc_free(ptrs[i], i);
 	}
 
-	alloc_free(sizeof(*ptrs) * 4097, ptrs);
+	alloc_free(ptrs, sizeof(*ptrs) * 4097);
 }
 
 
@@ -86,13 +86,13 @@ test_should_pass__alloc_null(
 	ptr = alloc_calloc(0);
 	assert_null(ptr);
 
-	ptr = alloc_remalloc(0, NULL, 0);
+	ptr = alloc_remalloc(NULL, 0, 0);
 	assert_null(ptr);
 
-	ptr = alloc_recalloc(0, NULL, 0);
+	ptr = alloc_recalloc(NULL, 0, 0);
 	assert_null(ptr);
 
-	alloc_free(0, NULL);
+	alloc_free(NULL, 0);
 }
 
 
@@ -103,21 +103,21 @@ test_should_pass__alloc_one(
 {
 	uint8_t* ptr = alloc_malloc(1);
 	assert_not_null(ptr);
-	alloc_free(1, ptr);
+	alloc_free(ptr, 1);
 
 	ptr = alloc_calloc(1);
 	assert_not_null(ptr);
 	assert_false(*ptr);
-	alloc_free(1, ptr);
+	alloc_free(ptr, 1);
 
-	ptr = alloc_remalloc(0, NULL, 1);
+	ptr = alloc_remalloc(NULL, 0, 1);
 	assert_not_null(ptr);
-	alloc_free(1, ptr);
+	alloc_free(ptr, 1);
 
-	ptr = alloc_recalloc(0, NULL, 1);
+	ptr = alloc_recalloc(NULL, 0, 1);
 	assert_not_null(ptr);
 	assert_false(*ptr);
-	alloc_free(1, ptr);
+	alloc_free(ptr, 1);
 }
 
 
@@ -129,13 +129,13 @@ test_should_pass__alloc_realloc_to_zero(
 	uint8_t* ptr = alloc_malloc(1);
 	assert_not_null(ptr);
 
-	ptr = alloc_remalloc(1, ptr, 0);
+	ptr = alloc_remalloc(ptr, 1, 0);
 	assert_null(ptr);
 
 	ptr = alloc_calloc(1);
 	assert_not_null(ptr);
 
-	ptr = alloc_recalloc(1, ptr, 0);
+	ptr = alloc_recalloc(ptr, 1, 0);
 	assert_null(ptr);
 }
 
@@ -149,27 +149,27 @@ test_should_pass__alloc_realloc_with_data(
 	assert_not_null(ptr);
 	*ptr = 0x55;
 
-	ptr = alloc_remalloc(1, ptr, 2);
+	ptr = alloc_remalloc(ptr, 1, 2);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 	*(ptr + 1) = 0xAA;
 
-	ptr = alloc_remalloc(2, ptr, 3);
+	ptr = alloc_remalloc(ptr, 2, 3);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 	assert_eq(*(ptr + 1), 0xAA);
 	*(ptr + 2) = 0x33;
 
-	ptr = alloc_remalloc(3, ptr, 2);
+	ptr = alloc_remalloc(ptr, 3, 2);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 	assert_eq(*(ptr + 1), 0xAA);
 
-	ptr = alloc_remalloc(2, ptr, 1);
+	ptr = alloc_remalloc(ptr, 2, 1);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 
-	alloc_free(1, ptr);
+	alloc_free(ptr, 1);
 }
 
 
@@ -182,27 +182,27 @@ test_should_pass__alloc_recalloc(
 	assert_not_null(ptr);
 	*ptr = 0x55;
 
-	ptr = alloc_recalloc(1, ptr, 2);
+	ptr = alloc_recalloc(ptr, 1, 2);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 	assert_false(*(ptr + 1));
 
-	ptr = alloc_recalloc(2, ptr, 3);
+	ptr = alloc_recalloc(ptr, 2, 3);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 	assert_false(*(ptr + 1));
 	assert_false(*(ptr + 2));
 
-	ptr = alloc_recalloc(3, ptr, 2);
+	ptr = alloc_recalloc(ptr, 3, 2);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 	assert_false(*(ptr + 1));
 
-	ptr = alloc_recalloc(2, ptr, 1);
+	ptr = alloc_recalloc(ptr, 2, 1);
 	assert_not_null(ptr);
 	assert_eq(*ptr, 0x55);
 
-	alloc_free(1, ptr);
+	alloc_free(ptr, 1);
 }
 
 
@@ -214,7 +214,7 @@ test_should_fail__alloc_free_invalid_size_1_to_0(
 	uint8_t* ptr = alloc_malloc(1);
 	assert_not_null(ptr);
 
-	alloc_free(0, ptr);
+	alloc_free(ptr, 0);
 }
 
 
@@ -226,7 +226,7 @@ test_should_fail__alloc_free_invalid_size_2_to_0(
 	uint8_t* ptr = alloc_malloc(2);
 	assert_not_null(ptr);
 
-	alloc_free(0, ptr);
+	alloc_free(ptr, 0);
 }
 
 
@@ -238,7 +238,7 @@ test_should_fail__alloc_free_invalid_size_4_to_0(
 	uint8_t* ptr = alloc_malloc(4);
 	assert_not_null(ptr);
 
-	alloc_free(0, ptr);
+	alloc_free(ptr, 0);
 }
 
 
@@ -250,7 +250,7 @@ test_should_fail__alloc_free_invalid_size_10_to_0(
 	uint8_t* ptr = alloc_malloc(10);
 	assert_not_null(ptr);
 
-	alloc_free(0, ptr);
+	alloc_free(ptr, 0);
 }
 
 
@@ -262,7 +262,7 @@ test_should_fail__alloc_free_invalid_size_20_to_10(
 	uint8_t* ptr = alloc_malloc(20);
 	assert_not_null(ptr);
 
-	alloc_free(10, ptr);
+	alloc_free(ptr, 10);
 }
 
 
@@ -274,7 +274,7 @@ test_should_fail__alloc_free_invalid_size_20_to_0(
 	uint8_t* ptr = alloc_malloc(20);
 	assert_not_null(ptr);
 
-	alloc_free(0, ptr);
+	alloc_free(ptr, 0);
 }
 
 
@@ -286,7 +286,7 @@ test_should_fail__alloc_free_invalid_size_40_to_20(
 	uint8_t* ptr = alloc_malloc(40);
 	assert_not_null(ptr);
 
-	alloc_free(20, ptr);
+	alloc_free(ptr, 20);
 }
 
 
@@ -298,7 +298,7 @@ test_should_fail__alloc_free_invalid_size_40_to_10(
 	uint8_t* ptr = alloc_malloc(40);
 	assert_not_null(ptr);
 
-	alloc_free(10, ptr);
+	alloc_free(ptr, 10);
 }
 
 
@@ -310,7 +310,7 @@ test_should_fail__alloc_free_invalid_size_40_to_0(
 	uint8_t* ptr = alloc_malloc(40);
 	assert_not_null(ptr);
 
-	alloc_free(0, ptr);
+	alloc_free(ptr, 0);
 }
 
 
@@ -322,7 +322,7 @@ test_should_fail__alloc_free_invalid_size_10_to_20(
 	uint8_t* ptr = alloc_malloc(10);
 	assert_not_null(ptr);
 
-	alloc_free(20, ptr);
+	alloc_free(ptr, 20);
 }
 
 
@@ -334,7 +334,7 @@ test_should_fail__alloc_free_invalid_size_10_to_40(
 	uint8_t* ptr = alloc_malloc(10);
 	assert_not_null(ptr);
 
-	alloc_free(40, ptr);
+	alloc_free(ptr, 40);
 }
 
 
@@ -346,7 +346,7 @@ test_should_fail__alloc_free_invalid_size_20_to_40(
 	uint8_t* ptr = alloc_malloc(20);
 	assert_not_null(ptr);
 
-	alloc_free(40, ptr);
+	alloc_free(ptr, 40);
 }
 
 
@@ -355,7 +355,7 @@ test_should_fail__alloc_free_null_with_size(
 	void
 	)
 {
-	alloc_free(1, NULL);
+	alloc_free(NULL, 1);
 }
 
 
@@ -367,7 +367,7 @@ test_should_fail__alloc_free_unaligned_allocated_ptr(
 	uint8_t* ptr = alloc_malloc(4);
 	assert_not_null(ptr);
 
-	alloc_free(4, ptr + 1);
+	alloc_free(ptr + 1, 4);
 }
 
 
@@ -376,7 +376,7 @@ test_should_fail__alloc_free_unaligned_random_ptr(
 	void
 	)
 {
-	alloc_free(4, (void*) 0x11);
+	alloc_free((void*) 0x11, 4);
 }
 
 
@@ -393,7 +393,7 @@ test_should_pass__alloc_reuse_spot_malloc(
 	volatile uint8_t val1 = *ptr;
 	(void) val1;
 
-	alloc_free(4, ptr);
+	alloc_free(ptr, 4);
 
 	ptr = alloc_malloc(4);
 	assert_not_null(ptr);
@@ -401,7 +401,7 @@ test_should_pass__alloc_reuse_spot_malloc(
 	volatile uint8_t val2 = *ptr;
 	(void) val2;
 
-	alloc_free(4, ptr);
+	alloc_free(ptr, 4);
 }
 
 
@@ -418,7 +418,7 @@ test_should_pass__alloc_reuse_spot_calloc(
 	volatile uint8_t val1 = *ptr;
 	(void) val1;
 
-	alloc_free(4, ptr);
+	alloc_free(ptr, 4);
 
 	ptr = alloc_calloc(4);
 	assert_not_null(ptr);
@@ -426,5 +426,5 @@ test_should_pass__alloc_reuse_spot_calloc(
 	volatile uint8_t val2 = *ptr;
 	(void) val2;
 
-	alloc_free(4, ptr);
+	alloc_free(ptr, 4);
 }

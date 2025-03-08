@@ -119,5 +119,5 @@ file_free(
 	file_t file
 	)
 {
-	alloc_free(file.len, file.data);
+	alloc_free(file.data, file.len);
 }

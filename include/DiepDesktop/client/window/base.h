@@ -103,6 +103,11 @@ typedef enum window_mod : uint32_t
 window_mod_t;
 
 
+typedef struct window window_t;
+
+typedef struct window_history window_history_t;
+
+
 typedef enum window_user_event : uint32_t
 {
 	WINDOW_USER_EVENT_WINDOW_INIT,
@@ -119,8 +124,6 @@ typedef enum window_user_event : uint32_t
 	MACRO_ENUM_BITS(WINDOW_USER_EVENT)
 }
 window_user_event_t;
-
-typedef struct window_history window_history_t;
 
 typedef struct window_user_event_window_init_data
 {
@@ -186,7 +189,10 @@ typedef struct window_manager
 {
 	_Atomic bool running;
 
+	window_t* window_head;
 	SDL_Cursor* cursors[WINDOW_CURSOR__COUNT];
+
+	uint32_t window_count;
 	window_cursor_t current_cursor;
 }
 window_manager_t;
@@ -201,6 +207,15 @@ window_manager_init(
 extern void
 window_manager_free(
 	window_manager_t* manager
+	);
+
+
+extern void
+window_manager_add(
+	window_manager_t* manager,
+	window_t* window,
+	const char* title,
+	const window_history_t* history
 	);
 
 
@@ -230,8 +245,6 @@ window_manager_run(
 	window_manager_t* manager
 	);
 
-
-typedef struct window window_t;
 
 typedef struct window_init_event_data
 {
@@ -363,7 +376,9 @@ window_mouse_scroll_event_data_t;
 struct window
 {
 	window_manager_t* manager;
-	event_listener_t* free_once;
+
+	window_t* next;
+	window_t* prev;
 
 	SDL_PropertiesID sdl_props;
 	SDL_Window* sdl_window;
@@ -403,15 +418,6 @@ struct window_history
 
 extern void
 window_init(
-	window_t* window,
-	window_manager_t* manager,
-	const char* title,
-	const window_history_t* history
-	);
-
-
-extern void
-window_free(
 	window_t* window
 	);
 

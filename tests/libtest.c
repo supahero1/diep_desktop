@@ -14,12 +14,13 @@
  *  limitations under the License.
  */
 
+#include <DiepDesktop/shared/str.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 
+#include <gelf.h>
 #include <valgrind/valgrind.h>
 
-#include <gelf.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -106,8 +107,7 @@ test_shout(
 
 typedef struct test
 {
-	char* name;
-	uint16_t name_len;
+	str_t name;
 	bool should_pass;
 	bool should_timeout;
 	int pid;
@@ -158,38 +158,38 @@ wait_and_run_tests(
 
 	if(success)
 	{
-		test_say("%-50s passed", test.name);
+		test_say("%-50s passed", (char*) test.name.str);
 		++tests_passed;
 	}
 	else
 	{
-		test_shout("\033[31m%-50s FAILED !!!\033[39m", test.name);
+		test_shout("\033[31m%-50s FAILED !!!\033[39m", (char*) test.name.str);
 
 		if(WIFSIGNALED(status))
 		{
 			test_shout("\033[31m%-50s was aborted with signal %s\033[39m",
-				test.name, sigabbrev_np(WTERMSIG(status)));
+				(char*) test.name.str, sigabbrev_np(WTERMSIG(status)));
 		}
 		else if(WIFEXITED(status))
 		{
 			test_shout("\033[31m%-50s exited with status %d\033[39m",
-				test.name, WEXITSTATUS(status));
+				(char*) test.name.str, WEXITSTATUS(status));
 		}
 		else if(WIFSTOPPED(status))
 		{
 			test_shout("\033[31m%-50s was stopped with signal %s\033[39m",
-				test.name, sigabbrev_np(WSTOPSIG(status)));
+				(char*) test.name.str, sigabbrev_np(WSTOPSIG(status)));
 		}
 		else
 		{
 			test_shout("\033[31m%-50s returned unknown status %d\033[39m",
-				test.name, status);
+				(char*) test.name.str, status);
 		}
 
 		++tests_failed;
 	}
 
-	alloc_free(test.name_len, test.name);
+	str_free(&test.name);
 	++tests_ran;
 }
 
@@ -329,20 +329,20 @@ main(
 					}
 				}
 
-				tests = alloc_remalloc(sizeof(*tests) * tests_count, tests, sizeof(*tests) * (tests_count + 1));
+				tests = alloc_remalloc(
+					tests,
+					sizeof(*tests) * tests_count,
+					sizeof(*tests) * (tests_count + 1)
+					);
 				assert_not_null(tests);
 
-				uint16_t name_len = strlen(name) + 1;
-				char* name_copy = alloc_malloc(name_len);
-				assert_not_null(name_copy);
-
-				memcpy(name_copy, name, name_len);
+				str_t name_str;
+				str_init_copy_cstr(&name_str, name);
 
 				tests[tests_count++] =
 				(test_t)
 				{
-					.name = name_copy,
-					.name_len = name_len,
+					.name = name_str,
 					.should_pass = should_pass,
 					.should_timeout = should_timeout,
 					.pid = pid
@@ -369,7 +369,7 @@ main(
 	test_shout("Ran %d tests, \033[32m%d\033[39m passed, \033[31m%d\033[39m failed",
 		tests_count, tests_passed, tests_failed);
 
-	alloc_free(sizeof(*tests) * tests_count, tests);
+	alloc_free(tests, sizeof(*tests) * tests_count);
 
 	close(tty_fd);
 

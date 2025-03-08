@@ -39,6 +39,7 @@ str_init_copy_cstr(
 	const void* cstr
 	)
 {
+	assert_not_null(str);
 	assert_not_null(cstr);
 
 	str_t other =
@@ -56,6 +57,7 @@ str_init_move_cstr(
 	void* cstr
 	)
 {
+	assert_not_null(str);
 	assert_not_null(cstr);
 
 	str_t other =
@@ -74,6 +76,7 @@ str_init_copy_len(
 	uint64_t len
 	)
 {
+	assert_not_null(str);
 	assert_ptr(cstr, len);
 
 	str_t other =
@@ -92,6 +95,7 @@ str_init_move_len(
 	uint64_t len
 	)
 {
+	assert_not_null(str);
 	assert_ptr(cstr, len);
 
 	str_t other =
@@ -154,7 +158,7 @@ str_free(
 
 	if(str->str)
 	{
-		alloc_free(str->len + 1, str->str);
+		alloc_free(str->str, str->len + 1);
 	}
 	else
 	{
@@ -276,7 +280,7 @@ str_resize(
 		return;
 	}
 
-	str->str = alloc_remalloc(str->len + 1, str->str, len + 1);
+	str->str = alloc_remalloc(str->str, str->len + 1, len + 1);
 	assert_not_null(str->str);
 
 	str->len = len;

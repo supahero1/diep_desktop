@@ -67,7 +67,7 @@ settings_for_each_free_fn(
 
 	sync_rwlock_free(&setting->rwlock);
 
-	alloc_free(sizeof(*setting), setting);
+	alloc_free(setting, sizeof(*setting));
 }
 
 
@@ -243,14 +243,14 @@ settings_save(
 	int error = ZSTD_isError(actual_compressed_size);
 	assert_false(error);
 
-	alloc_free(sum, buffer.data);
+	alloc_free(buffer.data, sum);
 
 	file_t file;
 	file.data = compressed;
 	file.len = actual_compressed_size;
 
 	bool status = file_write(settings->path, file);
-	alloc_free(compressed_size, compressed);
+	alloc_free(compressed, compressed_size);
 
 	settings_save_event_data_t save_data =
 	{
@@ -429,7 +429,7 @@ settings_load(
 		}
 	}
 
-	alloc_free(decompressed_size, decompressed);
+	alloc_free(decompressed, decompressed_size);
 
 	load_data.success = true;
 	event_target_fire(&settings->load_target, &load_data);
@@ -438,7 +438,7 @@ settings_load(
 
 
 	goto_failure_compressed:
-	alloc_free(decompressed_size, decompressed);
+	alloc_free(decompressed, decompressed_size);
 
 	goto_failure_file:
 	file_free(file);

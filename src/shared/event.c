@@ -183,7 +183,7 @@ event_target_del_common(
 		listener->next->prev = listener->prev;
 	}
 
-	alloc_free(size, listener);
+	alloc_free(listener, size);
 }
 
 

@@ -334,7 +334,7 @@ time_timers_free_##names (																		\
 	time_timers_t* timers																		\
 	)																							\
 {																								\
-	alloc_free(sizeof(* timers-> names ) * timers-> names##_size , timers-> names);				\
+	alloc_free(timers-> names , sizeof(* timers-> names ) * timers-> names##_size );			\
 }																								\
 																								\
 																								\
@@ -356,8 +356,10 @@ time_timers_resize_##names (																	\
 		return;																					\
 	}																							\
 																								\
-	timers-> names = alloc_remalloc(sizeof(* timers-> names ) * timers-> names##_size ,			\
-		timers-> names, sizeof(* timers-> names ) * new_size);									\
+	timers-> names = alloc_remalloc(															\
+		timers-> names ,																		\
+		sizeof(* timers-> names ) * timers-> names##_size ,										\
+		sizeof(* timers-> names ) * new_size);													\
 	assert_not_null(timers-> names);															\
 																								\
 	timers-> names##_size = new_size;															\
@@ -372,7 +374,7 @@ time_timers_add_##name##_common (																\
 	)																							\
 {																								\
 	assert_not_null(timers);																	\
-	assert_not_null(name.data.fn);																\
+	assert_not_null( name .data.fn);															\
 																								\
 	if(lock)																					\
 	{																							\
@@ -381,12 +383,12 @@ time_timers_add_##name##_common (																\
 																								\
 	time_timers_resize_##names (timers, 1);														\
 																								\
-	if(name.timer != NULL)																		\
+	if( name .timer != NULL)																	\
 	{																							\
-		name.timer->idx = timers-> names##_used ;												\
+		name .timer->idx = timers-> names##_used ;												\
 	}																							\
 																								\
-	timers-> names [timers-> names##_used ++] = name;											\
+	timers-> names [timers-> names##_used ++] = name ;											\
 																								\
 	(void) time_timers_##names##_up (timers, timers-> names##_used - 1);						\
 																								\
@@ -407,7 +409,7 @@ time_timers_add_##name##_u (																	\
 	time_##name##_t name																		\
 	)																							\
 {																								\
-	time_timers_add_##name##_common (timers, name, false);										\
+	time_timers_add_##name##_common (timers, name , false);										\
 }																								\
 																								\
 																								\
@@ -417,7 +419,7 @@ time_timers_add_##name (																		\
 	time_##name##_t name																		\
 	)																							\
 {																								\
-	time_timers_add_##name##_common (timers, name, true);										\
+	time_timers_add_##name##_common (timers, name , true);										\
 }																								\
 																								\
 																								\
@@ -533,9 +535,9 @@ time_timers_update_##name##_timer_u (															\
 	)																							\
 {																								\
 	assert_not_null(timers);																	\
-	assert_not_null(name);																		\
+	assert_not_null( name );																	\
 																								\
-	name->timer->idx = name - timers-> names ;													\
+	name ->timer->idx = name - timers-> names ;													\
 }
 
 

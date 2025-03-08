@@ -949,7 +949,7 @@ bit_buffer_get_str_safe(
 	bit_buffer_get_bytes_safe(bit_buffer, str, len, status);
 	if(!*status)
 	{
-		alloc_free(len + 1, str);
+		alloc_free(str, len + 1);
 		return (str_t){0};
 	}
 

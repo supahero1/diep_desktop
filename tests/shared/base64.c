@@ -39,7 +39,7 @@ run_encode_test(
 	assert_eq(out_len, expected_len);
 	assert_false(memcmp(encoded, expected, out_len));
 
-	alloc_free(out_len, encoded);
+	alloc_free(encoded, out_len);
 }
 
 
@@ -58,7 +58,7 @@ run_decode_test(
 	assert_eq(out_len, expected_len);
 	assert_false(memcmp(decoded, expected, out_len));
 
-	alloc_free(out_len, decoded);
+	alloc_free(decoded, out_len);
 }
 
 
@@ -204,7 +204,7 @@ test_should_pass__base64_encode_no_out_len(
 	uint8_t* encoded = base64_encode((uint8_t[]){ 'f', 'o', 'o', 'b', 'a', 'r' }, 6, NULL);
 	assert_not_null(encoded);
 
-	alloc_free(8, encoded);
+	alloc_free(encoded, 8);
 }
 
 
@@ -369,7 +369,7 @@ test_should_pass__base64_decode_no_out_len(
 	uint8_t* decoded = base64_decode((uint8_t[]){ 'Z', 'm', '9', 'v', 'Y', 'm', 'F', 'y' }, 8, NULL);
 	assert_not_null(decoded);
 
-	alloc_free(6, decoded);
+	alloc_free(decoded, 6);
 }
 
 

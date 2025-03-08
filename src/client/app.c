@@ -92,6 +92,11 @@ app_window_on_resize_fn(
 {
 	settings_modify_f32(&app->settings, app->window_w, event_data->new_size.w);
 	settings_modify_f32(&app->settings, app->window_h, event_data->new_size.h);
+
+	if(event_data->new_size.w >= 1600.0f)
+	{
+		window_close(&app->window);
+	}
 }
 
 
@@ -139,7 +144,8 @@ app_init(
 	};
 
 	window_manager_init(&app->manager);
-	window_init(&app->window, &app->manager, "Test", &history);
+	window_init(&app->window);
+	window_manager_add(&app->manager, &app->window, "Test", &history);
 	window_show(&app->window);
 
 	event_listener_data_t close_once_data =
@@ -192,13 +198,12 @@ app_free(
 {
 	assert_not_null(app);
 
-	window_free(&app->window);
 	window_manager_free(&app->manager);
 
 	settings_free(&app->settings);
 	time_timers_free(&app->timers);
 
-	alloc_free(sizeof(*app), app);
+	alloc_free(app, sizeof(*app));
 }
 
 

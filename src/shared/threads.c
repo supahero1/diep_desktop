@@ -35,7 +35,7 @@ thread_fn(
 	)
 {
 	thread_data_t data = internal->data;
-	alloc_free(sizeof(*internal), internal);
+	alloc_free(internal, sizeof(*internal));
 
 	data.fn(data.data);
 	return NULL;
@@ -254,8 +254,11 @@ threads_resize(
 		return;
 	}
 
-	threads->threads = alloc_remalloc(sizeof(thread_t) * threads->size,
-		threads->threads, sizeof(thread_t) * new_size);
+	threads->threads = alloc_remalloc(
+		threads->threads,
+		sizeof(thread_t) * threads->size,
+		sizeof(thread_t) * new_size
+		);
 	assert_not_null(threads->threads);
 
 	threads->size = new_size;
@@ -282,7 +285,7 @@ threads_free(
 {
 	assert_not_null(threads);
 
-	alloc_free(sizeof(thread_t) * threads->size, threads->threads);
+	alloc_free(threads->threads, sizeof(thread_t) * threads->size);
 }
 
 
@@ -452,7 +455,7 @@ thread_pool_free(
 {
 	assert_not_null(pool);
 
-	alloc_free(sizeof(thread_data_t) * pool->size, pool->queue);
+	alloc_free(pool->queue, sizeof(thread_data_t) * pool->size);
 
 	sync_mtx_free(&pool->mtx);
 	sync_sem_free(&pool->sem);
@@ -499,8 +502,11 @@ thread_pool_resize(
 		return;
 	}
 
-	pool->queue = alloc_remalloc(sizeof(thread_data_t) * pool->size,
-		pool->queue, sizeof(thread_data_t) * new_size);
+	pool->queue = alloc_remalloc(
+		pool->queue,
+		sizeof(thread_data_t) * pool->size,
+		sizeof(thread_data_t) * new_size
+		);
 	assert_not_null(pool->queue);
 
 	pool->size = new_size;

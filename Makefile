@@ -242,7 +242,8 @@ test:
 
 .PHONY: cloc
 cloc:
-	cloc $(shell find . -type f \
-		\( -name "*.c" -o -name "*.h" \) \
+	cloc --skip-uniqueness $(shell find . -type f \
+		\( -name "*.c" -o -name "*.h" -o -name "*.glsl" \
+			-o -name "Makefile" -o -name "SConstruct" \) \
 		! -name "volk.c" ! -name "volk.h" \
 		! -path "*client/tex/*" ! -path "*client/font/*")
