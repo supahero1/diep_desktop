@@ -180,11 +180,11 @@ typedef struct window_user_event_get_clipboard_data
 window_user_event_get_clipboard_data_t;
 
 
-typedef struct window_manager_internal window_manager_internal_t;
+typedef struct window_manager_impl window_manager_impl_t;
 
 typedef struct window_manager
 {
-	window_manager_internal_t* internal;
+	window_manager_impl_t* impl;
 }
 window_manager_t;
 
@@ -364,22 +364,11 @@ typedef struct window_mouse_scroll_event_data
 window_mouse_scroll_event_data_t;
 
 
-typedef struct window_internal window_internal_t;
+typedef struct window_impl window_impl_t;
 
 struct window
 {
-	window_manager_t* manager;
-
-	window_t* next;
-	window_t* prev;
-
-	window_internal_t* internal;
-
-	half_extent_t old_extent;
-	half_extent_t extent;
-	pair_t mouse;
-
-	bool fullscreen;
+	window_impl_t* impl;
 
 	event_target_t init_target;
 	event_target_t free_target;
@@ -405,6 +394,16 @@ struct window_history
 	half_extent_t extent;
 	bool fullscreen;
 };
+
+typedef struct window_info
+{
+	half_extent_t old_extent;
+	half_extent_t extent;
+	pair_t mouse;
+
+	bool fullscreen;
+}
+window_info_t;
 
 
 extern void
@@ -489,4 +488,11 @@ window_set_clipboard(
 extern void
 window_toggle_fullscreen(
 	window_t* window
+	);
+
+
+extern void
+window_get_info(
+	window_t* window,
+	window_info_t* info
 	);

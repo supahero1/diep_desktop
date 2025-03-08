@@ -35,7 +35,7 @@ uint64_t len = sizeof(data) - 1;
 
 
 void assert_used
-test_should_pass__file_exists_remove(
+test_normal_pass__file_exists_remove(
 	void
 	)
 {
@@ -67,7 +67,7 @@ test_should_pass__file_exists_remove(
 
 
 void assert_used
-test_should_pass__file_read(
+test_normal_pass__file_read(
 	void
 	)
 {
@@ -83,7 +83,7 @@ test_should_pass__file_read(
 
 
 void assert_used
-test_should_pass__file_read_non_existent(
+test_normal_pass__file_read_non_existent(
 	void
 	)
 {
@@ -94,7 +94,7 @@ test_should_pass__file_read_non_existent(
 
 
 void assert_used
-test_should_pass__file_read_cap(
+test_normal_pass__file_read_cap(
 	void
 	)
 {
@@ -105,7 +105,7 @@ test_should_pass__file_read_cap(
 
 
 void assert_used
-test_should_pass__file_read_cap_non_existent(
+test_normal_pass__file_read_cap_non_existent(
 	void
 	)
 {
@@ -116,7 +116,7 @@ test_should_pass__file_read_cap_non_existent(
 
 
 void assert_used
-test_should_pass__file_write(
+test_normal_pass__file_write(
 	void
 	)
 {
@@ -139,7 +139,7 @@ test_should_pass__file_write(
 
 
 void assert_used
-test_should_pass__file_read_multiple_should_not_move_cursor(
+test_normal_pass__file_read_multiple_not_move_cursor(
 	void
 	)
 {
@@ -161,7 +161,7 @@ test_should_pass__file_read_multiple_should_not_move_cursor(
 
 
 void assert_used
-test_should_pass__file_write_multiple_should_not_append(
+test_normal_pass__file_write_multiple_not_append(
 	void
 	)
 {
@@ -187,7 +187,7 @@ test_should_pass__file_write_multiple_should_not_append(
 
 
 void assert_used
-test_should_pass__dir_exists_create(
+test_normal_pass__dir_exists_create(
 	void
 	)
 {

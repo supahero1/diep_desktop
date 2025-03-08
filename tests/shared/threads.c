@@ -23,7 +23,7 @@
 
 
 void assert_used
-test_should_fail__thread_init_null_fn(
+test_normal_fail__thread_init_null_fn(
 	void
 	)
 {
@@ -42,7 +42,7 @@ dummy_thread_fn(
 
 
 void assert_used
-test_should_pass__thread_init_free(
+test_normal_pass__thread_init_free(
 	void
 	)
 {
@@ -58,7 +58,7 @@ test_should_pass__thread_init_free(
 
 
 void assert_used
-test_should_fail__thread_free_null(
+test_normal_fail__thread_free_null(
 	void
 	)
 {
@@ -78,7 +78,7 @@ thread_cancel_off_fn(
 
 
 void assert_used
-test_should_timeout__thread_cancel_off(
+test_normal_timeout__thread_cancel_off(
 	void
 	)
 {
@@ -108,7 +108,7 @@ thread_cancel_on_fn(
 
 
 void assert_used
-test_should_pass__thread_cancel_on(
+test_normal_pass__thread_cancel_on(
 	void
 	)
 {
@@ -127,7 +127,7 @@ test_should_pass__thread_cancel_on(
 
 
 void assert_used
-test_should_timeout__thread_cancel_off_self(
+test_normal_timeout__thread_cancel_off_self(
 	void
 	)
 {
@@ -138,7 +138,7 @@ test_should_timeout__thread_cancel_off_self(
 
 
 void assert_used
-test_should_pass__thread_cancel_on_self(
+test_normal_pass__thread_cancel_on_self(
 	void
 	)
 {
@@ -149,7 +149,7 @@ test_should_pass__thread_cancel_on_self(
 
 
 void assert_used
-test_should_fail__thread_detach_freed(
+test_normal_fail__thread_detach_freed(
 	void
 	)
 {
@@ -166,7 +166,7 @@ test_should_fail__thread_detach_freed(
 
 
 void assert_used
-test_should_fail__thread_join_freed(
+test_normal_fail__thread_join_freed(
 	void
 	)
 {
@@ -183,7 +183,7 @@ test_should_fail__thread_join_freed(
 
 
 void assert_used
-test_should_fail__thread_cancel_freed(
+test_normal_fail__thread_cancel_freed(
 	void
 	)
 {
@@ -209,7 +209,7 @@ sync_thread_fn(
 
 
 void assert_used
-test_should_pass__thread_auto_detach(
+test_normal_pass__thread_auto_detach(
 	void
 	)
 {
@@ -253,7 +253,7 @@ thread_pool_work_fn(
 
 
 void assert_used
-test_should_pass__thread_pool_and_threads(
+test_normal_pass__thread_pool_and_threads(
 	void
 	)
 {
@@ -318,7 +318,7 @@ thread_pool_work_manually_fn(
 
 
 void assert_used
-test_should_pass__thread_pool_try_work(
+test_normal_pass__thread_pool_try_work(
 	void
 	)
 {
@@ -356,7 +356,7 @@ test_should_pass__thread_pool_try_work(
 
 
 void assert_used
-test_should_fail__threads_init_null(
+test_normal_fail__threads_init_null(
 	void
 	)
 {
@@ -365,7 +365,7 @@ test_should_fail__threads_init_null(
 
 
 void assert_used
-test_should_fail__threads_free_null(
+test_normal_fail__threads_free_null(
 	void
 	)
 {
@@ -374,7 +374,7 @@ test_should_fail__threads_free_null(
 
 
 void assert_used
-test_should_fail__threads_add_null(
+test_normal_fail__threads_add_null(
 	void
 	)
 {
@@ -383,7 +383,7 @@ test_should_fail__threads_add_null(
 
 
 void assert_used
-test_should_fail__threads_cancel_sync_null(
+test_normal_fail__threads_cancel_sync_null(
 	void
 	)
 {
@@ -392,7 +392,7 @@ test_should_fail__threads_cancel_sync_null(
 
 
 void assert_used
-test_should_fail__threads_cancel_sync_too_many(
+test_normal_fail__threads_cancel_sync_too_many(
 	void
 	)
 {
@@ -404,7 +404,7 @@ test_should_fail__threads_cancel_sync_too_many(
 
 
 void assert_used
-test_should_fail__threads_cancel_async_null(
+test_normal_fail__threads_cancel_async_null(
 	void
 	)
 {
@@ -413,7 +413,7 @@ test_should_fail__threads_cancel_async_null(
 
 
 void assert_used
-test_should_fail__threads_cancel_async_too_many(
+test_normal_fail__threads_cancel_async_too_many(
 	void
 	)
 {
@@ -425,7 +425,7 @@ test_should_fail__threads_cancel_async_too_many(
 
 
 void assert_used
-test_should_pass__threads_cancel_zero(
+test_normal_pass__threads_cancel_zero(
 	void
 	)
 {
@@ -443,7 +443,7 @@ test_should_pass__threads_cancel_zero(
 
 
 void assert_used
-test_should_fail__thread_pool_init_null(
+test_normal_fail__thread_pool_init_null(
 	void
 	)
 {
@@ -452,7 +452,7 @@ test_should_fail__thread_pool_init_null(
 
 
 void assert_used
-test_should_fail__thread_pool_free_null(
+test_normal_fail__thread_pool_free_null(
 	void
 	)
 {
@@ -461,7 +461,7 @@ test_should_fail__thread_pool_free_null(
 
 
 void assert_used
-test_should_fail__thread_pool_lock_null(
+test_normal_fail__thread_pool_lock_null(
 	void
 	)
 {
@@ -470,7 +470,7 @@ test_should_fail__thread_pool_lock_null(
 
 
 void assert_used
-test_should_fail__thread_pool_unlock_null(
+test_normal_fail__thread_pool_unlock_null(
 	void
 	)
 {
@@ -479,7 +479,7 @@ test_should_fail__thread_pool_unlock_null(
 
 
 void assert_used
-test_should_fail__thread_pool_add_null(
+test_normal_fail__thread_pool_add_null(
 	void
 	)
 {
@@ -488,7 +488,7 @@ test_should_fail__thread_pool_add_null(
 
 
 void assert_used
-test_should_fail__thread_pool_add_u_null(
+test_normal_fail__thread_pool_add_u_null(
 	void
 	)
 {
@@ -497,7 +497,7 @@ test_should_fail__thread_pool_add_u_null(
 
 
 void assert_used
-test_should_fail__thread_pool_add_null_fn(
+test_normal_fail__thread_pool_add_null_fn(
 	void
 	)
 {
@@ -509,7 +509,7 @@ test_should_fail__thread_pool_add_null_fn(
 
 
 void assert_used
-test_should_fail__thread_pool_add_u_null_fn(
+test_normal_fail__thread_pool_add_u_null_fn(
 	void
 	)
 {
@@ -521,7 +521,7 @@ test_should_fail__thread_pool_add_u_null_fn(
 
 
 void assert_used
-test_should_fail__thread_pool_try_work_null(
+test_normal_fail__thread_pool_try_work_null(
 	void
 	)
 {
@@ -530,7 +530,7 @@ test_should_fail__thread_pool_try_work_null(
 
 
 void assert_used
-test_should_fail__thread_pool_try_work_u_null(
+test_normal_fail__thread_pool_try_work_u_null(
 	void
 	)
 {
@@ -539,7 +539,7 @@ test_should_fail__thread_pool_try_work_u_null(
 
 
 void assert_used
-test_should_fail__thread_pool_work_null(
+test_normal_fail__thread_pool_work_null(
 	void
 	)
 {
@@ -548,7 +548,7 @@ test_should_fail__thread_pool_work_null(
 
 
 void assert_used
-test_should_fail__thread_pool_work_u_null(
+test_normal_fail__thread_pool_work_u_null(
 	void
 	)
 {

@@ -25,7 +25,7 @@
 
 
 void assert_used
-test_should_pass__settings_init_free(
+test_normal_pass__settings_init_free(
 	void
 	)
 {
@@ -83,7 +83,7 @@ setting_change_f32_fn(
 
 
 void assert_used
-test_should_pass__settings_save_load(
+test_normal_pass__settings_save_load(
 	void
 	)
 {
@@ -246,7 +246,7 @@ test_should_pass__settings_save_load(
 
 
 void assert_used
-test_should_fail__settings_init_null_settings(
+test_normal_fail__settings_init_null_settings(
 	void
 	)
 {
@@ -255,7 +255,7 @@ test_should_fail__settings_init_null_settings(
 
 
 void assert_used
-test_should_fail__settings_init_null_path(
+test_normal_fail__settings_init_null_path(
 	void
 	)
 {
@@ -265,7 +265,7 @@ test_should_fail__settings_init_null_path(
 
 
 void assert_used
-test_should_fail__settings_init_null(
+test_normal_fail__settings_init_null(
 	void
 	)
 {
@@ -274,7 +274,7 @@ test_should_fail__settings_init_null(
 
 
 void assert_used
-test_should_fail__settings_free_null(
+test_normal_fail__settings_free_null(
 	void
 	)
 {
@@ -283,7 +283,7 @@ test_should_fail__settings_free_null(
 
 
 void assert_used
-test_should_fail__settings_save_null(
+test_normal_fail__settings_save_null(
 	void
 	)
 {
@@ -292,7 +292,7 @@ test_should_fail__settings_save_null(
 
 
 void assert_used
-test_should_fail__settings_load_null(
+test_normal_fail__settings_load_null(
 	void
 	)
 {
@@ -301,7 +301,7 @@ test_should_fail__settings_load_null(
 
 
 void assert_used
-test_should_fail__settings_add_i64_null_settings(
+test_normal_fail__settings_add_i64_null_settings(
 	void
 	)
 {
@@ -310,7 +310,7 @@ test_should_fail__settings_add_i64_null_settings(
 
 
 void assert_used
-test_should_fail__settings_add_i64_null_name(
+test_normal_fail__settings_add_i64_null_name(
 	void
 	)
 {
@@ -322,7 +322,7 @@ test_should_fail__settings_add_i64_null_name(
 
 
 void assert_used
-test_should_fail__settings_add_i64_null(
+test_normal_fail__settings_add_i64_null(
 	void
 	)
 {
@@ -331,7 +331,7 @@ test_should_fail__settings_add_i64_null(
 
 
 void assert_used
-test_should_fail__settings_add_i64_invalid_value(
+test_normal_fail__settings_add_i64_invalid_value(
 	void
 	)
 {
@@ -343,7 +343,7 @@ test_should_fail__settings_add_i64_invalid_value(
 
 
 void assert_used
-test_should_fail__settings_add_i64_invalid_constaint(
+test_normal_fail__settings_add_i64_invalid_constaint(
 	void
 	)
 {
@@ -355,7 +355,7 @@ test_should_fail__settings_add_i64_invalid_constaint(
 
 
 void assert_used
-test_should_fail__settings_add_f32_null_settings(
+test_normal_fail__settings_add_f32_null_settings(
 	void
 	)
 {
@@ -364,7 +364,7 @@ test_should_fail__settings_add_f32_null_settings(
 
 
 void assert_used
-test_should_fail__settings_add_f32_null_name(
+test_normal_fail__settings_add_f32_null_name(
 	void
 	)
 {
@@ -376,7 +376,7 @@ test_should_fail__settings_add_f32_null_name(
 
 
 void assert_used
-test_should_fail__settings_add_f32_null(
+test_normal_fail__settings_add_f32_null(
 	void
 	)
 {
@@ -385,7 +385,7 @@ test_should_fail__settings_add_f32_null(
 
 
 void assert_used
-test_should_fail__settings_add_f32_invalid_value(
+test_normal_fail__settings_add_f32_invalid_value(
 	void
 	)
 {
@@ -397,7 +397,7 @@ test_should_fail__settings_add_f32_invalid_value(
 
 
 void assert_used
-test_should_fail__settings_add_f32_invalid_constaint(
+test_normal_fail__settings_add_f32_invalid_constaint(
 	void
 	)
 {
@@ -409,7 +409,7 @@ test_should_fail__settings_add_f32_invalid_constaint(
 
 
 void assert_used
-test_should_fail__settings_add_boolean_null_settings(
+test_normal_fail__settings_add_boolean_null_settings(
 	void
 	)
 {
@@ -418,7 +418,7 @@ test_should_fail__settings_add_boolean_null_settings(
 
 
 void assert_used
-test_should_fail__settings_add_boolean_null_name(
+test_normal_fail__settings_add_boolean_null_name(
 	void
 	)
 {
@@ -430,7 +430,7 @@ test_should_fail__settings_add_boolean_null_name(
 
 
 void assert_used
-test_should_fail__settings_add_boolean_null(
+test_normal_fail__settings_add_boolean_null(
 	void
 	)
 {
@@ -439,7 +439,7 @@ test_should_fail__settings_add_boolean_null(
 
 
 void assert_used
-test_should_fail__settings_add_str_null_settings(
+test_normal_fail__settings_add_str_null_settings(
 	void
 	)
 {
@@ -451,7 +451,7 @@ test_should_fail__settings_add_str_null_settings(
 
 
 void assert_used
-test_should_fail__settings_add_str_null_name(
+test_normal_fail__settings_add_str_null_name(
 	void
 	)
 {
@@ -466,7 +466,7 @@ test_should_fail__settings_add_str_null_name(
 
 
 void assert_used
-test_should_fail__settings_add_str_null(
+test_normal_fail__settings_add_str_null(
 	void
 	)
 {
@@ -478,7 +478,7 @@ test_should_fail__settings_add_str_null(
 
 
 void assert_used
-test_should_fail__settings_add_color_null_settings(
+test_normal_fail__settings_add_color_null_settings(
 	void
 	)
 {
@@ -488,7 +488,7 @@ test_should_fail__settings_add_color_null_settings(
 
 
 void assert_used
-test_should_fail__settings_add_color_null_name(
+test_normal_fail__settings_add_color_null_name(
 	void
 	)
 {
@@ -501,7 +501,7 @@ test_should_fail__settings_add_color_null_name(
 
 
 void assert_used
-test_should_fail__settings_add_color_null(
+test_normal_fail__settings_add_color_null(
 	void
 	)
 {
@@ -511,7 +511,7 @@ test_should_fail__settings_add_color_null(
 
 
 void assert_used
-test_should_fail__settings_modify_i64_null_settings(
+test_normal_fail__settings_modify_i64_null_settings(
 	void
 	)
 {
@@ -520,7 +520,7 @@ test_should_fail__settings_modify_i64_null_settings(
 
 
 void assert_used
-test_should_fail__settings_modify_i64_null_name(
+test_normal_fail__settings_modify_i64_null_name(
 	void
 	)
 {
@@ -529,7 +529,7 @@ test_should_fail__settings_modify_i64_null_name(
 
 
 void assert_used
-test_should_fail__settings_modify_i64_null(
+test_normal_fail__settings_modify_i64_null(
 	void
 	)
 {
@@ -538,7 +538,7 @@ test_should_fail__settings_modify_i64_null(
 
 
 void assert_used
-test_should_fail__settings_modify_f32_null_settings(
+test_normal_fail__settings_modify_f32_null_settings(
 	void
 	)
 {
@@ -547,7 +547,7 @@ test_should_fail__settings_modify_f32_null_settings(
 
 
 void assert_used
-test_should_fail__settings_modify_f32_null_name(
+test_normal_fail__settings_modify_f32_null_name(
 	void
 	)
 {
@@ -556,7 +556,7 @@ test_should_fail__settings_modify_f32_null_name(
 
 
 void assert_used
-test_should_fail__settings_modify_f32_null(
+test_normal_fail__settings_modify_f32_null(
 	void
 	)
 {
@@ -565,7 +565,7 @@ test_should_fail__settings_modify_f32_null(
 
 
 void assert_used
-test_should_fail__settings_modify_boolean_null_settings(
+test_normal_fail__settings_modify_boolean_null_settings(
 	void
 	)
 {
@@ -574,7 +574,7 @@ test_should_fail__settings_modify_boolean_null_settings(
 
 
 void assert_used
-test_should_fail__settings_modify_boolean_null_name(
+test_normal_fail__settings_modify_boolean_null_name(
 	void
 	)
 {
@@ -583,7 +583,7 @@ test_should_fail__settings_modify_boolean_null_name(
 
 
 void assert_used
-test_should_fail__settings_modify_boolean_null(
+test_normal_fail__settings_modify_boolean_null(
 	void
 	)
 {
@@ -592,7 +592,7 @@ test_should_fail__settings_modify_boolean_null(
 
 
 void assert_used
-test_should_fail__settings_modify_str_null_settings(
+test_normal_fail__settings_modify_str_null_settings(
 	void
 	)
 {
@@ -604,7 +604,7 @@ test_should_fail__settings_modify_str_null_settings(
 
 
 void assert_used
-test_should_fail__settings_modify_str_null_name(
+test_normal_fail__settings_modify_str_null_name(
 	void
 	)
 {
@@ -619,7 +619,7 @@ test_should_fail__settings_modify_str_null_name(
 
 
 void assert_used
-test_should_fail__settings_modify_str_null(
+test_normal_fail__settings_modify_str_null(
 	void
 	)
 {
@@ -631,7 +631,7 @@ test_should_fail__settings_modify_str_null(
 
 
 void assert_used
-test_should_fail__settings_modify_color_null_settings(
+test_normal_fail__settings_modify_color_null_settings(
 	void
 	)
 {
@@ -641,7 +641,7 @@ test_should_fail__settings_modify_color_null_settings(
 
 
 void assert_used
-test_should_fail__settings_modify_color_null_name(
+test_normal_fail__settings_modify_color_null_name(
 	void
 	)
 {
@@ -654,7 +654,7 @@ test_should_fail__settings_modify_color_null_name(
 
 
 void assert_used
-test_should_fail__settings_modify_color_null(
+test_normal_fail__settings_modify_color_null(
 	void
 	)
 {
@@ -664,7 +664,7 @@ test_should_fail__settings_modify_color_null(
 
 
 void assert_used
-test_should_fail__setting_get_i64_null(
+test_normal_fail__setting_get_i64_null(
 	void
 	)
 {
@@ -673,7 +673,7 @@ test_should_fail__setting_get_i64_null(
 
 
 void assert_used
-test_should_fail__setting_get_f32_null(
+test_normal_fail__setting_get_f32_null(
 	void
 	)
 {
@@ -682,7 +682,7 @@ test_should_fail__setting_get_f32_null(
 
 
 void assert_used
-test_should_fail__setting_get_boolean_null(
+test_normal_fail__setting_get_boolean_null(
 	void
 	)
 {
@@ -691,7 +691,7 @@ test_should_fail__setting_get_boolean_null(
 
 
 void assert_used
-test_should_fail__setting_get_str_null(
+test_normal_fail__setting_get_str_null(
 	void
 	)
 {
@@ -700,7 +700,7 @@ test_should_fail__setting_get_str_null(
 
 
 void assert_used
-test_should_fail__setting_get_color_null(
+test_normal_fail__setting_get_color_null(
 	void
 	)
 {

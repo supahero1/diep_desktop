@@ -21,7 +21,7 @@
 
 
 void assert_used
-test_should_pass__sync_mtx_init_free(
+test_normal_pass__sync_mtx_init_free(
 	void
 	)
 {
@@ -32,7 +32,7 @@ test_should_pass__sync_mtx_init_free(
 
 
 void assert_used
-test_should_pass__sync_mtx_lock_unlock(
+test_normal_pass__sync_mtx_lock_unlock(
 	void
 	)
 {
@@ -47,7 +47,7 @@ test_should_pass__sync_mtx_lock_unlock(
 
 
 void assert_used
-test_should_pass__sync_mtx_try_lock_unlock(
+test_normal_pass__sync_mtx_try_lock_unlock(
 	void
 	)
 {
@@ -62,7 +62,7 @@ test_should_pass__sync_mtx_try_lock_unlock(
 
 
 void assert_used
-test_should_fail__sync_mtx_init_null(
+test_normal_fail__sync_mtx_init_null(
 	void
 	)
 {
@@ -71,7 +71,7 @@ test_should_fail__sync_mtx_init_null(
 
 
 void assert_used
-test_should_fail__sync_mtx_free_null(
+test_normal_fail__sync_mtx_free_null(
 	void
 	)
 {
@@ -80,7 +80,7 @@ test_should_fail__sync_mtx_free_null(
 
 
 void assert_used
-test_should_fail__sync_mtx_lock_null(
+test_normal_fail__sync_mtx_lock_null(
 	void
 	)
 {
@@ -89,7 +89,7 @@ test_should_fail__sync_mtx_lock_null(
 
 
 void assert_used
-test_should_fail__sync_mtx_try_lock_null(
+test_normal_fail__sync_mtx_try_lock_null(
 	void
 	)
 {
@@ -98,7 +98,7 @@ test_should_fail__sync_mtx_try_lock_null(
 
 
 void assert_used
-test_should_fail__sync_mtx_unlock_null(
+test_normal_fail__sync_mtx_unlock_null(
 	void
 	)
 {
@@ -107,7 +107,7 @@ test_should_fail__sync_mtx_unlock_null(
 
 
 void assert_used
-test_should_pass__sync_rwlock_init_free(
+test_normal_pass__sync_rwlock_init_free(
 	void
 	)
 {
@@ -118,7 +118,7 @@ test_should_pass__sync_rwlock_init_free(
 
 
 void assert_used
-test_should_pass__sync_rwlock_rdlock_unlock(
+test_normal_pass__sync_rwlock_rdlock_unlock(
 	void
 	)
 {
@@ -133,7 +133,7 @@ test_should_pass__sync_rwlock_rdlock_unlock(
 
 
 void assert_used
-test_should_pass__sync_rwlock_try_rdlock_unlock(
+test_normal_pass__sync_rwlock_try_rdlock_unlock(
 	void
 	)
 {
@@ -148,7 +148,7 @@ test_should_pass__sync_rwlock_try_rdlock_unlock(
 
 
 void assert_used
-test_should_pass__sync_rwlock_wrlock_unlock(
+test_normal_pass__sync_rwlock_wrlock_unlock(
 	void
 	)
 {
@@ -163,7 +163,7 @@ test_should_pass__sync_rwlock_wrlock_unlock(
 
 
 void assert_used
-test_should_pass__sync_rwlock_try_wrlock_unlock(
+test_normal_pass__sync_rwlock_try_wrlock_unlock(
 	void
 	)
 {
@@ -178,7 +178,7 @@ test_should_pass__sync_rwlock_try_wrlock_unlock(
 
 
 void assert_used
-test_should_fail__sync_rwlock_init_null(
+test_normal_fail__sync_rwlock_init_null(
 	void
 	)
 {
@@ -187,7 +187,7 @@ test_should_fail__sync_rwlock_init_null(
 
 
 void assert_used
-test_should_fail__sync_rwlock_free_null(
+test_normal_fail__sync_rwlock_free_null(
 	void
 	)
 {
@@ -196,7 +196,7 @@ test_should_fail__sync_rwlock_free_null(
 
 
 void assert_used
-test_should_fail__sync_rwlock_rdlock_null(
+test_normal_fail__sync_rwlock_rdlock_null(
 	void
 	)
 {
@@ -205,7 +205,7 @@ test_should_fail__sync_rwlock_rdlock_null(
 
 
 void assert_used
-test_should_fail__sync_rwlock_try_rdlock_null(
+test_normal_fail__sync_rwlock_try_rdlock_null(
 	void
 	)
 {
@@ -214,7 +214,7 @@ test_should_fail__sync_rwlock_try_rdlock_null(
 
 
 void assert_used
-test_should_fail__sync_rwlock_wrlock_null(
+test_normal_fail__sync_rwlock_wrlock_null(
 	void
 	)
 {
@@ -223,7 +223,7 @@ test_should_fail__sync_rwlock_wrlock_null(
 
 
 void assert_used
-test_should_fail__sync_rwlock_try_wrlock_null(
+test_normal_fail__sync_rwlock_try_wrlock_null(
 	void
 	)
 {
@@ -232,7 +232,7 @@ test_should_fail__sync_rwlock_try_wrlock_null(
 
 
 void assert_used
-test_should_fail__sync_rwlock_unlock_null(
+test_normal_fail__sync_rwlock_unlock_null(
 	void
 	)
 {
@@ -241,7 +241,7 @@ test_should_fail__sync_rwlock_unlock_null(
 
 
 void assert_used
-test_should_pass__sync_sem_init_free(
+test_normal_pass__sync_sem_init_free(
 	void
 	)
 {
@@ -252,7 +252,7 @@ test_should_pass__sync_sem_init_free(
 
 
 void assert_used
-test_should_pass__sync_sem_wait_post(
+test_normal_pass__sync_sem_wait_post(
 	void
 	)
 {
@@ -267,7 +267,7 @@ test_should_pass__sync_sem_wait_post(
 
 
 void assert_used
-test_should_fail__sync_sem_init_null(
+test_normal_fail__sync_sem_init_null(
 	void
 	)
 {
@@ -276,7 +276,7 @@ test_should_fail__sync_sem_init_null(
 
 
 void assert_used
-test_should_fail__sync_sem_free_null(
+test_normal_fail__sync_sem_free_null(
 	void
 	)
 {
@@ -285,7 +285,7 @@ test_should_fail__sync_sem_free_null(
 
 
 void assert_used
-test_should_fail__sync_sem_wait_null(
+test_normal_fail__sync_sem_wait_null(
 	void
 	)
 {
@@ -294,7 +294,7 @@ test_should_fail__sync_sem_wait_null(
 
 
 void assert_used
-test_should_fail__sync_sem_post_null(
+test_normal_fail__sync_sem_post_null(
 	void
 	)
 {
@@ -303,7 +303,7 @@ test_should_fail__sync_sem_post_null(
 
 
 void assert_used
-test_should_pass__sync_cond_init_free(
+test_normal_pass__sync_cond_init_free(
 	void
 	)
 {
@@ -335,7 +335,7 @@ thread_cond_wake_fn(
 
 
 void assert_used
-test_should_pass__sync_cond_wait_wake(
+test_normal_pass__sync_cond_wait_wake(
 	void
 	)
 {
@@ -371,7 +371,7 @@ test_should_pass__sync_cond_wait_wake(
 
 
 void assert_used
-test_should_fail__sync_cond_init_null(
+test_normal_fail__sync_cond_init_null(
 	void
 	)
 {
@@ -380,7 +380,7 @@ test_should_fail__sync_cond_init_null(
 
 
 void assert_used
-test_should_fail__sync_cond_free_null(
+test_normal_fail__sync_cond_free_null(
 	void
 	)
 {
@@ -389,7 +389,7 @@ test_should_fail__sync_cond_free_null(
 
 
 void assert_used
-test_should_fail__sync_cond_wait_cond_null(
+test_normal_fail__sync_cond_wait_cond_null(
 	void
 	)
 {
@@ -398,7 +398,7 @@ test_should_fail__sync_cond_wait_cond_null(
 
 
 void assert_used
-test_should_fail__sync_cond_wait_mtx_null(
+test_normal_fail__sync_cond_wait_mtx_null(
 	void
 	)
 {
@@ -407,7 +407,7 @@ test_should_fail__sync_cond_wait_mtx_null(
 
 
 void assert_used
-test_should_fail__sync_cond_wait_null(
+test_normal_fail__sync_cond_wait_null(
 	void
 	)
 {
@@ -416,7 +416,7 @@ test_should_fail__sync_cond_wait_null(
 
 
 void assert_used
-test_should_fail__sync_cond_wake_null(
+test_normal_fail__sync_cond_wake_null(
 	void
 	)
 {

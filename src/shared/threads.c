@@ -22,20 +22,20 @@
 #include <string.h>
 
 
-typedef struct thread_data_internal
+typedef struct thread_init_data
 {
 	thread_data_t data;
 }
-thread_data_internal_t;
+thread_init_data_t;
 
 
 private void*
 thread_fn(
-	thread_data_internal_t* internal
+	thread_init_data_t* init_data
 	)
 {
-	thread_data_t data = internal->data;
-	alloc_free(internal, sizeof(*internal));
+	thread_data_t data = init_data->data;
+	alloc_free(init_data, sizeof(*init_data));
 
 	data.fn(data.data);
 	return NULL;
@@ -52,13 +52,13 @@ thread_init(
 
 	thread_t id;
 
-	thread_data_internal_t* internal = alloc_malloc(sizeof(*internal));
-	assert_not_null(internal);
+	thread_init_data_t* init_data = alloc_malloc(sizeof(*init_data));
+	assert_not_null(init_data);
 
-	internal->data = data;
+	init_data->data = data;
 
 	int status = pthread_create(&id, NULL,
-		(void* (*)(void*)) thread_fn, internal);
+		(void* (*)(void*)) thread_fn, init_data);
 	hard_assert_eq(status, 0);
 
 	if(thread)

@@ -21,7 +21,7 @@
 
 
 void assert_used
-test_should_pass__hash_table_init_free(
+test_normal_pass__hash_table_init_free(
 	void
 	)
 {
@@ -32,7 +32,7 @@ test_should_pass__hash_table_init_free(
 
 
 void assert_used
-test_should_fail__hash_table_init_null(
+test_normal_fail__hash_table_init_null(
 	void
 	)
 {
@@ -41,7 +41,7 @@ test_should_fail__hash_table_init_null(
 
 
 void assert_used
-test_should_fail__hash_table_init_zero_buckets(
+test_normal_fail__hash_table_init_zero_buckets(
 	void
 	)
 {
@@ -51,7 +51,7 @@ test_should_fail__hash_table_init_zero_buckets(
 
 
 void assert_used
-test_should_fail__hash_table_free_null(
+test_normal_fail__hash_table_free_null(
 	void
 	)
 {
@@ -87,7 +87,7 @@ hash_table_for_each_fn(
 
 
 void assert_used
-test_should_pass__hash_table_functions(
+test_normal_pass__hash_table_functions(
 	void
 	)
 {
@@ -174,7 +174,7 @@ test_should_pass__hash_table_functions(
 
 
 void assert_used
-test_should_fail__hash_table_has_null_table(
+test_normal_fail__hash_table_has_null_table(
 	void
 	)
 {
@@ -183,7 +183,7 @@ test_should_fail__hash_table_has_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_has_null_key(
+test_normal_fail__hash_table_has_null_key(
 	void
 	)
 {
@@ -194,7 +194,7 @@ test_should_fail__hash_table_has_null_key(
 
 
 void assert_used
-test_should_fail__hash_table_has_null(
+test_normal_fail__hash_table_has_null(
 	void
 	)
 {
@@ -203,7 +203,7 @@ test_should_fail__hash_table_has_null(
 
 
 void assert_used
-test_should_fail__hash_table_add_null_table(
+test_normal_fail__hash_table_add_null_table(
 	void
 	)
 {
@@ -212,7 +212,7 @@ test_should_fail__hash_table_add_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_add_null_key(
+test_normal_fail__hash_table_add_null_key(
 	void
 	)
 {
@@ -223,7 +223,7 @@ test_should_fail__hash_table_add_null_key(
 
 
 void assert_used
-test_should_fail__hash_table_add_null(
+test_normal_fail__hash_table_add_null(
 	void
 	)
 {
@@ -232,7 +232,7 @@ test_should_fail__hash_table_add_null(
 
 
 void assert_used
-test_should_fail__hash_table_get_null_table(
+test_normal_fail__hash_table_get_null_table(
 	void
 	)
 {
@@ -241,7 +241,7 @@ test_should_fail__hash_table_get_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_get_null_key(
+test_normal_fail__hash_table_get_null_key(
 	void
 	)
 {
@@ -252,7 +252,7 @@ test_should_fail__hash_table_get_null_key(
 
 
 void assert_used
-test_should_fail__hash_table_get_null(
+test_normal_fail__hash_table_get_null(
 	void
 	)
 {
@@ -261,7 +261,7 @@ test_should_fail__hash_table_get_null(
 
 
 void assert_used
-test_should_fail__hash_table_del_null_table(
+test_normal_fail__hash_table_del_null_table(
 	void
 	)
 {
@@ -270,7 +270,7 @@ test_should_fail__hash_table_del_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_del_null_key(
+test_normal_fail__hash_table_del_null_key(
 	void
 	)
 {
@@ -281,7 +281,7 @@ test_should_fail__hash_table_del_null_key(
 
 
 void assert_used
-test_should_fail__hash_table_del_null(
+test_normal_fail__hash_table_del_null(
 	void
 	)
 {
@@ -290,7 +290,7 @@ test_should_fail__hash_table_del_null(
 
 
 void assert_used
-test_should_fail__hash_table_for_each_null_table(
+test_normal_fail__hash_table_for_each_null_table(
 	void
 	)
 {
@@ -299,7 +299,7 @@ test_should_fail__hash_table_for_each_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_for_each_null_fn(
+test_normal_fail__hash_table_for_each_null_fn(
 	void
 	)
 {
@@ -310,7 +310,7 @@ test_should_fail__hash_table_for_each_null_fn(
 
 
 void assert_used
-test_should_fail__hash_table_for_each_null(
+test_normal_fail__hash_table_for_each_null(
 	void
 	)
 {
@@ -319,7 +319,7 @@ test_should_fail__hash_table_for_each_null(
 
 
 void assert_used
-test_should_fail__hash_table_clear_null_table(
+test_normal_fail__hash_table_clear_null_table(
 	void
 	)
 {
@@ -328,7 +328,7 @@ test_should_fail__hash_table_clear_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_set_null_table(
+test_normal_fail__hash_table_set_null_table(
 	void
 	)
 {
@@ -337,7 +337,7 @@ test_should_fail__hash_table_set_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_set_null_key(
+test_normal_fail__hash_table_set_null_key(
 	void
 	)
 {
@@ -348,7 +348,7 @@ test_should_fail__hash_table_set_null_key(
 
 
 void assert_used
-test_should_fail__hash_table_set_null(
+test_normal_fail__hash_table_set_null(
 	void
 	)
 {
@@ -357,7 +357,7 @@ test_should_fail__hash_table_set_null(
 
 
 void assert_used
-test_should_fail__hash_table_modify_null_table(
+test_normal_fail__hash_table_modify_null_table(
 	void
 	)
 {
@@ -366,7 +366,7 @@ test_should_fail__hash_table_modify_null_table(
 
 
 void assert_used
-test_should_fail__hash_table_modify_null_key(
+test_normal_fail__hash_table_modify_null_key(
 	void
 	)
 {
@@ -377,7 +377,7 @@ test_should_fail__hash_table_modify_null_key(
 
 
 void assert_used
-test_should_fail__hash_table_modify_null(
+test_normal_fail__hash_table_modify_null(
 	void
 	)
 {

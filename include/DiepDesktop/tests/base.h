@@ -20,3 +20,19 @@
 
 
 extern bool test_is_on_valgrind;
+
+
+void
+__attribute__((format(printf, 1, 2)))
+test_say(
+	const char* format,
+	...
+	);
+
+
+void
+__attribute__((format(printf, 1, 2)))
+test_shout(
+	const char* format,
+	...
+	);

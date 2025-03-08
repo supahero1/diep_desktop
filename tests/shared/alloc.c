@@ -28,7 +28,7 @@
 
 
 void assert_used
-test_should_pass__alloc_zero(
+test_normal_pass__alloc_zero(
 	void
 	)
 {
@@ -38,7 +38,7 @@ test_should_pass__alloc_zero(
 
 
 void assert_used
-test_should_pass__alloc_4096_sizes(
+test_normal_pass__alloc_4096_sizes(
 	void
 	)
 {
@@ -76,7 +76,7 @@ test_should_pass__alloc_4096_sizes(
 
 
 void assert_used
-test_should_pass__alloc_null(
+test_normal_pass__alloc_null(
 	void
 	)
 {
@@ -97,7 +97,7 @@ test_should_pass__alloc_null(
 
 
 void assert_used
-test_should_pass__alloc_one(
+test_normal_pass__alloc_one(
 	void
 	)
 {
@@ -122,7 +122,7 @@ test_should_pass__alloc_one(
 
 
 void assert_used
-test_should_pass__alloc_realloc_to_zero(
+test_normal_pass__alloc_realloc_to_zero(
 	void
 	)
 {
@@ -141,7 +141,7 @@ test_should_pass__alloc_realloc_to_zero(
 
 
 void assert_used
-test_should_pass__alloc_realloc_with_data(
+test_normal_pass__alloc_realloc_with_data(
 	void
 	)
 {
@@ -174,7 +174,7 @@ test_should_pass__alloc_realloc_with_data(
 
 
 void assert_used
-test_should_pass__alloc_recalloc(
+test_normal_pass__alloc_recalloc(
 	void
 	)
 {
@@ -207,7 +207,7 @@ test_should_pass__alloc_recalloc(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_1_to_0(
+test_normal_fail__alloc_free_invalid_size_1_to_0(
 	void
 	)
 {
@@ -219,7 +219,7 @@ test_should_fail__alloc_free_invalid_size_1_to_0(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_2_to_0(
+test_normal_fail__alloc_free_invalid_size_2_to_0(
 	void
 	)
 {
@@ -231,7 +231,7 @@ test_should_fail__alloc_free_invalid_size_2_to_0(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_4_to_0(
+test_normal_fail__alloc_free_invalid_size_4_to_0(
 	void
 	)
 {
@@ -243,7 +243,7 @@ test_should_fail__alloc_free_invalid_size_4_to_0(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_10_to_0(
+test_normal_fail__alloc_free_invalid_size_10_to_0(
 	void
 	)
 {
@@ -255,7 +255,7 @@ test_should_fail__alloc_free_invalid_size_10_to_0(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_20_to_10(
+test_normal_fail__alloc_free_invalid_size_20_to_10(
 	void
 	)
 {
@@ -267,7 +267,7 @@ test_should_fail__alloc_free_invalid_size_20_to_10(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_20_to_0(
+test_normal_fail__alloc_free_invalid_size_20_to_0(
 	void
 	)
 {
@@ -279,7 +279,7 @@ test_should_fail__alloc_free_invalid_size_20_to_0(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_40_to_20(
+test_normal_fail__alloc_free_invalid_size_40_to_20(
 	void
 	)
 {
@@ -291,7 +291,7 @@ test_should_fail__alloc_free_invalid_size_40_to_20(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_40_to_10(
+test_normal_fail__alloc_free_invalid_size_40_to_10(
 	void
 	)
 {
@@ -303,7 +303,7 @@ test_should_fail__alloc_free_invalid_size_40_to_10(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_40_to_0(
+test_normal_fail__alloc_free_invalid_size_40_to_0(
 	void
 	)
 {
@@ -315,7 +315,7 @@ test_should_fail__alloc_free_invalid_size_40_to_0(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_10_to_20(
+test_normal_fail__alloc_free_invalid_size_10_to_20(
 	void
 	)
 {
@@ -327,7 +327,7 @@ test_should_fail__alloc_free_invalid_size_10_to_20(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_10_to_40(
+test_normal_fail__alloc_free_invalid_size_10_to_40(
 	void
 	)
 {
@@ -339,7 +339,7 @@ test_should_fail__alloc_free_invalid_size_10_to_40(
 
 
 void assert_used
-test_should_fail__alloc_free_invalid_size_20_to_40(
+test_normal_fail__alloc_free_invalid_size_20_to_40(
 	void
 	)
 {
@@ -351,7 +351,7 @@ test_should_fail__alloc_free_invalid_size_20_to_40(
 
 
 void assert_used
-test_should_fail__alloc_free_null_with_size(
+test_normal_fail__alloc_free_null_with_size(
 	void
 	)
 {
@@ -360,7 +360,7 @@ test_should_fail__alloc_free_null_with_size(
 
 
 void assert_used
-test_should_fail__alloc_free_unaligned_allocated_ptr(
+test_normal_fail__alloc_free_unaligned_allocated_ptr(
 	void
 	)
 {
@@ -372,7 +372,7 @@ test_should_fail__alloc_free_unaligned_allocated_ptr(
 
 
 void assert_used
-test_should_fail__alloc_free_unaligned_random_ptr(
+test_normal_fail__alloc_free_unaligned_random_ptr(
 	void
 	)
 {
@@ -381,7 +381,7 @@ test_should_fail__alloc_free_unaligned_random_ptr(
 
 
 void assert_used
-test_should_pass__alloc_reuse_spot_malloc(
+test_normal_pass__alloc_reuse_spot_malloc(
 	void
 	)
 {
@@ -406,7 +406,7 @@ test_should_pass__alloc_reuse_spot_malloc(
 
 
 void assert_used
-test_should_pass__alloc_reuse_spot_calloc(
+test_normal_pass__alloc_reuse_spot_calloc(
 	void
 	)
 {

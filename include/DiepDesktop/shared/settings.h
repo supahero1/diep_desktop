@@ -83,7 +83,7 @@ setting_change_event_data_t;
 
 typedef struct setting
 {
-	sync_rwlock_t rwlock;
+	sync_mtx_t mtx;
 	setting_type_t type;
 	setting_value_t value;
 	setting_constraint_t constraint;

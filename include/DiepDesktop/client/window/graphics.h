@@ -19,6 +19,8 @@
 #include <DiepDesktop/client/window/base.h>
 
 
+typedef struct graphics_impl graphics_impl_t;
+
 typedef struct graphics
 {
 	window_t* window;

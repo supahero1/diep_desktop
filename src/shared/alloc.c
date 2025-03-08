@@ -373,12 +373,12 @@ struct _packed_ alloc_4
 };
 
 
-typedef struct alloc_handle_internal alloc_handle_internal_t;
+typedef struct alloc_handle_impl alloc_handle_impl_t;
 
 
 typedef void*
 (*alloc_alloc_fn_t)(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	alloc_t size,
 	int zero
 	);
@@ -386,14 +386,14 @@ typedef void*
 
 typedef void
 (*alloc_free_fn_t)(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	void* block_ptr,
 	void* ptr,
 	alloc_t size
 	);
 
 
-struct alloc_handle_internal
+struct alloc_handle_impl
 {
 	sync_mtx_t mtx;
 
@@ -412,7 +412,7 @@ struct alloc_handle_internal
 	alloc_free_fn_t free_fn;
 };
 
-static_assert(sizeof(alloc_handle_t) == sizeof(alloc_handle_internal_t),
+static_assert(sizeof(alloc_handle_t) == sizeof(alloc_handle_impl_t),
 	"alloc_handle_t size mismatch");
 
 
@@ -621,7 +621,7 @@ alloc_get_default_block_size(
 
 private void*
 aloc_alloc_1_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	alloc_t size,
 	int zero
 	)
@@ -730,7 +730,7 @@ aloc_alloc_1_fn(
 
 private void
 alloc_free_1_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	void* block_ptr,
 	void* ptr,
 	alloc_t size
@@ -808,7 +808,7 @@ alloc_free_1_fn(
 
 private void*
 alloc_alloc_2_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	alloc_t size,
 	int zero
 	)
@@ -882,7 +882,7 @@ alloc_alloc_2_fn(
 
 private void
 alloc_free_2_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	void* block_ptr,
 	void* ptr,
 	alloc_t size
@@ -952,7 +952,7 @@ alloc_free_2_fn(
 
 private void*
 alloc_alloc_4_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	alloc_t size,
 	int zero
 	)
@@ -1026,7 +1026,7 @@ alloc_alloc_4_fn(
 
 private void
 alloc_free_4_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	void* block_ptr,
 	void* ptr,
 	alloc_t size
@@ -1096,7 +1096,7 @@ alloc_free_4_fn(
 
 private void*
 alloc_alloc_virtual_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	alloc_t size,
 	int zero
 	)
@@ -1116,7 +1116,7 @@ alloc_alloc_virtual_fn(
 
 private void
 alloc_free_virtual_fn(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	void* block_ptr,
 	void* ptr,
 	alloc_t size
@@ -1132,7 +1132,7 @@ alloc_free_virtual_fn(
 
 private int
 alloc_handle_is_virtual(
-	_in_ alloc_handle_internal_t* handle
+	_in_ alloc_handle_impl_t* handle
 	)
 {
 	return !handle->block_size;
@@ -1145,27 +1145,27 @@ alloc_create_handle(
 	_opaque_ alloc_handle_t* handle
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	sync_mtx_init(&handle_internal->mtx);
+	sync_mtx_init(&handle_impl->mtx);
 
-	handle_internal->allocators = 0;
-	handle_internal->allocations = 0;
+	handle_impl->allocators = 0;
+	handle_impl->allocations = 0;
 
-	handle_internal->head = NULL;
+	handle_impl->head = NULL;
 
-	handle_internal->flags = ALLOC_HANDLE_FLAG_NONE;
+	handle_impl->flags = ALLOC_HANDLE_FLAG_NONE;
 
 
 	if(!info)
 	{
-		handle_internal->padding = 0;
-		handle_internal->alloc_limit = 0;
-		handle_internal->alloc_size = 0;
-		handle_internal->block_size = 0;
+		handle_impl->padding = 0;
+		handle_impl->alloc_limit = 0;
+		handle_impl->alloc_size = 0;
+		handle_impl->block_size = 0;
 
-		handle_internal->alloc_fn = alloc_alloc_virtual_fn;
-		handle_internal->free_fn = alloc_free_virtual_fn;
+		handle_impl->alloc_fn = alloc_alloc_virtual_fn;
+		handle_impl->free_fn = alloc_free_virtual_fn;
 
 		return;
 	}
@@ -1229,13 +1229,13 @@ alloc_create_handle(
 		block_size = sizeof(alloc_1_block_t) + alloc_limit * sizeof(alloc_1_t);
 		block_size = MACRO_NEXT_OR_EQUAL_POWER_OF_2(block_size);
 
-		handle_internal->padding = 0;
-		handle_internal->alloc_limit = alloc_limit;
-		handle_internal->alloc_size = 1;
-		handle_internal->block_size = block_size;
+		handle_impl->padding = 0;
+		handle_impl->alloc_limit = alloc_limit;
+		handle_impl->alloc_size = 1;
+		handle_impl->block_size = block_size;
 
-		handle_internal->alloc_fn = alloc_fns[table_idx];
-		handle_internal->free_fn = free_fns[table_idx];
+		handle_impl->alloc_fn = alloc_fns[table_idx];
+		handle_impl->free_fn = free_fns[table_idx];
 
 		return;
 	}
@@ -1258,13 +1258,13 @@ alloc_create_handle(
 	block_size = padding + alloc_limit * info->alloc_size;
 	block_size = MACRO_NEXT_OR_EQUAL_POWER_OF_2(block_size);
 
-	handle_internal->padding = padding;
-	handle_internal->alloc_limit = alloc_limit;
-	handle_internal->alloc_size = info->alloc_size;
-	handle_internal->block_size = info->block_size;
+	handle_impl->padding = padding;
+	handle_impl->alloc_limit = alloc_limit;
+	handle_impl->alloc_size = info->alloc_size;
+	handle_impl->block_size = info->block_size;
 
-	handle_internal->alloc_fn = alloc_fns[table_idx];
-	handle_internal->free_fn = free_fns[table_idx];
+	handle_impl->alloc_fn = alloc_fns[table_idx];
+	handle_impl->free_fn = free_fns[table_idx];
 }
 
 
@@ -1274,13 +1274,13 @@ alloc_clone_handle(
 	_opaque_ alloc_handle_t* handle
 	)
 {
-	alloc_handle_internal_t* source_internal = (void*) source;
+	alloc_handle_impl_t* source_impl = (void*) source;
 
 	alloc_handle_info_t info =
 	{
-		.alloc_size = source_internal->alloc_size,
-		.block_size = source_internal->block_size,
-		.alignment = source_internal->padding
+		.alloc_size = source_impl->alloc_size,
+		.block_size = source_impl->block_size,
+		.alignment = source_impl->padding
 	};
 
 	alloc_create_handle(&info, handle);
@@ -1292,16 +1292,18 @@ alloc_free_handle(
 	_opaque_ alloc_handle_t* handle
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	if(handle_internal->head)
+	if(handle_impl->head)
 	{
-		alloc_free_virtual_aligned((void*) handle_internal->head - handle_internal->head->real_ptr_off,
-			handle_internal->block_size, handle_internal->block_size);
+		alloc_free_virtual_aligned(
+			(void*) handle_impl->head - handle_impl->head->real_ptr_off,
+			handle_impl->block_size, handle_impl->block_size
+			);
 	}
 
 
-	sync_mtx_free(&handle_internal->mtx);
+	sync_mtx_free(&handle_impl->mtx);
 }
 
 
@@ -1378,8 +1380,8 @@ alloc_clone_state(
 
 	(void) memcpy(state, source, total_size);
 
-	alloc_handle_internal_t* handle = (void*) state->handles;
-	alloc_handle_internal_t* handle_end = handle + handle_count;
+	alloc_handle_impl_t* handle = (void*) state->handles;
+	alloc_handle_impl_t* handle_end = handle + handle_count;
 
 	for(; handle < handle_end; ++handle)
 	{
@@ -1415,7 +1417,7 @@ alloc_free_state(
 	}
 
 	alloc_free_virtual(state, sizeof(alloc_state) +
-		handle_count * sizeof(alloc_handle_internal_t));
+		handle_count * sizeof(alloc_handle_impl_t));
 }
 
 
@@ -1442,9 +1444,9 @@ alloc_handle_lock_h(
 	_opaque_ alloc_handle_t* handle
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	sync_mtx_lock(&handle_internal->mtx);
+	sync_mtx_lock(&handle_impl->mtx);
 }
 
 
@@ -1453,9 +1455,9 @@ alloc_handle_unlock_h(
 	_opaque_ alloc_handle_t* handle
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	sync_mtx_unlock(&handle_internal->mtx);
+	sync_mtx_unlock(&handle_impl->mtx);
 }
 
 
@@ -1477,9 +1479,9 @@ alloc_handle_set_flags_uh(
 	alloc_handle_flag_t flags
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	handle_internal->flags = flags;
+	handle_impl->flags = flags;
 }
 
 
@@ -1501,9 +1503,9 @@ alloc_handle_add_flags_uh(
 	alloc_handle_flag_t flags
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	handle_internal->flags |= flags;
+	handle_impl->flags |= flags;
 }
 
 
@@ -1525,9 +1527,9 @@ alloc_handle_del_flags_uh(
 	alloc_handle_flag_t flags
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	handle_internal->flags &= ~flags;
+	handle_impl->flags &= ~flags;
 }
 
 
@@ -1551,15 +1553,15 @@ alloc_handle_get_flags_uh(
 	_opaque_ alloc_handle_t* handle
 	)
 {
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	return handle_internal->flags;
+	return handle_impl->flags;
 }
 
 
 private void*
 alloc_get_base_ptr(
-	alloc_handle_internal_t* handle,
+	alloc_handle_impl_t* handle,
 	_in_ void* ptr
 	)
 {
@@ -1606,9 +1608,9 @@ alloc_alloc_uh(
 		return NULL;
 	}
 
-	alloc_handle_internal_t* handle_internal = (void*) handle;
+	alloc_handle_impl_t* handle_impl = (void*) handle;
 
-	return handle_internal->alloc_fn(handle_internal, size, zero);
+	return handle_impl->alloc_fn(handle_impl, size, zero);
 }
 
 
@@ -1674,10 +1676,10 @@ alloc_free_uh(
 		}
 		);
 
-	alloc_handle_internal_t* handle_internal = (void*) handle;
-	alloc_header_t* header = alloc_get_base_ptr(handle_internal, ptr);
+	alloc_handle_impl_t* handle_impl = (void*) handle;
+	alloc_header_t* header = alloc_get_base_ptr(handle_impl, ptr);
 
-	assert_eq(header->alloc_size, handle_internal->alloc_size,
+	assert_eq(header->alloc_size, handle_impl->alloc_size,
 		{
 			char format[256];
 			snprintf(format, sizeof(format),
@@ -1688,8 +1690,8 @@ alloc_free_uh(
 		}
 		);
 
-	handle_internal->free_fn(handle_internal,
-		alloc_get_base_ptr(handle_internal, ptr), (void*) ptr, size);
+	handle_impl->free_fn(handle_impl,
+		alloc_get_base_ptr(handle_impl, ptr), (void*) ptr, size);
 
 #ifdef ALLOC_VALGRIND
 	VALGRIND_FREELIKE_BLOCK(ptr, 0);

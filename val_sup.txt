@@ -133,3 +133,12 @@
 	obj:*valgrind*
 	...
 }
+
+{
+	libtest
+	Memcheck:Leak
+	...
+	fun:alloc_remalloc
+	fun:main
+	...
+}

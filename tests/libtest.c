@@ -77,7 +77,7 @@ test_say_common(
 }
 
 
-static void
+void
 __attribute__((format(printf, 1, 2)))
 test_say(
 	const char* format,
@@ -91,7 +91,7 @@ test_say(
 }
 
 
-static void
+void
 __attribute__((format(printf, 1, 2)))
 test_shout(
 	const char* format,
@@ -201,10 +201,12 @@ main(
 	)
 {
 	test_is_on_valgrind = RUNNING_ON_VALGRIND;
-	nice(test_is_on_valgrind ? 10 : 20);
+	nice(5);
 
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
+
+	int max_concurrent_tests = 4;
 
 	for(int i = 1; i < argc; ++i)
 	{
@@ -218,16 +220,13 @@ main(
 			{
 				test_name = argv[++i];
 
-				if(
-					!strncmp(test_name, "test_should_pass__", 18) ||
-					!strncmp(test_name, "test_should_fail__", 18)
-					)
+				char prio[16];
+				char method[16];
+				char name[256];
+				int len = sscanf(test_name, "test_%15[^_]_%15[^_]__%255[^(]", prio, method, name);
+				if(len == 3)
 				{
-					test_name += 18;
-				}
-				else if(!strncmp(test_name, "test_should_timeout__", 21))
-				{
-					test_name += 21;
+					test_name += 5 + strlen(prio) + 1 + strlen(method) + 2;
 				}
 			}
 			else
@@ -235,6 +234,23 @@ main(
 				test_shout("Missing argument for --name");
 				return 1;
 			}
+		}
+		else if(!strcmp(argv[i], "--max"))
+		{
+			if(i + 1 < argc)
+			{
+				max_concurrent_tests = atoi(argv[++i]);
+			}
+			else
+			{
+				test_shout("Missing argument for --max");
+				return 1;
+			}
+		}
+		else
+		{
+			test_shout("Unknown argument '%s'", argv[i]);
+			return 1;
 		}
 	}
 
@@ -271,10 +287,22 @@ main(
 				if(gelf_getsym(data, i, &symbol) == NULL) continue;
 
 				const char* sym_name = elf_strptr(elf, shdr.sh_link, symbol.st_name);
+				char prio[16];
 				char method[16];
 				char name[256];
-				int len = sscanf(sym_name, "test_should_%15[^_]__%255[^(]", method, name);
-				if(len != 2) continue;
+				int len = sscanf(sym_name, "test_%15[^_]_%15[^_]__%255[^(]", prio, method, name);
+				if(len != 3) continue;
+
+				if(
+					strcmp(prio, "normal") &&
+					strcmp(prio, "priority")
+					)
+				{
+					test_say("Invalid test priority '%s'", prio);
+					continue;
+				}
+
+				bool priority = !strcmp(prio, "priority");
 
 				if(
 					strcmp(method, "fail") &&
@@ -293,7 +321,7 @@ main(
 
 				assert_eq(symbol.st_info, ELF32_ST_INFO(STB_GLOBAL, STT_FUNC));
 
-				while(tests_count - tests_ran > 0)
+				while(tests_count - tests_ran >= max_concurrent_tests)
 				{
 					wait_and_run_tests();
 				}
@@ -319,7 +347,12 @@ main(
 
 				if(pid == 0)
 				{
-					alarm(8);
+					if(!priority)
+					{
+						nice(20);
+					}
+
+					alarm(6);
 
 					test_func();
 

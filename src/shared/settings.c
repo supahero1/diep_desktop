@@ -65,7 +65,7 @@ settings_for_each_free_fn(
 		str_free(&setting->value.str);
 	}
 
-	sync_rwlock_free(&setting->rwlock);
+	sync_mtx_free(&setting->mtx);
 
 	alloc_free(setting, sizeof(*setting));
 }
@@ -491,7 +491,7 @@ settings_add_i64(
 		.change_target = change_target
 	};
 
-	sync_rwlock_init(&setting_ptr->rwlock);
+	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -533,7 +533,7 @@ settings_add_f32(
 		.change_target = change_target
 	};
 
-	sync_rwlock_init(&setting_ptr->rwlock);
+	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -567,7 +567,7 @@ settings_add_boolean(
 		.change_target = change_target
 	};
 
-	sync_rwlock_init(&setting_ptr->rwlock);
+	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -605,7 +605,7 @@ settings_add_str(
 		.change_target = change_target
 	};
 
-	sync_rwlock_init(&setting_ptr->rwlock);
+	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -639,7 +639,7 @@ settings_add_color(
 		.change_target = change_target
 	};
 
-	sync_rwlock_init(&setting_ptr->rwlock);
+	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
 		bool status = hash_table_add(&settings->table, name, setting_ptr);
@@ -698,7 +698,7 @@ settings_modify_i64(
 	};
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		sync_rwlock_wrlock(&setting->rwlock);
+		sync_mtx_lock(&setting->mtx);
 			if(setting->change_target)
 			{
 				setting_change_event_data_t change_data =
@@ -711,7 +711,7 @@ settings_modify_i64(
 			}
 
 			setting->value = new_value;
-		sync_rwlock_unlock(&setting->rwlock);
+		sync_mtx_unlock(&setting->mtx);
 	sync_rwlock_unlock(&settings->rwlock);
 
 	settings_modify(settings);
@@ -736,7 +736,7 @@ settings_modify_f32(
 	};
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		sync_rwlock_wrlock(&setting->rwlock);
+		sync_mtx_lock(&setting->mtx);
 			if(setting->change_target)
 			{
 				setting_change_event_data_t change_data =
@@ -749,7 +749,7 @@ settings_modify_f32(
 			}
 
 			setting->value = new_value;
-		sync_rwlock_unlock(&setting->rwlock);
+		sync_mtx_unlock(&setting->mtx);
 	sync_rwlock_unlock(&settings->rwlock);
 
 	settings_modify(settings);
@@ -772,7 +772,7 @@ settings_modify_boolean(
 	};
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		sync_rwlock_wrlock(&setting->rwlock);
+		sync_mtx_lock(&setting->mtx);
 			if(setting->change_target)
 			{
 				setting_change_event_data_t change_data =
@@ -785,7 +785,7 @@ settings_modify_boolean(
 			}
 
 			setting->value = new_value;
-		sync_rwlock_unlock(&setting->rwlock);
+		sync_mtx_unlock(&setting->mtx);
 	sync_rwlock_unlock(&settings->rwlock);
 
 	settings_modify(settings);
@@ -813,7 +813,7 @@ settings_modify_str(
 	};
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		sync_rwlock_wrlock(&setting->rwlock);
+		sync_mtx_lock(&setting->mtx);
 			if(setting->change_target)
 			{
 				setting_change_event_data_t change_data =
@@ -826,7 +826,7 @@ settings_modify_str(
 			}
 
 			setting->value = new_value;
-		sync_rwlock_unlock(&setting->rwlock);
+		sync_mtx_unlock(&setting->mtx);
 	sync_rwlock_unlock(&settings->rwlock);
 
 	settings_modify(settings);
@@ -849,7 +849,7 @@ settings_modify_color(
 	};
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		sync_rwlock_wrlock(&setting->rwlock);
+		sync_mtx_lock(&setting->mtx);
 			if(setting->change_target)
 			{
 				setting_change_event_data_t change_data =
@@ -862,7 +862,7 @@ settings_modify_color(
 			}
 
 			setting->value = new_value;
-		sync_rwlock_unlock(&setting->rwlock);
+		sync_mtx_unlock(&setting->mtx);
 	sync_rwlock_unlock(&settings->rwlock);
 
 	settings_modify(settings);
@@ -876,9 +876,9 @@ setting_get_i64(
 {
 	assert_not_null(setting);
 
-	sync_rwlock_rdlock(&setting->rwlock);
+	sync_mtx_lock(&setting->mtx);
 		int64_t value = setting->value.i64;
-	sync_rwlock_unlock(&setting->rwlock);
+	sync_mtx_unlock(&setting->mtx);
 
 	return value;
 }
@@ -891,9 +891,9 @@ setting_get_f32(
 {
 	assert_not_null(setting);
 
-	sync_rwlock_rdlock(&setting->rwlock);
+	sync_mtx_lock(&setting->mtx);
 		float value = setting->value.f32;
-	sync_rwlock_unlock(&setting->rwlock);
+	sync_mtx_unlock(&setting->mtx);
 
 	return value;
 }
@@ -906,9 +906,9 @@ setting_get_boolean(
 {
 	assert_not_null(setting);
 
-	sync_rwlock_rdlock(&setting->rwlock);
+	sync_mtx_lock(&setting->mtx);
 		bool value = setting->value.boolean;
-	sync_rwlock_unlock(&setting->rwlock);
+	sync_mtx_unlock(&setting->mtx);
 
 	return value;
 }
@@ -921,9 +921,9 @@ setting_get_str(
 {
 	assert_not_null(setting);
 
-	sync_rwlock_rdlock(&setting->rwlock);
+	sync_mtx_lock(&setting->mtx);
 		str_t value = setting->value.str;
-	sync_rwlock_unlock(&setting->rwlock);
+	sync_mtx_unlock(&setting->mtx);
 
 	return value;
 }
@@ -936,9 +936,9 @@ setting_get_color(
 {
 	assert_not_null(setting);
 
-	sync_rwlock_rdlock(&setting->rwlock);
+	sync_mtx_lock(&setting->mtx);
 		color_argb_t value = setting->value.color;
-	sync_rwlock_unlock(&setting->rwlock);
+	sync_mtx_unlock(&setting->mtx);
 
 	return value;
 }

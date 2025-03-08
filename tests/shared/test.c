@@ -20,7 +20,7 @@
 
 
 void assert_used
-test_should_pass__test_pass(
+test_normal_pass__test_normal_pass(
 	void
 	)
 {
@@ -28,7 +28,7 @@ test_should_pass__test_pass(
 
 
 void assert_used
-test_should_fail__test_fail(
+test_normal_fail__test_normal_fail(
 	void
 	)
 {
@@ -37,7 +37,7 @@ test_should_fail__test_fail(
 
 
 void assert_used
-test_should_timeout__test_timeout(
+test_normal_timeout__test_normal_timeout(
 	void
 	)
 {

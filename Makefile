@@ -84,7 +84,10 @@ all:
 	Specify RELEASE=2 for a native build (faster than production but not portable)\n"
 
 
-bin/shaders/ tex/font/ tex/var/ tex/img/ tex/dds_raw/ tex/dds_bc1/ tex/dds/ $(SRC_TEX_DIRS) $(SRC_FONT_DIRS):
+tex/font/ tex/var/ tex/img/ tex/dds_raw/ tex/dds_bc1/ tex/dds/:
+	mkdir -p $@
+
+bin/shaders/ $(SRC_TEX_DIRS) $(SRC_FONT_DIRS) DiepDesktop/shaders/:
 	mkdir -p $@
 
 .PHONY: clean
@@ -192,8 +195,9 @@ tex_reset:
 	$(MAKE) dds_build
 
 
-bin/shaders/%.spv: shaders/%.glsl | bin/shaders/
+bin/shaders/%.spv: shaders/%.glsl | bin/shaders/ DiepDesktop/shaders/
 	glslc -O -fshader-stage=$* $< -o $@
+	$(CP) $@ DiepDesktop/shaders/
 
 .PHONY: shaders
 shaders: bin/shaders/vert.spv bin/shaders/frag.spv
@@ -202,38 +206,49 @@ shaders: bin/shaders/vert.spv bin/shaders/frag.spv
 bin/tex/%: | bin/tex/
 	scons tex/$* -j $(shell nproc)
 
-.PHONY: build_client
-build_client:
-	scons client -j $(shell nproc)
-
-bin/client: build_client
-
-bin/client.build: bin/client
-	sha256sum bin/client | cut -d' ' -f1 > bin/client.build
-
-	$(RM) -r DiepDesktop
-	mkdir DiepDesktop
-
-	$(CP) bin/client DiepDesktop/
-	$(CP) bin/shaders/*.spv DiepDesktop/
-	$(CP) tex/dds/* DiepDesktop/
-	$(CP) tex/Ubuntu.ttf DiepDesktop/
-
-ifeq ($(OS),Windows_NT)
-	$(CP) "C:\\msys64\\mingw64\\bin\\SDL3.dll" DiepDesktop/
-	$(CP) "C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll" DiepDesktop/
-else
-	$(CP) \
-		$$(ls -1 /usr/lib/x86_64-linux-gnu/libvulkan.so.1.4.* | sort -V | tail -n 1) \
-		DiepDesktop/libvulkan.so.1
-	$(CP) \
-		$$(ls -1 /usr/local/lib/libSDL3.so.0.1.* | sort -V | tail -n 1) \
-		DiepDesktop/
-endif
-
 
 .PHONY: client
-client: bin/client.build shaders
+client: shaders
+	if [[ ! -f include/DiepDesktop/client/tex/base.h || ! -d tex/dds/ ]]; then \
+		echo "Run \`make tex_reset\` first."; \
+		exit 1; \
+	fi
+
+	scons client -j $(shell nproc)
+
+	if [[ ! -f DiepDesktop/Ubuntu.ttf ]]; then \
+		$(CP) tex/Ubuntu.ttf DiepDesktop/; \
+	fi
+
+	if [[ ! -d DiepDesktop/shaders/ ]]; then \
+		$(CP) -r bin/shaders/ DiepDesktop/; \
+	fi
+
+	$(CP) bin/client DiepDesktop/
+
+	mkdir -p DiepDesktop/textures/
+	$(CP) tex/dds/* DiepDesktop/textures/
+
+ifeq ($(OS),Windows_NT)
+	if [[ ! -f DiepDesktop/SDL3.dll ]]; then \
+		$(CP) "C:\\msys64\\mingw64\\bin\\SDL3.dll" DiepDesktop/; \
+	fi
+	if [[ ! -f DiepDesktop/libwinpthread-1.dll ]]; then \
+		$(CP) "C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll" DiepDesktop/; \
+	fi
+else
+	if [[ ! -f DiepDesktop/libvulkan.so.1 ]]; then \
+		$(CP) \
+			$$(ls -1 /usr/lib/x86_64-linux-gnu/libvulkan.so.1.4.* | sort -V | tail -n 1) \
+			DiepDesktop/libvulkan.so.1; \
+	fi
+	if ! ls DiepDesktop/libSDL3.so.* 1>/dev/null 2>&1; then \
+		$(CP) \
+			$$(ls -1 /usr/local/lib/libSDL3.so.* | sort -V | tail -n 1) \
+			DiepDesktop/; \
+	fi
+endif
+
 	cd DiepDesktop; $(VALGRIND_CALL) ./client
 
 

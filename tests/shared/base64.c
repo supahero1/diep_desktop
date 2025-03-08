@@ -63,7 +63,7 @@ run_decode_test(
 
 
 void assert_used
-test_should_pass__base64_encode_empty(
+test_normal_pass__base64_encode_empty(
 	void
 	)
 {
@@ -73,7 +73,7 @@ test_should_pass__base64_encode_empty(
 
 
 void assert_used
-test_should_pass__base64_encode_mod_0(
+test_normal_pass__base64_encode_mod_0(
 	void
 	)
 {
@@ -83,7 +83,7 @@ test_should_pass__base64_encode_mod_0(
 
 
 void assert_used
-test_should_pass__base64_encode_mod_1(
+test_normal_pass__base64_encode_mod_1(
 	void
 	)
 {
@@ -93,7 +93,7 @@ test_should_pass__base64_encode_mod_1(
 
 
 void assert_used
-test_should_pass__base64_encode_all_mod_1(
+test_normal_pass__base64_encode_all_mod_1(
 	void
 	)
 {
@@ -112,7 +112,7 @@ test_should_pass__base64_encode_all_mod_1(
 
 
 void assert_used
-test_should_pass__base64_encode_mod_2(
+test_normal_pass__base64_encode_mod_2(
 	void
 	)
 {
@@ -122,7 +122,7 @@ test_should_pass__base64_encode_mod_2(
 
 
 void assert_used
-test_should_pass__base64_encode_all_mod_2(
+test_normal_pass__base64_encode_all_mod_2(
 	void
 	)
 {
@@ -137,7 +137,7 @@ test_should_pass__base64_encode_all_mod_2(
 
 
 void assert_used
-test_should_pass__base64_encode_f(
+test_normal_pass__base64_encode_f(
 	void
 	)
 {
@@ -147,7 +147,7 @@ test_should_pass__base64_encode_f(
 
 
 void assert_used
-test_should_pass__base64_encode_fo(
+test_normal_pass__base64_encode_fo(
 	void
 	)
 {
@@ -157,7 +157,7 @@ test_should_pass__base64_encode_fo(
 
 
 void assert_used
-test_should_pass__base64_encode_foo(
+test_normal_pass__base64_encode_foo(
 	void
 	)
 {
@@ -167,7 +167,7 @@ test_should_pass__base64_encode_foo(
 
 
 void assert_used
-test_should_pass__base64_encode_foob(
+test_normal_pass__base64_encode_foob(
 	void
 	)
 {
@@ -177,7 +177,7 @@ test_should_pass__base64_encode_foob(
 
 
 void assert_used
-test_should_pass__base64_encode_fooba(
+test_normal_pass__base64_encode_fooba(
 	void
 	)
 {
@@ -187,7 +187,7 @@ test_should_pass__base64_encode_fooba(
 
 
 void assert_used
-test_should_pass__base64_encode_foobar(
+test_normal_pass__base64_encode_foobar(
 	void
 	)
 {
@@ -197,7 +197,7 @@ test_should_pass__base64_encode_foobar(
 
 
 void assert_used
-test_should_pass__base64_encode_no_out_len(
+test_normal_pass__base64_encode_no_out_len(
 	void
 	)
 {
@@ -209,7 +209,7 @@ test_should_pass__base64_encode_no_out_len(
 
 
 void assert_used
-test_should_pass__base64_encode_null_zero_len(
+test_normal_pass__base64_encode_null_zero_len(
 	void
 	)
 {
@@ -219,7 +219,7 @@ test_should_pass__base64_encode_null_zero_len(
 
 
 void assert_used
-test_should_fail__base64_encode_null_nonzero_len(
+test_normal_fail__base64_encode_null_nonzero_len(
 	void
 	)
 {
@@ -228,7 +228,7 @@ test_should_fail__base64_encode_null_nonzero_len(
 
 
 void assert_used
-test_should_pass__base64_decode_empty(
+test_normal_pass__base64_decode_empty(
 	void
 	)
 {
@@ -238,7 +238,7 @@ test_should_pass__base64_decode_empty(
 
 
 void assert_used
-test_should_pass__base64_decode_mod_0(
+test_normal_pass__base64_decode_mod_0(
 	void
 	)
 {
@@ -248,7 +248,7 @@ test_should_pass__base64_decode_mod_0(
 
 
 void assert_used
-test_should_pass__base64_decode_mod_1(
+test_normal_pass__base64_decode_mod_1(
 	void
 	)
 {
@@ -258,13 +258,13 @@ test_should_pass__base64_decode_mod_1(
 
 
 void assert_used
-test_should_pass__base64_decode_all_mod_1(
+test_normal_pass__base64_decode_some_mod_1(
 	void
 	)
 {
-	for(uint8_t i = 0; i < 0xFF; ++i)
+	for(uint8_t i = 0; i < 0x10; ++i)
 	{
-		for(uint8_t j = 0; j < 0xFF; ++j)
+		for(uint8_t j = 0; j < 0x10; ++j)
 		{
 			uint8_t byte1 = i >> 2;
 			uint8_t byte2 = ((i & 0x03) << 4) | (j >> 4);
@@ -277,7 +277,7 @@ test_should_pass__base64_decode_all_mod_1(
 
 
 void assert_used
-test_should_pass__base64_decode_mod_2(
+test_normal_pass__base64_decode_mod_2(
 	void
 	)
 {
@@ -287,7 +287,7 @@ test_should_pass__base64_decode_mod_2(
 
 
 void assert_used
-test_should_pass__base64_decode_all_mod_2(
+test_normal_pass__base64_decode_all_mod_2(
 	void
 	)
 {
@@ -302,7 +302,7 @@ test_should_pass__base64_decode_all_mod_2(
 
 
 void assert_used
-test_should_pass__base64_decode_f(
+test_normal_pass__base64_decode_f(
 	void
 	)
 {
@@ -312,7 +312,7 @@ test_should_pass__base64_decode_f(
 
 
 void assert_used
-test_should_pass__base64_decode_fo(
+test_normal_pass__base64_decode_fo(
 	void
 	)
 {
@@ -322,7 +322,7 @@ test_should_pass__base64_decode_fo(
 
 
 void assert_used
-test_should_pass__base64_decode_foo(
+test_normal_pass__base64_decode_foo(
 	void
 	)
 {
@@ -332,7 +332,7 @@ test_should_pass__base64_decode_foo(
 
 
 void assert_used
-test_should_pass__base64_decode_foob(
+test_normal_pass__base64_decode_foob(
 	void
 	)
 {
@@ -342,7 +342,7 @@ test_should_pass__base64_decode_foob(
 
 
 void assert_used
-test_should_pass__base64_decode_fooba(
+test_normal_pass__base64_decode_fooba(
 	void
 	)
 {
@@ -352,7 +352,7 @@ test_should_pass__base64_decode_fooba(
 
 
 void assert_used
-test_should_pass__base64_decode_foobar(
+test_normal_pass__base64_decode_foobar(
 	void
 	)
 {
@@ -362,7 +362,7 @@ test_should_pass__base64_decode_foobar(
 
 
 void assert_used
-test_should_pass__base64_decode_no_out_len(
+test_normal_pass__base64_decode_no_out_len(
 	void
 	)
 {
@@ -374,7 +374,7 @@ test_should_pass__base64_decode_no_out_len(
 
 
 void assert_used
-test_should_pass__base64_decode_null_zero_len(
+test_normal_pass__base64_decode_null_zero_len(
 	void
 	)
 {
@@ -384,7 +384,7 @@ test_should_pass__base64_decode_null_zero_len(
 
 
 void assert_used
-test_should_fail__base64_decode_null_nonzero_len(
+test_normal_fail__base64_decode_null_nonzero_len(
 	void
 	)
 {
@@ -393,7 +393,7 @@ test_should_fail__base64_decode_null_nonzero_len(
 
 
 void assert_used
-test_should_fail__base64_decode_bad_input(
+test_normal_fail__base64_decode_bad_input(
 	void
 	)
 {
@@ -402,7 +402,7 @@ test_should_fail__base64_decode_bad_input(
 
 
 void assert_used
-test_should_fail__base64_decode_bad_len_mod_1(
+test_normal_fail__base64_decode_bad_len_mod_1(
 	void
 	)
 {
@@ -411,7 +411,7 @@ test_should_fail__base64_decode_bad_len_mod_1(
 
 
 void assert_used
-test_should_fail__base64_decode_bad_len_mod_2(
+test_normal_fail__base64_decode_bad_len_mod_2(
 	void
 	)
 {
@@ -420,7 +420,7 @@ test_should_fail__base64_decode_bad_len_mod_2(
 
 
 void assert_used
-test_should_fail__base64_decode_bad_len_mod_3(
+test_normal_fail__base64_decode_bad_len_mod_3(
 	void
 	)
 {

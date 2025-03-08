@@ -28,7 +28,7 @@
 
 
 void assert_used
-test_should_pass__event_target_init_free(
+test_normal_pass__event_target_init_free(
 	void
 	)
 {
@@ -39,7 +39,7 @@ test_should_pass__event_target_init_free(
 
 
 void assert_used
-test_should_fail__event_target_init_null(
+test_normal_fail__event_target_init_null(
 	void
 	)
 {
@@ -48,7 +48,7 @@ test_should_fail__event_target_init_null(
 
 
 void assert_used
-test_should_fail__event_target_free_null(
+test_normal_fail__event_target_free_null(
 	void
 	)
 {
@@ -57,7 +57,7 @@ test_should_fail__event_target_free_null(
 
 
 void assert_used
-test_should_fail__event_target_add_null_fn(
+test_normal_fail__event_target_add_null_fn(
 	void
 	)
 {
@@ -70,7 +70,7 @@ test_should_fail__event_target_add_null_fn(
 
 
 void assert_used
-test_should_pass__event_target_add_remove_listener(
+test_normal_pass__event_target_add_remove_listener(
 	void
 	)
 {
@@ -89,7 +89,7 @@ test_should_pass__event_target_add_remove_listener(
 
 
 void assert_used
-test_should_fail__event_target_free_while_non_empty(
+test_normal_fail__event_target_free_while_non_empty(
 	void
 	)
 {
@@ -109,7 +109,7 @@ test_should_fail__event_target_free_while_non_empty(
 
 
 void assert_used
-test_should_fail__event_target_add_null_target(
+test_normal_fail__event_target_add_null_target(
 	void
 	)
 {
@@ -122,7 +122,7 @@ test_should_fail__event_target_add_null_target(
 
 
 void assert_used
-test_should_fail__event_target_del_null_target(
+test_normal_fail__event_target_del_null_target(
 	void
 	)
 {
@@ -132,7 +132,7 @@ test_should_fail__event_target_del_null_target(
 
 
 void assert_used
-test_should_fail__event_target_del_null_listener(
+test_normal_fail__event_target_del_null_listener(
 	void
 	)
 {
@@ -145,7 +145,7 @@ test_should_fail__event_target_del_null_listener(
 
 
 void assert_used
-test_should_pass__event_target_fire_empty(
+test_normal_pass__event_target_fire_empty(
 	void
 	)
 {
@@ -167,7 +167,7 @@ event_listener_bool_fn(
 
 
 void assert_used
-test_should_pass__event_target_fire(
+test_normal_pass__event_target_fire(
 	void
 	)
 {
@@ -193,7 +193,7 @@ test_should_pass__event_target_fire(
 
 
 void assert_used
-test_should_pass__event_target_fire_once(
+test_normal_pass__event_target_fire_once(
 	void
 	)
 {
@@ -222,7 +222,7 @@ test_should_pass__event_target_fire_once(
 
 
 void assert_used
-test_should_pass__event_target_fire_on_removed_listener(
+test_normal_pass__event_target_fire_on_removed_listener(
 	void
 	)
 {
@@ -247,7 +247,7 @@ test_should_pass__event_target_fire_on_removed_listener(
 
 
 void assert_used
-test_should_pass__event_target_fire_on_removed_once_listener(
+test_normal_pass__event_target_fire_on_removed_once_listener(
 	void
 	)
 {
@@ -282,7 +282,7 @@ event_listener_remove_itself_fn(
 
 
 void assert_used
-test_should_pass__event_listener_remove_itself(
+test_normal_pass__event_listener_remove_itself(
 	void
 	)
 {
@@ -303,7 +303,7 @@ test_should_pass__event_listener_remove_itself(
 
 
 void assert_used
-test_should_fail__event_listener_remove_itself_twice(
+test_normal_fail__event_listener_remove_itself_twice(
 	void
 	)
 {
@@ -335,7 +335,7 @@ event_target_wait_thread_fn(
 
 
 void assert_used
-test_should_pass__event_target_wait(
+test_priority_pass__event_target_wait(
 	void
 	)
 {
@@ -367,7 +367,7 @@ test_should_pass__event_target_wait(
 
 
 void assert_used
-test_should_fail__event_target_wait_null(
+test_normal_fail__event_target_wait_null(
 	void
 	)
 {
@@ -376,7 +376,7 @@ test_should_fail__event_target_wait_null(
 
 
 void assert_used
-test_should_timeout__event_target_wait_timeout(
+test_normal_timeout__event_target_wait_timeout(
 	void
 	)
 {
