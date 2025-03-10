@@ -19,6 +19,7 @@
 #include <DiepDesktop/client/window/base.h>
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 #include <stdio.h>
 #include <stdatomic.h>
@@ -470,6 +471,55 @@ window_get_info(
 }
 
 
+const char* const*
+window_get_vulkan_extensions(
+	uint32_t* count
+	)
+{
+	assert_not_null(count);
+
+	return SDL_Vulkan_GetInstanceExtensions(count);
+}
+
+
+window_proc_addr_fn
+window_get_vulkan_proc_addr_fn(
+	void
+	)
+{
+	return SDL_Vulkan_GetVkGetInstanceProcAddr();
+}
+
+
+void
+window_init_vulkan_surface(
+	window_t* window,
+	void* instance,
+	void* surface
+	)
+{
+	assert_not_null(window);
+	assert_not_null(instance);
+	assert_not_null(surface);
+
+	bool status = SDL_Vulkan_CreateSurface(window->impl->sdl_window, instance, NULL, surface);
+	hard_assert_true(status, window_sdl_log_error());
+}
+
+
+void
+window_free_vulkan_surface(
+	void* instance,
+	void* surface
+	)
+{
+	assert_not_null(instance);
+	assert_not_null(surface);
+
+	SDL_Vulkan_DestroySurface(instance, surface, NULL);
+}
+
+
 private void
 window_process_event(
 	window_t* window,
@@ -905,13 +955,13 @@ window_manager_process_user_event(
 
 		ipair_t pos = {0};
 		status = SDL_GetWindowPosition(window->impl->sdl_window, &pos.x, &pos.y);
-		hard_assert_eq(status, true);
+		hard_assert_eq(status, true, window_sdl_log_error());
 
 		window->impl->info.extent.pos = (pair_t){{ pos.x, pos.y }};
 
 		ipair_t size = {0};
 		status = SDL_GetWindowSize(window->impl->sdl_window, &size.w, &size.h);
-		hard_assert_eq(status, true);
+		hard_assert_eq(status, true, window_sdl_log_error());
 
 		window->impl->info.extent.size = (pair_t){{ size.w, size.h }};
 

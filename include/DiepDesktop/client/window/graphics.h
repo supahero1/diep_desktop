@@ -16,14 +16,31 @@
 
 #pragma once
 
+#include <DiepDesktop/shared/color.h>
+#include <DiepDesktop/client/tex/base.h>
 #include <DiepDesktop/client/window/base.h>
 
+
+typedef struct graphics_draw_data
+{
+	pair_t       pos;
+	pair_t       size;
+	float        angle;
+	color_argb_t white_color;
+	float        white_depth;
+	color_argb_t black_color;
+	float        black_depth;
+	tex_t        tex;
+	pair_t       tex_scale;
+	pair_t       tex_offset;
+}
+graphics_draw_data_t;
 
 typedef struct graphics_impl graphics_impl_t;
 
 typedef struct graphics
 {
-	window_t* window;
+	graphics_impl_t* impl;
 
 	event_target_t draw_target;
 }
@@ -34,10 +51,4 @@ extern void
 graphics_init(
 	graphics_t* graphics,
 	window_t* window
-	);
-
-
-extern void
-graphics_free(
-	graphics_t* graphics
 	);

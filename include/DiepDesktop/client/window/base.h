@@ -496,3 +496,36 @@ window_get_info(
 	window_t* window,
 	window_info_t* info
 	);
+
+
+extern const char* const*
+window_get_vulkan_extensions(
+	uint32_t* count
+	);
+
+
+typedef void
+(*window_proc_addr_fn)(
+	void
+	);
+
+
+extern window_proc_addr_fn
+window_get_vulkan_proc_addr_fn(
+	void
+	);
+
+
+extern void
+window_init_vulkan_surface(
+	window_t* window,
+	void* instance,
+	void* surface
+	);
+
+
+extern void
+window_free_vulkan_surface(
+	void* instance,
+	void* surface
+	);

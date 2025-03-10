@@ -20,7 +20,7 @@
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/settings.h>
 #include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/client/window/base.h>
+#include <DiepDesktop/client/window/graphics.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +47,7 @@ struct app
 
 	window_manager_t manager;
 	window_t window;
+	graphics_t graphics;
 };
 
 
@@ -202,7 +203,7 @@ app_init(
 	};
 	app->window_fullscreen_listener = event_target_add(&app->window.fullscreen_target, fullscreen_data);
 
-	// ui
+	graphics_init(&app->graphics, &app->window);
 
 	return app;
 }

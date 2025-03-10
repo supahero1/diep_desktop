@@ -14,6 +14,7 @@
  *  limitations under the License.
  */
 
+#include <DiepDesktop/tests/base.h>
 #include <DiepDesktop/shared/str.h>
 #include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/alloc_ext.h>
@@ -78,7 +79,6 @@ test_say_common(
 
 
 void
-__attribute__((format(printf, 1, 2)))
 test_say(
 	const char* format,
 	...
@@ -92,7 +92,6 @@ test_say(
 
 
 void
-__attribute__((format(printf, 1, 2)))
 test_shout(
 	const char* format,
 	...
@@ -201,7 +200,6 @@ main(
 	)
 {
 	test_is_on_valgrind = RUNNING_ON_VALGRIND;
-	nice(5);
 
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
@@ -347,10 +345,7 @@ main(
 
 				if(pid == 0)
 				{
-					if(!priority)
-					{
-						nice(20);
-					}
+					nice(priority ? 5 : 20);
 
 					alarm(6);
 
