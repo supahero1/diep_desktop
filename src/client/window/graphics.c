@@ -232,3 +232,27 @@ graphics_init(
 
 	event_target_init(&graphics->draw_target);
 }
+
+
+static void
+graphics_resize_draw_data(
+	graphics_t* graphics,
+	uint32_t count
+	)
+{
+	uint32_t new_used = graphics->impl->draw_data_used;
+
+	if((new_used < (graphics->impl->draw_data_size >> 2)) || (new_used > graphics->impl->draw_data_size))
+	{
+		uint32_t new_size = (new_used << 1) | 1;
+
+		graphics->impl->draw_data_buffer = alloc_remalloc(
+			graphics->impl->draw_data_buffer,
+			sizeof(*graphics->impl->draw_data_buffer) * graphics->impl->draw_data_size,
+			sizeof(*graphics->impl->draw_data_buffer) * new_size
+			);
+		assert_not_null(graphics->impl->draw_data_buffer);
+
+		graphics->impl->draw_data_size = new_size;
+	}
+}

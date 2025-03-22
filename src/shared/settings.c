@@ -62,7 +62,7 @@ settings_for_each_free_fn(
 {
 	if(setting->type == SETTING_TYPE_STR)
 	{
-		str_free(&setting->value.str);
+		str_free(setting->value.str);
 	}
 
 	sync_mtx_free(&setting->mtx);
@@ -107,7 +107,7 @@ settings_for_each_sum_fn(
 	uint64_t* sum
 	)
 {
-	*sum += bit_buffer_len_str(name.len);
+	*sum += bit_buffer_len_str(name->len);
 	*sum += bit_buffer_len_bits_var(setting->type, SETTING_TYPE__BITS);
 
 
@@ -134,7 +134,7 @@ settings_for_each_sum_fn(
 
 	case SETTING_TYPE_STR:
 	{
-		*sum += bit_buffer_len_str(setting->value.str.len);
+		*sum += bit_buffer_len_str(setting->value.str->len);
 		break;
 	}
 
@@ -334,7 +334,7 @@ settings_load(
 	while(bit_buffer_available_bits(&buffer) >= min_len)
 	{
 		str_t name = bit_buffer_get_str_safe(&buffer, 127, &status);
-		if(!status || !name.str)
+		if(!status)
 		{
 			goto goto_failure_compressed;
 		}
@@ -346,8 +346,8 @@ settings_load(
 		}
 
 
-		setting_t* setting = hash_table_get(&settings->table, name.str);
-		str_free(&name);
+		setting_t* setting = hash_table_get(&settings->table, name->str);
+		str_free(name);
 		if(!setting)
 		{
 			goto goto_failure_compressed;
@@ -400,7 +400,7 @@ settings_load(
 		case SETTING_TYPE_STR:
 		{
 			str_t str = bit_buffer_get_str_safe(&buffer, 16383, &status);
-			if(!status || !str.str)
+			if(!status)
 			{
 				goto goto_failure_compressed;
 			}
@@ -591,7 +591,7 @@ settings_add_str(
 	assert_not_null(name);
 	assert_false(settings->sealed);
 
-	assert_le(value.len, max_len);
+	assert_le(value->len, max_len);
 
 	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
 	assert_not_null(setting_ptr);
@@ -802,9 +802,9 @@ settings_modify_str(
 	assert_not_null(settings);
 	assert_not_null(setting);
 
-	if(value.len > setting->constraint.str.max_len)
+	if(value->len > setting->constraint.str.max_len)
 	{
-		str_resize(&value, setting->constraint.str.max_len);
+		str_resize(value, setting->constraint.str.max_len);
 	}
 
 	setting_value_t new_value =

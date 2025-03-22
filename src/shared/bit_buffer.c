@@ -892,10 +892,10 @@ bit_buffer_set_str(
 	)
 {
 	assert_not_null(bit_buffer);
-	assert_ptr(str.str, str.len);
+	assert_not_null(str);
 
-	bit_buffer_set_bits_var(bit_buffer, str.len, 6);
-	bit_buffer_set_bytes(bit_buffer, str.str, str.len);
+	bit_buffer_set_bits_var(bit_buffer, str->len, 6);
+	bit_buffer_set_bytes(bit_buffer, str->str, str->len);
 }
 
 
@@ -914,12 +914,7 @@ bit_buffer_get_str(
 	bit_buffer_get_bytes(bit_buffer, str, len);
 	str[len] = '\0';
 
-	return
-	(str_t)
-	{
-		.str = str,
-		.len = len
-	};
+	return str_init_move_len(str, len);
 }
 
 
@@ -940,7 +935,7 @@ bit_buffer_get_str_safe(
 	}
 	if(!*status)
 	{
-		return (str_t){0};
+		return NULL;
 	}
 
 	uint8_t* str = alloc_malloc(len + 1);
@@ -950,17 +945,12 @@ bit_buffer_get_str_safe(
 	if(!*status)
 	{
 		alloc_free(str, len + 1);
-		return (str_t){0};
+		return NULL;
 	}
 
 	str[len] = '\0';
 
-	return
-	(str_t)
-	{
-		.str = str,
-		.len = len
-	};
+	return str_init_move_len(str, len);
 }
 
 

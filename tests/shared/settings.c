@@ -443,8 +443,7 @@ test_normal_fail__settings_add_str_null_settings(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
 
 	settings_add_str(NULL, "0", str, 0, NULL);
 }
@@ -458,8 +457,7 @@ test_normal_fail__settings_add_str_null_name(
 	settings_t settings;
 	settings_init(&settings, TEST_FILENAME, NULL);
 
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
 
 	settings_add_str(&settings, NULL, str, 0, NULL);
 }
@@ -470,8 +468,7 @@ test_normal_fail__settings_add_str_null(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
 
 	settings_add_str(NULL, NULL, str, 0, NULL);
 }
@@ -596,8 +593,7 @@ test_normal_fail__settings_modify_str_null_settings(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
 
 	settings_modify_str(NULL, TEST_PTR, str);
 }
@@ -611,8 +607,7 @@ test_normal_fail__settings_modify_str_null_name(
 	settings_t settings;
 	settings_init(&settings, TEST_FILENAME, NULL);
 
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
 
 	settings_modify_str(&settings, NULL, str);
 }
@@ -623,8 +618,7 @@ test_normal_fail__settings_modify_str_null(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
 
 	settings_modify_str(NULL, NULL, str);
 }

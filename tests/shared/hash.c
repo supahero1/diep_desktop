@@ -78,8 +78,8 @@ hash_table_for_each_fn(
 	for_each_data_t** ptr = data;
 	for_each_data_t* cur = *ptr;
 
-	cur->key = (void*) key.str;
-	cur->len = key.len;
+	cur->key = key->str;
+	cur->len = key->len;
 	cur->value = value;
 
 	*ptr = cur + 1;

@@ -157,38 +157,38 @@ wait_and_run_tests(
 
 	if(success)
 	{
-		test_say("%-50s passed", (char*) test.name.str);
+		test_say("%-50s passed", (char*) test.name->str);
 		++tests_passed;
 	}
 	else
 	{
-		test_shout("\033[31m%-50s FAILED !!!\033[39m", (char*) test.name.str);
+		test_shout("\033[31m%-50s FAILED !!!\033[39m", (char*) test.name->str);
 
 		if(WIFSIGNALED(status))
 		{
 			test_shout("\033[31m%-50s was aborted with signal %s\033[39m",
-				(char*) test.name.str, sigabbrev_np(WTERMSIG(status)));
+				(char*) test.name->str, sigabbrev_np(WTERMSIG(status)));
 		}
 		else if(WIFEXITED(status))
 		{
 			test_shout("\033[31m%-50s exited with status %d\033[39m",
-				(char*) test.name.str, WEXITSTATUS(status));
+				(char*) test.name->str, WEXITSTATUS(status));
 		}
 		else if(WIFSTOPPED(status))
 		{
 			test_shout("\033[31m%-50s was stopped with signal %s\033[39m",
-				(char*) test.name.str, sigabbrev_np(WSTOPSIG(status)));
+				(char*) test.name->str, sigabbrev_np(WSTOPSIG(status)));
 		}
 		else
 		{
 			test_shout("\033[31m%-50s returned unknown status %d\033[39m",
-				(char*) test.name.str, status);
+				(char*) test.name->str, status);
 		}
 
 		++tests_failed;
 	}
 
-	str_free(&test.name);
+	str_free(test.name);
 	++tests_ran;
 }
 
@@ -364,8 +364,7 @@ main(
 					);
 				assert_not_null(tests);
 
-				str_t name_str;
-				str_init_copy_cstr(&name_str, name);
+				str_t name_str = str_init_copy_cstr(name);
 
 				tests[tests_count++] =
 				(test_t)

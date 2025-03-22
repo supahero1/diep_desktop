@@ -345,24 +345,19 @@ time_timers_resize_##names (																	\
 	)																							\
 {																								\
 	uint32_t new_used = timers-> names##_used + count;											\
-	uint32_t new_size;																			\
 																								\
 	if((new_used < (timers-> names##_size >> 2)) || (new_used > timers-> names##_size ))		\
 	{																							\
-		new_size = (new_used << 1) | 1;															\
-	}																							\
-	else																						\
-	{																							\
-		return;																					\
-	}																							\
+		uint32_t new_size = (new_used << 1) | 1;												\
 																								\
-	timers-> names = alloc_remalloc(															\
-		timers-> names ,																		\
-		sizeof(* timers-> names ) * timers-> names##_size ,										\
-		sizeof(* timers-> names ) * new_size);													\
-	assert_not_null(timers-> names);															\
+		timers-> names = alloc_remalloc(														\
+			timers-> names ,																	\
+			sizeof(* timers-> names ) * timers-> names##_size ,									\
+			sizeof(* timers-> names ) * new_size);												\
+		assert_not_null(timers-> names);														\
 																								\
-	timers-> names##_size = new_size;															\
+		timers-> names##_size = new_size;														\
+	}																							\
 }																								\
 																								\
 																								\

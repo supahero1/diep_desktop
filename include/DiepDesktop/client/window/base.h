@@ -371,7 +371,7 @@ struct window
 	window_impl_t* impl;
 
 	event_target_t init_target;
-	event_target_t free_target;
+	event_target_t free_target; // todo implement a function for these for everything, keep impl private
 	event_target_t move_target;
 	event_target_t resize_target;
 	event_target_t focus_target;

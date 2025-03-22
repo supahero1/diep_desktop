@@ -324,26 +324,24 @@ test_normal_pass__bit_buffer_set_get_bytes(
 		bit_buffer_reset(&buffer);
 		bit_buffer_set_bits(&buffer, 0, i);
 
-		str_t str = { (void*) str_data, strlen(str_data) };
+		str_t str = str_init_copy_cstr(str_data);
 		bit_buffer_set_str(&buffer, str);
 
 		assert_eq(bit_buffer_len_bytes(0), 0);
-		assert_eq(bit_buffer_len_str(str.len), 7 + str.len * 8);
+		assert_eq(bit_buffer_len_str(str->len), 7 + str->len * 8);
 
-		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + str.len * 8);
+		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + str->len * 8);
 		bit_buffer_reset(&buffer);
 
 		assert_eq(bit_buffer_get_bits(&buffer, i), 0);
 
 		str_t str_out = bit_buffer_get_str(&buffer);
-		assert_not_null(str_out.str);
-		assert_eq(str_out.len, str.len);
+		assert_not_null(str_out->str);
 
-		assert_true(str_cmp(&str, &str_out));
+		assert_true(str_cmp(str, str_out));
+		str_free(str_out);
 
-		str_free(&str_out);
-
-		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + str.len * 8);
+		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + str->len * 8);
 	}
 }
 
@@ -891,18 +889,8 @@ test_normal_fail__bit_buffer_set_str_null_buffer(
 	void
 	)
 {
-	str_t str = { (void*) "hello", 5 };
+	str_t str = str_init_copy_len("hello", 5);
 	bit_buffer_set_str(NULL, str);
-}
-
-
-void assert_used
-test_normal_fail__bit_buffer_set_str_null_str_non_zero_len(
-	void
-	)
-{
-	bit_buffer_t bit_buffer;
-	bit_buffer_set_str(&bit_buffer, (str_t){ NULL, 5 });
 }
 
 

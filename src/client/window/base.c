@@ -225,16 +225,19 @@ window_free(
 {
 	assert_not_null(window);
 
+	window_impl_t* impl = window->impl;
+	assert_not_null(impl);
+
 	window_free_event_data_t event_data =
 	{
 		.window = window
 	};
 	event_target_fire(&window->free_target, &event_data);
 
-	SDL_DestroyWindow(window->impl->sdl_window);
-	SDL_DestroyProperties(window->impl->sdl_props);
+	SDL_DestroyWindow(impl->sdl_window);
+	SDL_DestroyProperties(impl->sdl_props);
 
-	alloc_free(window->impl, sizeof(*window->impl));
+	alloc_free(impl, sizeof(*impl));
 }
 
 
@@ -267,7 +270,10 @@ window_set(
 	assert_not_null(window);
 	assert_not_null(name);
 
-	bool status = SDL_SetPointerProperty(window->impl->props, name, window);
+	window_impl_t* impl = window->impl;
+	assert_not_null(impl);
+
+	bool status = SDL_SetPointerProperty(impl->props, name, window);
 	hard_assert_true(status, window_sdl_log_error());
 }
 
@@ -281,7 +287,10 @@ window_get(
 	assert_not_null(window);
 	assert_not_null(name);
 
-	return SDL_GetPointerProperty(window->impl->props, name, NULL);
+	window_impl_t* impl = window->impl;
+	assert_not_null(impl);
+
+	return SDL_GetPointerProperty(impl->props, name, NULL);
 }
 
 
@@ -294,7 +303,10 @@ window_push_event(
 {
 	assert_not_null(window);
 
-	window_manager_push_event(window->impl->manager, type, window, data);
+	window_impl_t* impl = window->impl;
+	assert_not_null(impl);
+
+	window_manager_push_event(impl->manager, type, window, data);
 }
 
 
@@ -465,9 +477,12 @@ window_get_info(
 	assert_not_null(window);
 	assert_not_null(info);
 
-	sync_mtx_lock(&window->impl->mtx);
-		*info = window->impl->info;
-	sync_mtx_unlock(&window->impl->mtx);
+	window_impl_t* impl = window->impl;
+	assert_not_null(impl);
+
+	sync_mtx_lock(&impl->mtx);
+		*info = impl->info;
+	sync_mtx_unlock(&impl->mtx);
 }
 
 
@@ -502,7 +517,10 @@ window_init_vulkan_surface(
 	assert_not_null(instance);
 	assert_not_null(surface);
 
-	bool status = SDL_Vulkan_CreateSurface(window->impl->sdl_window, instance, NULL, surface);
+	window_impl_t* impl = window->impl;
+	assert_not_null(impl);
+
+	bool status = SDL_Vulkan_CreateSurface(impl->sdl_window, instance, NULL, surface);
 	hard_assert_true(status, window_sdl_log_error());
 }
 
@@ -526,6 +544,10 @@ window_process_event(
 	SDL_Event* event
 	)
 {
+	window_impl_t* impl = window->impl;
+	assert_not_null(impl);
+
+
 	switch(event->type)
 	{
 
@@ -534,13 +556,13 @@ window_process_event(
 		window_move_event_data_t event_data =
 		{
 			.window = window,
-			.old_pos = window->impl->info.extent.pos,
+			.old_pos = impl->info.extent.pos,
 			.new_pos = {{ event->window.data1, event->window.data2 }}
 		};
 
-		sync_mtx_lock(&window->impl->mtx);
-			window->impl->info.extent.pos = event_data.new_pos;
-		sync_mtx_unlock(&window->impl->mtx);
+		sync_mtx_lock(&impl->mtx);
+			impl->info.extent.pos = event_data.new_pos;
+		sync_mtx_unlock(&impl->mtx);
 
 		event_target_fire(&window->move_target, &event_data);
 
@@ -552,13 +574,13 @@ window_process_event(
 		window_resize_event_data_t event_data =
 		{
 			.window = window,
-			.old_size = window->impl->info.extent.size,
+			.old_size = impl->info.extent.size,
 			.new_size = {{ event->window.data1, event->window.data2 }}
 		};
 
-		sync_mtx_lock(&window->impl->mtx);
-			window->impl->info.extent.size = event_data.new_size;
-		sync_mtx_unlock(&window->impl->mtx);
+		sync_mtx_lock(&impl->mtx);
+			impl->info.extent.size = event_data.new_size;
+		sync_mtx_unlock(&impl->mtx);
 
 		event_target_fire(&window->resize_target, &event_data);
 
@@ -678,13 +700,13 @@ window_process_event(
 		window_mouse_move_event_data_t event_data =
 		{
 			.window = window,
-			.old_pos = window->impl->info.mouse,
+			.old_pos = impl->info.mouse,
 			.new_pos = {{ event->motion.x, event->motion.y }}
 		};
 
-		sync_mtx_lock(&window->impl->mtx);
-			window->impl->info.mouse = event_data.new_pos;
-		sync_mtx_unlock(&window->impl->mtx);
+		sync_mtx_lock(&impl->mtx);
+			impl->info.mouse = event_data.new_pos;
+		sync_mtx_unlock(&impl->mtx);
 
 		event_target_fire(&window->mouse_move_target, &event_data);
 
@@ -734,24 +756,26 @@ window_manager_init(
 	manager->impl = alloc_malloc(sizeof(*manager->impl));
 	assert_not_null(manager->impl);
 
-	atomic_init(&manager->impl->running, true);
+	window_manager_impl_t* impl = manager->impl;
 
-	manager->impl->window_head = NULL;
-	manager->impl->window_count = 0;
+	atomic_init(&impl->running, true);
+
+	impl->window_head = NULL;
+	impl->window_count = 0;
 
 	SDL_Cursor* cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
 	hard_assert_not_null(cursor, window_sdl_log_error());
-	manager->impl->cursors[WINDOW_CURSOR_DEFAULT] = cursor;
+	impl->cursors[WINDOW_CURSOR_DEFAULT] = cursor;
 
 	cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
 	hard_assert_not_null(cursor, window_sdl_log_error());
-	manager->impl->cursors[WINDOW_CURSOR_TYPING] = cursor;
+	impl->cursors[WINDOW_CURSOR_TYPING] = cursor;
 
 	cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
 	hard_assert_not_null(cursor, window_sdl_log_error());
-	manager->impl->cursors[WINDOW_CURSOR_POINTING] = cursor;
+	impl->cursors[WINDOW_CURSOR_POINTING] = cursor;
 
-	manager->impl->current_cursor = WINDOW_CURSOR_DEFAULT;
+	impl->current_cursor = WINDOW_CURSOR_DEFAULT;
 }
 
 
@@ -762,14 +786,17 @@ window_manager_free(
 {
 	assert_not_null(manager);
 
-	SDL_DestroyCursor(manager->impl->cursors[WINDOW_CURSOR_POINTING]);
-	SDL_DestroyCursor(manager->impl->cursors[WINDOW_CURSOR_TYPING]);
-	SDL_DestroyCursor(manager->impl->cursors[WINDOW_CURSOR_DEFAULT]);
+	window_manager_impl_t* impl = manager->impl;
+	assert_not_null(impl);
 
-	assert_null(manager->impl->window_head);
-	assert_eq(manager->impl->window_count, 0);
+	SDL_DestroyCursor(impl->cursors[WINDOW_CURSOR_POINTING]);
+	SDL_DestroyCursor(impl->cursors[WINDOW_CURSOR_TYPING]);
+	SDL_DestroyCursor(impl->cursors[WINDOW_CURSOR_DEFAULT]);
 
-	alloc_free(manager->impl, sizeof(*manager->impl));
+	assert_null(impl->window_head);
+	assert_eq(impl->window_count, 0);
+
+	alloc_free(impl, sizeof(*impl));
 }
 
 
@@ -785,23 +812,28 @@ window_manager_add(
 	assert_not_null(window);
 	assert_not_null(title);
 
-	window->impl->manager = manager;
+	window_impl_t* win_impl = window->impl;
+	assert_not_null(win_impl);
 
-	window->impl->next = manager->impl->window_head;
-	window->impl->prev = NULL;
-	if(manager->impl->window_head)
+	window_manager_impl_t* man_impl = manager->impl;
+	assert_not_null(man_impl);
+
+	win_impl->manager = manager;
+
+	win_impl->next = man_impl->window_head;
+	win_impl->prev = NULL;
+	if(man_impl->window_head)
 	{
-		manager->impl->window_head->impl->prev = window;
+		man_impl->window_head->impl->prev = window;
 	}
 
-	manager->impl->window_head = window;
-	++manager->impl->window_count;
+	man_impl->window_head = window;
+	++man_impl->window_count;
 
 	window_user_event_window_init_data_t* data = alloc_malloc(sizeof(*data));
 	assert_ptr(data, sizeof(*data));
 
-	str_t title_str;
-	str_init_copy_cstr(&title_str, title);
+	str_t title_str = str_init_copy_cstr(title);
 
 	window_history_t* history_copy;
 	if(history)
@@ -857,7 +889,10 @@ window_manager_is_running(
 {
 	assert_not_null(manager);
 
-	return atomic_load_explicit(&manager->impl->running, memory_order_acquire);
+	window_manager_impl_t* impl = manager->impl;
+	assert_not_null(impl);
+
+	return atomic_load_explicit(&impl->running, memory_order_acquire);
 }
 
 
@@ -868,7 +903,10 @@ window_manager_stop_running(
 {
 	assert_not_null(manager);
 
-	atomic_store_explicit(&manager->impl->running, false, memory_order_release);
+	window_manager_impl_t* impl = manager->impl;
+	assert_not_null(impl);
+
+	atomic_store_explicit(&impl->running, false, memory_order_release);
 }
 
 
@@ -878,8 +916,14 @@ window_manager_process_user_event(
 	SDL_Event* event
 	)
 {
+	window_manager_impl_t* man_impl = manager->impl;
+	assert_not_null(man_impl);
+
 	window_t* window = event->user.data1;
 	void* event_data = event->user.data2;
+
+	window_impl_t* win_impl = window->impl;
+	assert_not_null(win_impl);
 
 
 	switch(event->user.code)
@@ -892,7 +936,7 @@ window_manager_process_user_event(
 		uint32_t sdl_props = SDL_CreateProperties();
 		hard_assert_neq(sdl_props, 0, window_sdl_log_error());
 
-		window->impl->sdl_props = sdl_props;
+		win_impl->sdl_props = sdl_props;
 
 		bool status = SDL_SetBooleanProperty(sdl_props,
 			SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
@@ -932,7 +976,7 @@ window_manager_process_user_event(
 		hard_assert_true(status, window_sdl_log_error());
 
 		status = SDL_SetStringProperty(sdl_props,
-			SDL_PROP_WINDOW_CREATE_TITLE_STRING, data->title.str);
+			SDL_PROP_WINDOW_CREATE_TITLE_STRING, data->title->str);
 		hard_assert_true(status, window_sdl_log_error());
 
 		status = SDL_SetBooleanProperty(sdl_props,
@@ -940,34 +984,34 @@ window_manager_process_user_event(
 		hard_assert_true(status, window_sdl_log_error());
 
 
-		window->impl->sdl_window = SDL_CreateWindowWithProperties(sdl_props);
-		hard_assert_not_null(window->impl->sdl_window, window_sdl_log_error());
+		win_impl->sdl_window = SDL_CreateWindowWithProperties(sdl_props);
+		hard_assert_not_null(win_impl->sdl_window, window_sdl_log_error());
 
-		uint32_t props = SDL_GetWindowProperties(window->impl->sdl_window);
+		uint32_t props = SDL_GetWindowProperties(win_impl->sdl_window);
 		hard_assert_neq(props, 0, window_sdl_log_error());
 
-		window->impl->props = props;
+		win_impl->props = props;
 		window_set(window, "WINDOW_PTR", window);
 
-		status = SDL_SetWindowMinimumSize(window->impl->sdl_window, 480, 270);
+		status = SDL_SetWindowMinimumSize(win_impl->sdl_window, 480, 270);
 		hard_assert_true(status, window_sdl_log_error());
 
 
 		ipair_t pos = {0};
-		status = SDL_GetWindowPosition(window->impl->sdl_window, &pos.x, &pos.y);
+		status = SDL_GetWindowPosition(win_impl->sdl_window, &pos.x, &pos.y);
 		hard_assert_eq(status, true, window_sdl_log_error());
 
-		window->impl->info.extent.pos = (pair_t){{ pos.x, pos.y }};
+		win_impl->info.extent.pos = (pair_t){{ pos.x, pos.y }};
 
 		ipair_t size = {0};
-		status = SDL_GetWindowSize(window->impl->sdl_window, &size.w, &size.h);
+		status = SDL_GetWindowSize(win_impl->sdl_window, &size.w, &size.h);
 		hard_assert_eq(status, true, window_sdl_log_error());
 
-		window->impl->info.extent.size = (pair_t){{ size.w, size.h }};
+		win_impl->info.extent.size = (pair_t){{ size.w, size.h }};
 
-		window->impl->info.mouse = (pair_t){{ 0, 0 }};
+		win_impl->info.mouse = (pair_t){{ 0, 0 }};
 
-		window->impl->info.fullscreen = false;
+		win_impl->info.fullscreen = false;
 
 		window_init_event_data_t event_data =
 		{
@@ -976,7 +1020,7 @@ window_manager_process_user_event(
 		event_target_fire(&window->init_target, &event_data);
 
 		alloc_free(data->history, sizeof(*data->history));
-		str_free(&data->title);
+		str_free(data->title);
 		alloc_free(data, sizeof(*data));
 
 		break;
@@ -986,21 +1030,21 @@ window_manager_process_user_event(
 	{
 		window_user_event_window_free_data_t* data = event_data;
 
-		if(window->impl->prev)
+		if(win_impl->prev)
 		{
-			window->impl->prev->impl->next = window->impl->next;
+			win_impl->prev->impl->next = win_impl->next;
 		}
 		else
 		{
-			manager->impl->window_head = window->impl->next;
+			manager->impl->window_head = win_impl->next;
 		}
 
-		if(window->impl->next)
+		if(win_impl->next)
 		{
-			window->impl->next->impl->prev = window->impl->prev;
+			win_impl->next->impl->prev = win_impl->prev;
 		}
 
-		if(--manager->impl->window_count == 0)
+		if(--man_impl->window_count == 0)
 		{
 			window_manager_stop_running(manager);
 		}
@@ -1034,17 +1078,17 @@ window_manager_process_user_event(
 	{
 		window_user_event_window_fullscreen_data_t* data = event_data;
 
-		sync_mtx_lock(&window->impl->mtx);
-			window->impl->info.fullscreen = !window->impl->info.fullscreen;
-		sync_mtx_unlock(&window->impl->mtx);
+		sync_mtx_lock(&win_impl->mtx);
+		win_impl->info.fullscreen = !win_impl->info.fullscreen;
+		sync_mtx_unlock(&win_impl->mtx);
 
-		if(window->impl->info.fullscreen)
+		if(win_impl->info.fullscreen)
 		{
 			ipair_t old_size;
-			bool status = SDL_GetWindowSize(window->impl->sdl_window, &old_size.w, &old_size.h);
+			bool status = SDL_GetWindowSize(win_impl->sdl_window, &old_size.w, &old_size.h);
 			hard_assert_true(status, window_sdl_log_error());
 
-			window->impl->info.old_extent.size =
+			win_impl->info.old_extent.size =
 			(pair_t)
 			{
 				.w = old_size.w,
@@ -1053,10 +1097,10 @@ window_manager_process_user_event(
 
 
 			ipair_t old_pos;
-			status = SDL_GetWindowPosition(window->impl->sdl_window, &old_pos.x, &old_pos.y);
+			status = SDL_GetWindowPosition(win_impl->sdl_window, &old_pos.x, &old_pos.y);
 			hard_assert_true(status, window_sdl_log_error());
 
-			window->impl->info.old_extent.pos =
+			win_impl->info.old_extent.pos =
 			(pair_t)
 			{
 				.x = old_pos.x,
@@ -1064,27 +1108,27 @@ window_manager_process_user_event(
 			};
 
 
-			status = SDL_SetWindowFullscreen(window->impl->sdl_window, true);
+			status = SDL_SetWindowFullscreen(win_impl->sdl_window, true);
 			hard_assert_true(status, window_sdl_log_error());
 		}
 		else
 		{
-			bool status = SDL_SetWindowFullscreen(window->impl->sdl_window, false);
+			bool status = SDL_SetWindowFullscreen(win_impl->sdl_window, false);
 			hard_assert_true(status, window_sdl_log_error());
 
-			status = SDL_SetWindowSize(window->impl->sdl_window,
-				window->impl->info.old_extent.size.w, window->impl->info.old_extent.size.h);
+			status = SDL_SetWindowSize(win_impl->sdl_window,
+				win_impl->info.old_extent.size.w, win_impl->info.old_extent.size.h);
 			hard_assert_true(status, window_sdl_log_error());
 
-			status = SDL_SetWindowPosition(window->impl->sdl_window,
-				window->impl->info.old_extent.pos.x, window->impl->info.old_extent.pos.y);
+			status = SDL_SetWindowPosition(win_impl->sdl_window,
+				win_impl->info.old_extent.pos.x, win_impl->info.old_extent.pos.y);
 			hard_assert_true(status, window_sdl_log_error());
 		}
 
 		window_fullscreen_event_data_t event_data =
 		{
 			.window = window,
-			.fullscreen = window->impl->info.fullscreen
+			.fullscreen = win_impl->info.fullscreen
 		};
 		event_target_fire(&window->fullscreen_target, &event_data);
 
@@ -1099,10 +1143,10 @@ window_manager_process_user_event(
 		assert_ge(data->cursor, 0);
 		assert_lt(data->cursor, WINDOW_CURSOR__COUNT);
 
-		if(manager->impl->current_cursor != data->cursor)
+		if(man_impl->current_cursor != data->cursor)
 		{
-			manager->impl->current_cursor = data->cursor;
-			SDL_SetCursor(manager->impl->cursors[data->cursor]);
+			man_impl->current_cursor = data->cursor;
+			SDL_SetCursor(man_impl->cursors[data->cursor]);
 		}
 
 		alloc_free(data, sizeof(*data));
@@ -1114,7 +1158,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_show_window_data_t* data = event_data;
 
-		bool status = SDL_ShowWindow(window->impl->sdl_window);
+		bool status = SDL_ShowWindow(win_impl->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1126,7 +1170,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_hide_window_data_t* data = event_data;
 
-		bool status = SDL_HideWindow(window->impl->sdl_window);
+		bool status = SDL_HideWindow(win_impl->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1138,7 +1182,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_start_typing_data_t* data = event_data;
 
-		bool status = SDL_StartTextInput(window->impl->sdl_window);
+		bool status = SDL_StartTextInput(win_impl->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1150,7 +1194,7 @@ window_manager_process_user_event(
 	{
 		window_user_event_stop_typing_data_t* data = event_data;
 
-		bool status = SDL_StopTextInput(window->impl->sdl_window);
+		bool status = SDL_StopTextInput(win_impl->sdl_window);
 		hard_assert_true(status, window_sdl_log_error());
 
 		alloc_free(data, sizeof(*data));
@@ -1269,6 +1313,9 @@ window_manager_run(
 {
 	assert_not_null(manager);
 
+	window_manager_impl_t* impl = manager->impl;
+	assert_not_null(impl);
+
 	while(window_manager_is_running(manager))
 	{
 		SDL_Event event;
@@ -1284,7 +1331,7 @@ window_manager_run(
 		}
 	}
 
-	window_t* window = manager->impl->window_head;
+	window_t* window = impl->window_head;
 	while(window)
 	{
 		window_t* next = window->impl->next;
@@ -1292,6 +1339,6 @@ window_manager_run(
 		window = next;
 	}
 
-	manager->impl->window_head = NULL;
-	manager->impl->window_count = 0;
+	impl->window_head = NULL;
+	impl->window_count = 0;
 }

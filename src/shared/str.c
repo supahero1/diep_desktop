@@ -21,137 +21,122 @@
 #include <string.h>
 
 
-void
+str_t
 str_init(
-	str_t* str
+	void
 	)
 {
+	str_t str = alloc_malloc(sizeof(*str));
 	assert_not_null(str);
 
 	str->str = NULL;
 	str->len = 0;
+
+	return str;
 }
 
 
-void
+str_t
 str_init_copy_cstr(
-	str_t* str,
 	const void* cstr
 	)
 {
-	assert_not_null(str);
 	assert_not_null(cstr);
 
-	str_t other =
-	{
-		.str = (void*) cstr,
-		.len = strlen((void*) cstr)
-	};
-	str_init_copy(str, &other);
+	return str_init_copy(&(
+		(struct str)
+		{
+			.str = (void*) cstr,
+			.len = strlen(cstr)
+		}
+		));
 }
 
 
-void
+str_t
 str_init_move_cstr(
-	str_t* str,
 	void* cstr
 	)
 {
-	assert_not_null(str);
 	assert_not_null(cstr);
 
-	str_t other =
-	{
-		.str = cstr,
-		.len = strlen((void*) cstr)
-	};
-	str_init_move(str, &other);
+	return str_init_move(&(
+		(struct str)
+		{
+			.str = cstr,
+			.len = strlen(cstr)
+		}
+		));
 }
 
 
-void
+str_t
 str_init_copy_len(
-	str_t* str,
 	const void* cstr,
 	uint64_t len
 	)
 {
-	assert_not_null(str);
 	assert_ptr(cstr, len);
 
-	str_t other =
-	{
-		.str = (void*) cstr,
-		.len = len
-	};
-	str_init_copy(str, &other);
+	return str_init_copy(&(
+		(struct str)
+		{
+			.str = (void*) cstr,
+			.len = len
+		}
+		));
 }
 
 
-void
+str_t
 str_init_move_len(
-	str_t* str,
 	void* cstr,
 	uint64_t len
 	)
 {
-	assert_not_null(str);
 	assert_ptr(cstr, len);
 
-	str_t other =
-	{
-		.str = cstr,
-		.len = len
-	};
-	str_init_move(str, &other);
+	return str_init_move(&(
+		(struct str)
+		{
+			.str = cstr,
+			.len = len
+		}
+		));
 }
 
 
-void
+str_t
 str_init_copy(
-	str_t* str,
-	const str_t* other
+	const str_t other
 	)
 {
-	assert_not_null(str);
 	assert_not_null(other);
 	assert_ptr(other->str, other->len);
 
-	if(!other->str)
-	{
-		str_init(str);
-	}
-	else
-	{
-		str->len = other->len;
-		str->str = alloc_malloc(str->len + 1);
-		assert_not_null(str->str);
-
-		(void) memcpy(str->str, other->str, str->len + 1);
-	}
+	str_t str = str_init();
+	str_set_copy(str, other);
+	return str;
 }
 
 
-void
+str_t
 str_init_move(
-	str_t* str,
-	str_t* other
+	str_t other
 	)
 {
-	assert_not_null(str);
 	assert_not_null(other);
 	assert_ptr(other->str, other->len);
 
-	str->len = other->len;
-	str->str = other->str;
-
-	str_init(other);
+	str_t str = str_init();
+	str_set_move(str, other);
+	return str;
 }
 
 
-void
-str_free(
-	str_t* str
+private void
+str_free_str(
+	str_t str
 	)
 {
 	assert_not_null(str);
@@ -168,18 +153,38 @@ str_free(
 
 
 void
-str_clear(
-	str_t* str
+str_free(
+	str_t str
 	)
 {
-	str_free(str);
-	str_init(str);
+	if(!str)
+	{
+		return;
+	}
+
+	str_free_str(str);
+
+	alloc_free(str, sizeof(*str));
+}
+
+
+void
+str_clear(
+	str_t str
+	)
+{
+	assert_not_null(str);
+
+	str_free_str(str);
+
+	str->str = NULL;
+	str->len = 0;
 }
 
 
 bool
 str_is_empty(
-	const str_t* str
+	const str_t str
 	)
 {
 	assert_not_null(str);
@@ -195,75 +200,130 @@ str_is_empty(
 
 void
 str_set_copy_cstr(
-	str_t* str,
+	str_t str,
 	const void* cstr
 	)
 {
-	str_free(str);
-	str_init_copy_cstr(str, cstr);
+	assert_not_null(str);
+	assert_not_null(cstr);
+
+	str_clear(str);
+	str_set_copy(str, &(
+		(struct str)
+		{
+			.str = (void*) cstr,
+			.len = strlen(cstr)
+		}
+		));
 }
 
 
 void
 str_set_move_cstr(
-	str_t* str,
+	str_t str,
 	void* cstr
 	)
 {
-	str_free(str);
-	str_init_move_cstr(str, cstr);
+	assert_not_null(str);
+	assert_not_null(cstr);
+
+	str_clear(str);
+	str_set_move(str, &(
+		(struct str)
+		{
+			.str = cstr,
+			.len = strlen(cstr)
+		}
+		));
 }
 
 
 void
 str_set_copy_len(
-	str_t* str,
+	str_t str,
 	const void* cstr,
 	uint64_t len
 	)
 {
-	str_free(str);
-	str_init_copy_len(str, cstr, len);
+	assert_not_null(str);
+	assert_ptr(cstr, len);
+
+	str_clear(str);
+	str_set_copy(str, &(
+		(struct str)
+		{
+			.str = (void*) cstr,
+			.len = len
+		}
+		));
 }
 
 
 void
 str_set_move_len(
-	str_t* str,
+	str_t str,
 	void* cstr,
 	uint64_t len
 	)
 {
-	str_free(str);
-	str_init_move_len(str, cstr, len);
+	assert_not_null(str);
+	assert_ptr(cstr, len);
+
+	str_clear(str);
+	str_set_move(str, &(
+		(struct str)
+		{
+			.str = cstr,
+			.len = len
+		}
+		));
 }
 
 
 void
 str_set_copy(
-	str_t* str,
-	const str_t* other
+	str_t str,
+	const str_t other
 	)
 {
-	str_free(str);
-	str_init_copy(str, other);
+	assert_not_null(str);
+	assert_not_null(other);
+
+	str_clear(str);
+
+	if(other->str)
+	{
+		str->len = other->len;
+		str->str = alloc_malloc(str->len + 1);
+		assert_not_null(str->str);
+
+		(void) memcpy(str->str, other->str, str->len + 1);
+	}
 }
 
 
 void
 str_set_move(
-	str_t* str,
-	str_t* other
+	str_t str,
+	str_t other
 	)
 {
-	str_free(str);
-	str_init_move(str, other);
+	assert_not_null(str);
+	assert_not_null(other);
+
+	str_clear(str);
+
+	str->len = other->len;
+	str->str = other->str;
+
+	other->str = NULL;
+	other->len = 0;
 }
 
 
 void
 str_resize(
-	str_t* str,
+	str_t str,
 	uint64_t len
 	)
 {
@@ -290,8 +350,8 @@ str_resize(
 
 bool
 str_cmp(
-	const str_t* str1,
-	const str_t* str2
+	const str_t str1,
+	const str_t str2
 	)
 {
 	assert_not_null(str1);
@@ -310,8 +370,8 @@ str_cmp(
 
 bool
 str_case_cmp(
-	const str_t* str1,
-	const str_t* str2
+	const str_t str1,
+	const str_t str2
 	)
 {
 	assert_not_null(str1);
@@ -330,7 +390,7 @@ str_case_cmp(
 
 bool
 str_cmp_cstr(
-	const str_t* str,
+	const str_t str,
 	const void* cstr
 	)
 {
@@ -351,7 +411,7 @@ str_cmp_cstr(
 
 bool
 str_case_cmp_cstr(
-	const str_t* str,
+	const str_t str,
 	const void* cstr
 	)
 {

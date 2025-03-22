@@ -52,3 +52,10 @@ graphics_init(
 	graphics_t* graphics,
 	window_t* window
 	);
+
+
+extern void
+graphics_add_draw_data(
+	graphics_t* graphics,
+	graphics_draw_data_t* data
+	);

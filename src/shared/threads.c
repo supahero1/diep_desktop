@@ -247,25 +247,20 @@ threads_resize(
 	)
 {
 	uint32_t new_used = threads->used + count;
-	uint32_t new_size;
 
 	if((new_used < (threads->size >> 2)) || (new_used > threads->size))
 	{
-		new_size = (new_used << 1) | 1;
-	}
-	else
-	{
-		return;
-	}
+		uint32_t new_size = (new_used << 1) | 1;
 
-	threads->threads = alloc_remalloc(
-		threads->threads,
-		sizeof(thread_t) * threads->size,
-		sizeof(thread_t) * new_size
-		);
-	assert_not_null(threads->threads);
+		threads->threads = alloc_remalloc(
+			threads->threads,
+			sizeof(*threads->threads) * threads->size,
+			sizeof(*threads->threads) * new_size
+			);
+		assert_not_null(threads->threads);
 
-	threads->size = new_size;
+		threads->size = new_size;
+	}
 }
 
 
@@ -289,7 +284,7 @@ threads_free(
 {
 	assert_not_null(threads);
 
-	alloc_free(threads->threads, sizeof(thread_t) * threads->size);
+	alloc_free(threads->threads, sizeof(*threads->threads) * threads->size);
 }
 
 
@@ -459,7 +454,7 @@ thread_pool_free(
 {
 	assert_not_null(pool);
 
-	alloc_free(pool->queue, sizeof(thread_data_t) * pool->size);
+	alloc_free(pool->queue, sizeof(*pool->queue) * pool->size);
 
 	sync_mtx_free(&pool->mtx);
 	sync_sem_free(&pool->sem);
@@ -495,25 +490,20 @@ thread_pool_resize(
 	)
 {
 	uint32_t new_used = pool->used + count;
-	uint32_t new_size;
 
 	if((new_used < (pool->size >> 2)) || (new_used > pool->size))
 	{
-		new_size = (new_used << 1) | 1;
-	}
-	else
-	{
-		return;
-	}
+		uint32_t new_size = (new_used << 1) | 1;
 
-	pool->queue = alloc_remalloc(
-		pool->queue,
-		sizeof(thread_data_t) * pool->size,
-		sizeof(thread_data_t) * new_size
-		);
-	assert_not_null(pool->queue);
+		pool->queue = alloc_remalloc(
+			pool->queue,
+			sizeof(*pool->queue) * pool->size,
+			sizeof(*pool->queue) * new_size
+			);
+		assert_not_null(pool->queue);
 
-	pool->size = new_size;
+		pool->size = new_size;
+	}
 }
 
 

@@ -25,9 +25,8 @@ test_normal_pass__str_init_free(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
-	str_free(&str);
+	str_t str = str_init();
+	str_free(str);
 }
 
 
@@ -36,12 +35,9 @@ test_normal_pass__str_init_copy_cstr(
 	void
 	)
 {
-	str_t str;
-	str_init_copy_cstr(&str, "test");
-
-	assert_true(str_cmp_cstr(&str, "test"));
-
-	str_free(&str);
+	str_t str = str_init_copy_cstr("test");
+	assert_true(str_cmp_cstr(str, "test"));
+	str_free(str);
 }
 
 
@@ -50,18 +46,16 @@ test_normal_pass__str_init_move(
 	void
 	)
 {
-	str_t str;
-	str_init_copy_cstr(&str, "test");
+	str_t str = str_init_copy_cstr("test");
+	assert_true(str_cmp_cstr(str, "test"));
 
-	assert_true(str_cmp_cstr(&str, "test"));
+	str_t str2 = str_init_move(str);
 
-	str_t str2;
-	str_init_move(&str2, &str);
+	assert_true(str_is_empty(str));
+	assert_true(str_cmp_cstr(str2, "test"));
 
-	assert_true(str_cmp_cstr(&str2, "test"));
-	assert_true(str_is_empty(&str));
-
-	str_free(&str2);
+	str_free(str);
+	str_free(str2);
 }
 
 
@@ -70,16 +64,14 @@ test_normal_pass__str_init_move_empty(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
+	str_t str2 = str_init_move(str);
 
-	str_t str2;
-	str_init_move(&str2, &str);
+	assert_true(str_is_empty(str));
+	assert_true(str_is_empty(str2));
 
-	assert_true(str_is_empty(&str));
-	assert_true(str_is_empty(&str2));
-
-	str_free(&str2);
+	str_free(str);
+	str_free(str2);
 }
 
 
@@ -88,16 +80,15 @@ test_normal_pass__str_set_copy_cstr(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
+	str_t str = str_init();
 
-	str_set_copy_cstr(&str, "test");
-	assert_true(str_cmp_cstr(&str, "test"));
+	str_set_copy_cstr(str, "test");
+	assert_true(str_cmp_cstr(str, "test"));
 
-	str_set_copy_cstr(&str, "test2");
-	assert_true(str_cmp_cstr(&str, "test2"));
+	str_set_copy_cstr(str, "test2");
+	assert_true(str_cmp_cstr(str, "test2"));
 
-	str_free(&str);
+	str_free(str);
 }
 
 
@@ -106,18 +97,14 @@ test_normal_pass__str_set_move_cstr(
 	void
 	)
 {
-	str_t str;
-	str_init_copy_cstr(&str, "test");
+	str_t str = str_init_copy_cstr("test");
+	void* ptr = str->str;
+	*str = (struct str){0};
+	str_free(str);
 
-	str_t str2;
-	str_init(&str2);
-
-	str_set_move_cstr(&str2, str.str);
-	str_init(&str);
-
-	assert_true(str_cmp_cstr(&str2, "test"));
-
-	str_free(&str2);
+	str = str_init_move_cstr(ptr);
+	assert_true(str_cmp_cstr(str, "test"));
+	str_free(str);
 }
 
 
@@ -126,17 +113,17 @@ test_normal_pass__str_set_copy(
 	void
 	)
 {
-	str_t str;
-	str_init_copy_cstr(&str, "test");
+	str_t str = str_init_copy_cstr("test");
 
-	str_t str2;
-	str_init(&str2);
+	str_t str2 = str_init();
 
-	str_set_copy(&str2, &str);
-	assert_true(str_cmp_cstr(&str2, "test"));
+	str_set_copy(str2, str);
 
-	str_free(&str);
-	str_free(&str2);
+	assert_true(str_cmp_cstr(str, "test"));
+	assert_true(str_cmp_cstr(str2, "test"));
+
+	str_free(str);
+	str_free(str2);
 }
 
 
@@ -145,17 +132,16 @@ test_normal_pass__str_set_move(
 	void
 	)
 {
-	str_t str;
-	str_init_copy_cstr(&str, "test");
+	str_t str = str_init_copy_cstr("test");
 
-	str_t str2;
-	str_init(&str2);
+	str_t str2 = str_init();
+	str_set_move(str2, str);
 
-	str_set_move(&str2, &str);
-	assert_true(str_cmp_cstr(&str2, "test"));
-	assert_true(str_is_empty(&str));
+	assert_true(str_is_empty(str));
+	assert_true(str_cmp_cstr(str2, "test"));
 
-	str_free(&str2);
+	str_free(str);
+	str_free(str2);
 }
 
 
@@ -164,21 +150,24 @@ test_normal_pass__str_cmp(
 	void
 	)
 {
-	str_t str1 = { "test", 4 };
-	str_t str2 = { "test", 4 };
-	assert_true(str_cmp(&str1, &str2));
+	str_t str1 = str_init_copy_len("test", 4);
+	str_t str2 = str_init_copy_len("test", 4);
+	assert_true(str_cmp(str1, str2));
 
-	str1 = (str_t) { "foo", 3 };
-	str2 = (str_t) { "bar", 3 };
-	assert_false(str_cmp(&str1, &str2));
+	str_set_copy_len(str1, "foo", 3);
+	str_set_copy_len(str2, "bar", 3);
+	assert_false(str_cmp(str1, str2));
 
-	str1 = (str_t) { "foo", 3 };
-	str2 = (str_t) { "foo", 4 };
-	assert_false(str_cmp(&str1, &str2));
+	str_set_copy_len(str1, "foo", 3);
+	str_set_copy_len(str2, "foo", 4);
+	assert_false(str_cmp(str1, str2));
 
-	str1 = (str_t) { "foo", 3 };
-	str2 = (str_t) { "fOo", 3 };
-	assert_false(str_cmp(&str1, &str2));
+	str_set_copy_len(str1, "foo", 3);
+	str_set_copy_len(str2, "fOo", 3);
+	assert_false(str_cmp(str1, str2));
+
+	str_free(str1);
+	str_free(str2);
 }
 
 
@@ -187,21 +176,24 @@ test_normal_pass__str_case_cmp(
 	void
 	)
 {
-	str_t str1 = { "test", 4 };
-	str_t str2 = { "test", 4 };
-	assert_true(str_case_cmp(&str1, &str2));
+	str_t str1 = str_init_copy_len("test", 4);
+	str_t str2 = str_init_copy_len("test", 4);
+	assert_true(str_case_cmp(str1, str2));
 
-	str1 = (str_t) { "foo", 3 };
-	str2 = (str_t) { "bar", 3 };
-	assert_false(str_case_cmp(&str1, &str2));
+	str_set_copy_len(str1, "foo", 3);
+	str_set_copy_len(str2, "bar", 3);
+	assert_false(str_case_cmp(str1, str2));
 
-	str1 = (str_t) { "foo", 3 };
-	str2 = (str_t) { "foo", 4 };
-	assert_false(str_case_cmp(&str1, &str2));
+	str_set_copy_len(str1, "foo", 3);
+	str_set_copy_len(str2, "foo", 4);
+	assert_false(str_case_cmp(str1, str2));
 
-	str1 = (str_t) { "foo", 3 };
-	str2 = (str_t) { "fOo", 3 };
-	assert_true(str_case_cmp(&str1, &str2));
+	str_set_copy_len(str1, "foo", 3);
+	str_set_copy_len(str2, "fOo", 3);
+	assert_true(str_case_cmp(str1, str2));
+
+	str_free(str1);
+	str_free(str2);
 }
 
 
@@ -210,17 +202,19 @@ test_normal_pass__str_cmp_cstr(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	assert_true(str_cmp_cstr(&str, "test"));
+	str_t str = str_init_copy_len("test", 4);
+	assert_true(str_cmp_cstr(str, "test"));
 
-	str = (str_t) { "foo", 3 };
-	assert_false(str_cmp_cstr(&str, "bar"));
+	str_set_copy_len(str, "foo", 3);
+	assert_false(str_cmp_cstr(str, "bar"));
 
-	str = (str_t) { "foo", 3 };
-	assert_false(str_cmp_cstr(&str, "foo2"));
+	str_set_copy_len(str, "foo", 3);
+	assert_false(str_cmp_cstr(str, "foo2"));
 
-	str = (str_t) { "foo", 3 };
-	assert_false(str_cmp_cstr(&str, "fOo"));
+	str_set_copy_len(str, "foo", 3);
+	assert_false(str_cmp_cstr(str, "fOo"));
+
+	str_free(str);
 }
 
 
@@ -229,31 +223,24 @@ test_normal_pass__str_case_cmp_cstr(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	assert_true(str_case_cmp_cstr(&str, "test"));
+	str_t str = str_init_copy_len("test", 4);
+	assert_true(str_case_cmp_cstr(str, "test"));
 
-	str = (str_t) { "foo", 3 };
-	assert_false(str_case_cmp_cstr(&str, "bar"));
+	str_set_copy_len(str, "foo", 3);
+	assert_false(str_case_cmp_cstr(str, "bar"));
 
-	str = (str_t) { "foo", 3 };
-	assert_false(str_case_cmp_cstr(&str, "foo2"));
+	str_set_copy_len(str, "foo", 3);
+	assert_false(str_case_cmp_cstr(str, "foo2"));
 
-	str = (str_t) { "foo", 3 };
-	assert_true(str_case_cmp_cstr(&str, "fOo"));
+	str_set_copy_len(str, "foo", 3);
+	assert_true(str_case_cmp_cstr(str, "fOo"));
+
+	str_free(str);
 }
 
 
 void assert_used
-test_normal_fail__str_init_null(
-	void
-	)
-{
-	str_init(NULL);
-}
-
-
-void assert_used
-test_normal_fail__str_free_null(
+test_normal_pass__str_free_null(
 	void
 	)
 {
@@ -262,49 +249,11 @@ test_normal_fail__str_free_null(
 
 
 void assert_used
-test_normal_fail__str_init_copy_cstr_null_str(
-	void
-	)
-{
-	str_init_copy_cstr(NULL, "test");
-}
-
-
-void assert_used
-test_normal_fail__str_init_copy_cstr_null_cstr(
-	void
-	)
-{
-	str_t str;
-	str_init_copy_cstr(&str, NULL);
-}
-
-
-void assert_used
 test_normal_fail__str_init_copy_cstr_null(
 	void
 	)
 {
-	str_init_copy_cstr(NULL, NULL);
-}
-
-
-void assert_used
-test_normal_fail__str_init_move_cstr_null_str(
-	void
-	)
-{
-	str_init_move_cstr(NULL, "test");
-}
-
-
-void assert_used
-test_normal_fail__str_init_move_cstr_null_cstr(
-	void
-	)
-{
-	str_t str;
-	str_init_move_cstr(&str, NULL);
+	str_init_copy_cstr(NULL);
 }
 
 
@@ -313,16 +262,7 @@ test_normal_fail__str_init_move_cstr_null(
 	void
 	)
 {
-	str_init_move_cstr(NULL, NULL);
-}
-
-
-void assert_used
-test_normal_fail__str_init_copy_len_null_str(
-	void
-	)
-{
-	str_init_copy_len(NULL, "test", 4);
+	str_init_move_cstr(NULL);
 }
 
 
@@ -331,9 +271,8 @@ test_normal_pass__str_init_copy_len_null_cstr(
 	void
 	)
 {
-	str_t str;
-	str_init_copy_len(&str, NULL, 0);
-	str_free(&str);
+	str_t str = str_init_copy_len(NULL, 0);
+	str_free(str);
 }
 
 
@@ -342,26 +281,7 @@ test_normal_fail__str_init_copy_len_null_cstr_non_zero_len(
 	void
 	)
 {
-	str_t str;
-	str_init_copy_len(&str, NULL, 4);
-}
-
-
-void assert_used
-test_normal_fail__str_init_copy_len_null(
-	void
-	)
-{
-	str_init_copy_len(NULL, NULL, 4);
-}
-
-
-void assert_used
-test_normal_fail__str_init_move_len_null_str(
-	void
-	)
-{
-	str_init_move_len(NULL, "test", 4);
+	str_init_copy_len(NULL, 4);
 }
 
 
@@ -370,9 +290,8 @@ test_normal_pass__str_init_move_len_null_cstr(
 	void
 	)
 {
-	str_t str;
-	str_init_move_len(&str, NULL, 0);
-	str_free(&str);
+	str_t str = str_init_move_len(NULL, 0);
+	str_free(str);
 }
 
 
@@ -381,38 +300,7 @@ test_normal_fail__str_init_move_len_null_cstr_non_zero_len(
 	void
 	)
 {
-	str_t str;
-	str_init_move_len(&str, NULL, 4);
-}
-
-
-void assert_used
-test_normal_fail__str_init_move_len_null(
-	void
-	)
-{
-	str_init_move_len(NULL, NULL, 4);
-}
-
-
-void assert_used
-test_normal_fail__str_init_copy_null_other(
-	void
-	)
-{
-	str_t str;
-	str_init_copy(&str, NULL);
-}
-
-
-void assert_used
-test_normal_fail__str_init_copy_null_str(
-	void
-	)
-{
-	str_t str;
-	str_init(&str);
-	str_init_copy(NULL, &str);
+	str_init_move_len(NULL, 4);
 }
 
 
@@ -421,7 +309,7 @@ test_normal_fail__str_init_copy_null(
 	void
 	)
 {
-	str_init_copy(NULL, NULL);
+	str_init_copy(NULL);
 }
 
 
@@ -430,28 +318,7 @@ test_normal_fail__str_init_move_null_other(
 	void
 	)
 {
-	str_t str;
-	str_init_move(&str, NULL);
-}
-
-
-void assert_used
-test_normal_fail__str_init_move_null_str(
-	void
-	)
-{
-	str_t str;
-	str_init(&str);
-	str_init_move(NULL, &str);
-}
-
-
-void assert_used
-test_normal_fail__str_init_move_null(
-	void
-	)
-{
-	str_init_move(NULL, NULL);
+	str_init_move(NULL);
 }
 
 
@@ -487,9 +354,8 @@ test_normal_fail__str_set_copy_cstr_null_cstr(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
-	str_set_copy_cstr(&str, NULL);
+	str_t str = str_init();
+	str_set_copy_cstr(str, NULL);
 }
 
 
@@ -516,9 +382,8 @@ test_normal_fail__str_set_move_cstr_null_cstr(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
-	str_set_move_cstr(&str, NULL);
+	str_t str = str_init();
+	str_set_move_cstr(str, NULL);
 }
 
 
@@ -536,9 +401,8 @@ test_normal_fail__str_set_copy_null_str(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
-	str_set_copy(NULL, &str);
+	str_t str = str_init();
+	str_set_copy(NULL, str);
 }
 
 
@@ -547,9 +411,8 @@ test_normal_fail__str_set_copy_null_other(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
-	str_set_copy(&str, NULL);
+	str_t str = str_init();
+	str_set_copy(str, NULL);
 }
 
 
@@ -567,9 +430,8 @@ test_normal_fail__str_set_move_null_str(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
-	str_set_move(NULL, &str);
+	str_t str = str_init();
+	str_set_move(NULL, str);
 }
 
 
@@ -578,9 +440,8 @@ test_normal_fail__str_set_move_null_other(
 	void
 	)
 {
-	str_t str;
-	str_init(&str);
-	str_set_move(&str, NULL);
+	str_t str = str_init();
+	str_set_move(str, NULL);
 }
 
 
@@ -607,8 +468,8 @@ test_normal_fail__str_cmp_null_str1(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	str_cmp(NULL, &str);
+	str_t str = str_init_copy_len("test", 4);
+	str_cmp(NULL, str);
 }
 
 
@@ -617,8 +478,8 @@ test_normal_fail__str_cmp_null_str2(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	str_cmp(&str, NULL);
+	str_t str = str_init_copy_len("test", 4);
+	str_cmp(str, NULL);
 }
 
 
@@ -636,8 +497,8 @@ test_normal_fail__str_case_cmp_null_str1(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	str_case_cmp(NULL, &str);
+	str_t str = str_init_copy_len("test", 4);
+	str_case_cmp(NULL, str);
 }
 
 
@@ -646,8 +507,8 @@ test_normal_fail__str_case_cmp_null_str2(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	str_case_cmp(&str, NULL);
+	str_t str = str_init_copy_len("test", 4);
+	str_case_cmp(str, NULL);
 }
 
 
@@ -674,8 +535,8 @@ test_normal_fail__str_cmp_cstr_null_cstr(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	str_cmp_cstr(&str, NULL);
+	str_t str = str_init_copy_len("test", 4);
+	str_cmp_cstr(str, NULL);
 }
 
 
@@ -702,8 +563,8 @@ test_normal_fail__str_case_cmp_cstr_null_cstr(
 	void
 	)
 {
-	str_t str = { "test", 4 };
-	str_case_cmp_cstr(&str, NULL);
+	str_t str = str_init_copy_len("test", 4);
+	str_case_cmp_cstr(str, NULL);
 }
 
 
