@@ -31,6 +31,7 @@
 
 struct app
 {
+	window_event_table_t* window_event_table;
 	event_listener_t* window_close_once_listener;
 	event_listener_t* window_move_listener;
 	event_listener_t* window_resize_listener;
@@ -53,7 +54,7 @@ struct app
 
 private void
 app_window_close_once_fn(
-	app_t* app,
+	app_t app,
 	window_close_event_data_t* event_data
 	)
 {
@@ -64,24 +65,26 @@ app_window_close_once_fn(
 
 private void
 app_window_free_once_fn(
-	app_t* app,
+	app_t app,
 	window_free_event_data_t* event_data
 	)
 {
-	event_target_del(&app->window.fullscreen_target, app->window_fullscreen_listener);
-	event_target_del(&app->window.resize_target, app->window_resize_listener);
-	event_target_del(&app->window.move_target, app->window_move_listener);
+	window_event_table_t* table = app->window_event_table;
+
+	event_target_del(&table->fullscreen_target, app->window_fullscreen_listener);
+	event_target_del(&table->resize_target, app->window_resize_listener);
+	event_target_del(&table->move_target, app->window_move_listener);
 
 	if(app->window_close_once_listener)
 	{
-		event_target_del_once(&app->window.close_target, app->window_close_once_listener);
+		event_target_del_once(&table->close_target, app->window_close_once_listener);
 	}
 }
 
 
 private void
 app_window_on_move_fn(
-	app_t* app,
+	app_t app,
 	window_move_event_data_t* event_data
 	)
 {
@@ -92,7 +95,7 @@ app_window_on_move_fn(
 
 private void
 app_window_on_resize_fn(
-	app_t* app,
+	app_t app,
 	window_resize_event_data_t* event_data
 	)
 {
@@ -101,14 +104,14 @@ app_window_on_resize_fn(
 
 	if(event_data->new_size.w >= 1600.0f)
 	{
-		window_close(&app->window);
+		window_close(app->window);
 	}
 }
 
 
 private void
 app_window_on_fullscreen_fn(
-	app_t* app,
+	app_t app,
 	window_focus_event_data_t* event_data
 	)
 {
@@ -116,13 +119,13 @@ app_window_on_fullscreen_fn(
 }
 
 
-app_t*
+app_t
 app_init(
 	int argc,
 	char** argv
 	)
 {
-	app_t* app = alloc_malloc(sizeof(*app));
+	app_t app = alloc_malloc(sizeof(*app));
 	assert_ptr(app, sizeof(*app));
 
 	assert_ge(argc, 1);
@@ -163,47 +166,50 @@ app_init(
 		.fullscreen = setting_get_boolean(app->window_fullscreen)
 	};
 
-	window_manager_init(&app->manager);
-	window_init(&app->window);
-	window_manager_add(&app->manager, &app->window, "Test", &history);
-	window_show(&app->window);
+	app->manager = window_manager_init();
+	app->window = window_init();
+	window_manager_add(app->manager, app->window, "Test", &history);
+	window_show(app->window);
+
+	app->window_event_table = window_get_event_table(app->window);
+	window_event_table_t* table = app->window_event_table;
 
 	event_listener_data_t close_once_data =
 	{
 		.fn = (event_fn_t) app_window_close_once_fn,
 		.data = app
 	};
-	app->window_close_once_listener = event_target_once(&app->window.close_target, close_once_data);
+	app->window_close_once_listener = event_target_once(&table->close_target, close_once_data);
 
 	event_listener_data_t free_once_data =
 	{
 		.fn = (event_fn_t) app_window_free_once_fn,
 		.data = app
 	};
-	event_target_once(&app->window.free_target, free_once_data);
+	event_target_once(&table->free_target, free_once_data);
 
 	event_listener_data_t move_data =
 	{
 		.fn = (event_fn_t) app_window_on_move_fn,
 		.data = app
 	};
-	app->window_move_listener = event_target_add(&app->window.move_target, move_data);
+	app->window_move_listener = event_target_add(&table->move_target, move_data);
 
 	event_listener_data_t resize_data =
 	{
 		.fn = (event_fn_t) app_window_on_resize_fn,
 		.data = app
 	};
-	app->window_resize_listener = event_target_add(&app->window.resize_target, resize_data);
+	app->window_resize_listener = event_target_add(&table->resize_target, resize_data);
 
 	event_listener_data_t fullscreen_data =
 	{
 		.fn = (event_fn_t) app_window_on_fullscreen_fn,
 		.data = app
 	};
-	app->window_fullscreen_listener = event_target_add(&app->window.fullscreen_target, fullscreen_data);
+	app->window_fullscreen_listener = event_target_add(&table->fullscreen_target, fullscreen_data);
 
-	graphics_init(&app->graphics, &app->window);
+	app->graphics = graphics_init(app->window);
 
 	return app;
 }
@@ -211,12 +217,12 @@ app_init(
 
 void
 app_free(
-	app_t* app
+	app_t app
 	)
 {
 	assert_not_null(app);
 
-	window_manager_free(&app->manager);
+	window_manager_free(app->manager);
 
 	settings_free(&app->settings);
 	time_timers_free(&app->timers);
@@ -227,10 +233,10 @@ app_free(
 
 void
 app_run(
-	app_t* app
+	app_t app
 	)
 {
 	assert_not_null(app);
 
-	window_manager_run(&app->manager);
+	window_manager_run(app->manager);
 }

@@ -83,6 +83,12 @@ str_clear(
 	);
 
 
+extern void
+str_reset(
+	str_t str
+	);
+
+
 extern bool
 str_is_empty(
 	const str_t str

@@ -17,10 +17,10 @@
 #pragma once
 
 
-typedef struct app app_t;
+typedef struct app* app_t;
 
 
-extern app_t*
+extern app_t
 app_init(
 	int argc,
 	char** argv
@@ -29,11 +29,11 @@ app_init(
 
 extern void
 app_free(
-	app_t* app
+	app_t app
 	);
 
 
 extern void
 app_run(
-	app_t* app
+	app_t app
 	);

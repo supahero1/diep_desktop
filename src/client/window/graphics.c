@@ -101,9 +101,11 @@ typedef struct graphics_vertex_consts
 }
 graphics_vertex_consts_t;
 
-struct graphics_impl
+struct graphics
 {
-	window_t* window;
+	window_t window;
+
+	graphics_event_table_t event_table;
 
 	uint32_t frame_number;
 
@@ -197,62 +199,63 @@ private const graphics_vertex_input_t graphics_vertex_input[] =
 
 private void
 graphics_free(
-	graphics_t* graphics,
+	graphics_t graphics,
 	window_free_event_data_t* event_data
 	)
 {
 	assert_not_null(graphics);
 
-	event_target_free(&graphics->draw_target);
+	event_target_free(&graphics->event_table.draw_target);
 
-	alloc_free(graphics->impl, sizeof(*graphics->impl));
+	alloc_free(graphics, sizeof(*graphics));
 }
 
 
-void
+graphics_t
 graphics_init(
-	graphics_t* graphics,
-	window_t* window
+	window_t window
 	)
 {
-	assert_not_null(graphics);
 	assert_not_null(window);
 
-	graphics->impl = alloc_malloc(sizeof(*graphics->impl));
-	assert_ptr(graphics->impl, sizeof(*graphics->impl));
+	graphics_t graphics = alloc_malloc(sizeof(*graphics));
+	assert_ptr(graphics, sizeof(*graphics));
 
-	graphics->impl->window = window;
+	graphics->window = window;
+	window_event_table_t* table = window_get_event_table(window);
 
 	event_listener_data_t free_data =
 	{
 		.fn = (event_fn_t) graphics_free,
 		.data = graphics
 	};
-	(void) event_target_once(&window->free_target, free_data);
+	(void) event_target_once(&table->free_target, free_data);
 
-	event_target_init(&graphics->draw_target);
+	event_target_init(&graphics->event_table.draw_target);
+
+	return graphics;
 }
 
 
 static void
 graphics_resize_draw_data(
-	graphics_t* graphics,
+	graphics_t graphics,
 	uint32_t count
 	)
 {
-	uint32_t new_used = graphics->impl->draw_data_used;
+	uint32_t new_used = graphics->draw_data_used;
 
-	if((new_used < (graphics->impl->draw_data_size >> 2)) || (new_used > graphics->impl->draw_data_size))
+	if((new_used < (graphics->draw_data_size >> 2)) || (new_used > graphics->draw_data_size))
 	{
 		uint32_t new_size = (new_used << 1) | 1;
 
-		graphics->impl->draw_data_buffer = alloc_remalloc(
-			graphics->impl->draw_data_buffer,
-			sizeof(*graphics->impl->draw_data_buffer) * graphics->impl->draw_data_size,
-			sizeof(*graphics->impl->draw_data_buffer) * new_size
+		graphics->draw_data_buffer = alloc_remalloc(
+			graphics->draw_data_buffer,
+			sizeof(*graphics->draw_data_buffer) * graphics->draw_data_size,
+			sizeof(*graphics->draw_data_buffer) * new_size
 			);
-		assert_not_null(graphics->impl->draw_data_buffer);
+		assert_not_null(graphics->draw_data_buffer);
 
-		graphics->impl->draw_data_size = new_size;
+		graphics->draw_data_size = new_size;
 	}
 }

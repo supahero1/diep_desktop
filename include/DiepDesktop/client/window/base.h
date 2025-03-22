@@ -98,7 +98,7 @@ typedef enum window_mod : uint32_t
 window_mod_t;
 
 
-typedef struct window window_t;
+typedef struct window* window_t;
 
 typedef struct window_history window_history_t;
 
@@ -170,7 +170,7 @@ window_user_event_stop_typing_data_t;
 
 typedef struct window_user_event_set_clipboard_data
 {
-	const char* str;
+	str_t str;
 }
 window_user_event_set_clipboard_data_t;
 
@@ -180,31 +180,25 @@ typedef struct window_user_event_get_clipboard_data
 window_user_event_get_clipboard_data_t;
 
 
-typedef struct window_manager_impl window_manager_impl_t;
-
-typedef struct window_manager
-{
-	window_manager_impl_t* impl;
-}
-window_manager_t;
+typedef struct window_manager* window_manager_t;
 
 
-extern void
+extern window_manager_t
 window_manager_init(
-	window_manager_t* manager
+	void
 	);
 
 
 extern void
 window_manager_free(
-	window_manager_t* manager
+	window_manager_t manager
 	);
 
 
 extern void
 window_manager_add(
-	window_manager_t* manager,
-	window_t* window,
+	window_manager_t manager,
+	window_t window,
 	const char* title,
 	const window_history_t* history
 	);
@@ -212,7 +206,7 @@ window_manager_add(
 
 extern void
 window_manager_push_event(
-	window_manager_t* manager,
+	window_manager_t manager,
 	window_user_event_t type,
 	void* context,
 	void* data
@@ -221,37 +215,37 @@ window_manager_push_event(
 
 extern bool
 window_manager_is_running(
-	window_manager_t* manager
+	window_manager_t manager
 	);
 
 
 extern void
 window_manager_stop_running(
-	window_manager_t* manager
+	window_manager_t manager
 	);
 
 
 extern void
 window_manager_run(
-	window_manager_t* manager
+	window_manager_t manager
 	);
 
 
 typedef struct window_init_event_data
 {
-	window_t* window;
+	window_t window;
 }
 window_init_event_data_t;
 
 typedef struct window_free_event_data
 {
-	window_t* window;
+	window_t window;
 }
 window_free_event_data_t;
 
 typedef struct window_move_event_data
 {
-	window_t* window;
+	window_t window;
 	pair_t old_pos;
 	pair_t new_pos;
 }
@@ -259,7 +253,7 @@ window_move_event_data_t;
 
 typedef struct window_resize_event_data
 {
-	window_t* window;
+	window_t window;
 	pair_t old_size;
 	pair_t new_size;
 }
@@ -267,32 +261,32 @@ window_resize_event_data_t;
 
 typedef struct window_focus_event_data
 {
-	window_t* window;
+	window_t window;
 }
 window_focus_event_data_t;
 
 typedef struct window_blur_event_data
 {
-	window_t* window;
+	window_t window;
 }
 window_blur_event_data_t;
 
 typedef struct window_close_event_data
 {
-	window_t* window;
+	window_t window;
 }
 window_close_event_data_t;
 
 typedef struct window_fullscreen_event_data
 {
-	window_t* window;
+	window_t window;
 	bool fullscreen;
 }
 window_fullscreen_event_data_t;
 
 typedef struct window_key_down_event_data
 {
-	window_t* window;
+	window_t window;
 	window_key_t key;
 	window_mod_t mods;
 	uint8_t repeat;
@@ -301,7 +295,7 @@ window_key_down_event_data_t;
 
 typedef struct window_key_up_event_data
 {
-	window_t* window;
+	window_t window;
 	window_key_t key;
 	window_mod_t mods;
 }
@@ -309,30 +303,28 @@ window_key_up_event_data_t;
 
 typedef struct window_text_event_data
 {
-	window_t* window;
-	const char* str;
-	uint32_t len;
+	window_t window;
+	str_t str;
 }
 window_text_event_data_t;
 
 typedef struct window_get_clipboard_event_data
 {
-	window_t* window;
-	char* str;
-	uint32_t len;
+	window_t window;
+	str_t str;
 }
 window_get_clipboard_event_data_t;
 
 typedef struct window_set_clipboard_event_data
 {
-	window_t* window;
+	window_t window;
 	bool success;
 }
 window_set_clipboard_event_data_t;
 
 typedef struct window_mouse_down_event_data
 {
-	window_t* window;
+	window_t window;
 	window_button_t button;
 	pair_t pos;
 	uint8_t clicks;
@@ -341,7 +333,7 @@ window_mouse_down_event_data_t;
 
 typedef struct window_mouse_up_event_data
 {
-	window_t* window;
+	window_t window;
 	window_button_t button;
 	uint8_t clicks;
 	pair_t pos;
@@ -350,7 +342,7 @@ window_mouse_up_event_data_t;
 
 typedef struct window_mouse_move_event_data
 {
-	window_t* window;
+	window_t window;
 	pair_t old_pos;
 	pair_t new_pos;
 }
@@ -358,20 +350,26 @@ window_mouse_move_event_data_t;
 
 typedef struct window_mouse_scroll_event_data
 {
-	window_t* window;
+	window_t window;
 	float offset_y;
 }
 window_mouse_scroll_event_data_t;
 
 
-typedef struct window_impl window_impl_t;
-
-struct window
+typedef struct window_info
 {
-	window_impl_t* impl;
+	half_extent_t old_extent;
+	half_extent_t extent;
+	pair_t mouse;
 
+	bool fullscreen;
+}
+window_info_t;
+
+typedef struct window_event_table
+{
 	event_target_t init_target;
-	event_target_t free_target; // todo implement a function for these for everything, keep impl private
+	event_target_t free_target;
 	event_target_t move_target;
 	event_target_t resize_target;
 	event_target_t focus_target;
@@ -387,7 +385,8 @@ struct window
 	event_target_t mouse_up_target;
 	event_target_t mouse_move_target;
 	event_target_t mouse_scroll_target;
-};
+}
+window_event_table_t;
 
 struct window_history
 {
@@ -395,32 +394,22 @@ struct window_history
 	bool fullscreen;
 };
 
-typedef struct window_info
-{
-	half_extent_t old_extent;
-	half_extent_t extent;
-	pair_t mouse;
 
-	bool fullscreen;
-}
-window_info_t;
-
-
-extern void
+extern window_t
 window_init(
-	window_t* window
+	void
 	);
 
 
 extern void
 window_close(
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 window_set(
-	window_t* window,
+	window_t window,
 	const char* name,
 	void* data
 	);
@@ -428,14 +417,14 @@ window_set(
 
 extern void*
 window_get(
-	window_t* window,
+	window_t window,
 	const char* name
 	);
 
 
 extern void
 window_push_event(
-	window_t* window,
+	window_t window,
 	window_user_event_t type,
 	void* data
 	);
@@ -443,58 +432,64 @@ window_push_event(
 
 extern void
 window_set_cursor(
-	window_t* window,
+	window_t window,
 	window_cursor_t cursor
 	);
 
 
 extern void
 window_show(
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 window_hide(
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 window_start_typing(
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 window_stop_typing(
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 window_get_clipboard(
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 window_set_clipboard(
-	window_t* window,
-	const char* str
+	window_t window,
+	str_t str
 	);
 
 
 extern void
 window_toggle_fullscreen(
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 window_get_info(
-	window_t* window,
+	window_t window,
 	window_info_t* info
+	);
+
+
+extern window_event_table_t*
+window_get_event_table(
+	window_t window
 	);
 
 
@@ -518,7 +513,7 @@ window_get_vulkan_proc_addr_fn(
 
 extern void
 window_init_vulkan_surface(
-	window_t* window,
+	window_t window,
 	void* instance,
 	void* surface
 	);

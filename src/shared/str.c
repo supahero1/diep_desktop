@@ -169,6 +169,18 @@ str_free(
 
 
 void
+str_reset(
+	str_t str
+	)
+{
+	assert_not_null(str);
+
+	str->str = NULL;
+	str->len = 0;
+}
+
+
+void
 str_clear(
 	str_t str
 	)

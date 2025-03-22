@@ -99,7 +99,7 @@ test_normal_pass__str_set_move_cstr(
 {
 	str_t str = str_init_copy_cstr("test");
 	void* ptr = str->str;
-	*str = (struct str){0};
+	str_reset(str);
 	str_free(str);
 
 	str = str_init_move_cstr(ptr);
@@ -245,6 +245,15 @@ test_normal_pass__str_free_null(
 	)
 {
 	str_free(NULL);
+}
+
+
+void assert_used
+test_normal_fail__str_reset_null(
+	void
+	)
+{
+	str_reset(NULL);
 }
 
 

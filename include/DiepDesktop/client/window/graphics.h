@@ -36,26 +36,24 @@ typedef struct graphics_draw_data
 }
 graphics_draw_data_t;
 
-typedef struct graphics_impl graphics_impl_t;
 
-typedef struct graphics
+typedef struct graphics_event_table
 {
-	graphics_impl_t* impl;
-
 	event_target_t draw_target;
 }
-graphics_t;
+graphics_event_table_t;
+
+typedef struct graphics* graphics_t;
 
 
-extern void
+extern graphics_t
 graphics_init(
-	graphics_t* graphics,
-	window_t* window
+	window_t window
 	);
 
 
 extern void
 graphics_add_draw_data(
-	graphics_t* graphics,
+	graphics_t graphics,
 	graphics_draw_data_t* data
 	);

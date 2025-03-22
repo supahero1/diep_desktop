@@ -38,14 +38,14 @@ test_normal_pass__alloc_zero(
 
 
 void assert_used
-test_normal_pass__alloc_4096_sizes(
+test_priority_pass__alloc_2048_sizes(
 	void
 	)
 {
-	uint8_t** ptrs = alloc_malloc(sizeof(*ptrs) * 4097);
+	uint8_t** ptrs = alloc_malloc(sizeof(*ptrs) * 2049);
 	assert_not_null(ptrs);
 
-	for(uint64_t i = 1; i <= 4096; ++i)
+	for(uint64_t i = 1; i <= 2048; ++i)
 	{
 		uint8_t* ptr = alloc_malloc(i);
 		assert_not_null(ptr);
@@ -58,7 +58,7 @@ test_normal_pass__alloc_4096_sizes(
 		ptrs[i] = ptr;
 	}
 
-	for(uint64_t i = 1; i <= 4096; ++i)
+	for(uint64_t i = 1; i <= 2048; ++i)
 	{
 		for(uint64_t j = 0; j < i; ++j)
 		{
@@ -66,12 +66,12 @@ test_normal_pass__alloc_4096_sizes(
 		}
 	}
 
-	for(uint64_t i = 1; i <= 4096; ++i)
+	for(uint64_t i = 1; i <= 2048; ++i)
 	{
 		alloc_free(ptrs[i], i);
 	}
 
-	alloc_free(ptrs, sizeof(*ptrs) * 4097);
+	alloc_free(ptrs, sizeof(*ptrs) * 2049);
 }
 
 

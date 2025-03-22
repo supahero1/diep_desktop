@@ -114,7 +114,9 @@ hash_table_for_each(
 		{
 			struct str entry_key_data = { (void*) entry->key, entry->len };
 			str_t entry_key = &entry_key_data;
+
 			fn(entry_key, entry->value, data);
+
 			entry_idx = entry->next;
 		}
 	}
