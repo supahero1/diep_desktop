@@ -178,7 +178,7 @@ main(
 
 	closedir(dir);
 
-	alloc_free(TEXT_FILE_SIZE, tex_data);
+	alloc_free(tex_data, TEXT_FILE_SIZE);
 
 
 	tex_c_str += sprintf(tex_c_str, "};\n");
@@ -190,7 +190,7 @@ main(
 	};
 	file_write("src/client/tex/base.c", base_c);
 
-	alloc_free(TEXT_FILE_SIZE, tex_c_data);
+	alloc_free(tex_c_data, TEXT_FILE_SIZE);
 
 
 	tex_h_str += sprintf(tex_h_str, "\n");
@@ -213,7 +213,7 @@ main(
 	};
 	file_write("include/DiepDesktop/client/tex/base.h", base_h);
 
-	alloc_free(TEXT_FILE_SIZE, tex_h_data);
+	alloc_free(tex_h_data, TEXT_FILE_SIZE);
 
 	return 0;
 }

@@ -62,7 +62,7 @@ var_bg_tile(
 	int status = stbi_write_png("tex/var/bg_tile.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -81,7 +81,7 @@ var_rect(
 	int status = stbi_write_png("tex/var/rect.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -123,7 +123,7 @@ var_text_cursor(
 	int status = stbi_write_png("tex/var/text_cursor.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -152,7 +152,7 @@ var_cs_b(
 	int status = stbi_write_png("tex/var/cs_b.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -181,7 +181,7 @@ var_cs_red(
 	int status = stbi_write_png("tex/var/cs_red.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -210,7 +210,7 @@ var_cs_green(
 	int status = stbi_write_png("tex/var/cs_green.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -239,7 +239,7 @@ var_cs_blue(
 	int status = stbi_write_png("tex/var/cs_blue.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -281,7 +281,7 @@ var_rect8_t(
 	int status = stbi_write_png("tex/var/rect8_t.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -323,7 +323,7 @@ var_rect128_t(
 	int status = stbi_write_png("tex/var/rect128_t.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -365,7 +365,7 @@ var_cs_t(
 	int status = stbi_write_png("tex/var/cs_t.png", size, size, 3, img, size * 3);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -424,7 +424,7 @@ var_circle_t(
 	int status = stbi_write_png("tex/var/circle_t.png", size, size, 4, img, size * 4);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 	stbi_image_free(base_img);
 }
 
@@ -455,7 +455,7 @@ var_t_mask(
 	int status = stbi_write_png("tex/var/t_mask.png", size, size, 4, img, size * 4);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 
@@ -507,7 +507,7 @@ var_cs_hs(
 	int status = stbi_write_png("tex/var/cs_hs.png", size, size, 4, img, size * 4);
 	assert_neq(status, 0);
 
-	alloc_free(img_size, img);
+	alloc_free(img, img_size);
 }
 
 

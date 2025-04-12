@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/hash.h>
+#include <DiepDesktop/shared/str.h>
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/color.h>
 #include <DiepDesktop/shared/event.h>
@@ -71,96 +71,81 @@ typedef union setting_constraint
 setting_constraint_t;
 
 
-typedef struct settings settings_t;
+typedef struct settings* settings_t;
 
 typedef struct setting_change_event_data
 {
-	settings_t* settings;
+	settings_t settings;
 	setting_value_t old_value;
 	setting_value_t new_value;
 }
 setting_change_event_data_t;
 
-typedef struct setting
-{
-	sync_mtx_t mtx;
-	setting_type_t type;
-	setting_value_t value;
-	setting_constraint_t constraint;
-	event_target_t* change_target;
-}
-setting_t;
+typedef struct setting setting_t;
 
 
 typedef struct settings_save_event_data
 {
-	settings_t* settings;
+	settings_t settings;
 	bool success;
 }
 settings_save_event_data_t;
 
 typedef struct settings_load_event_data
 {
-	settings_t* settings;
+	settings_t settings;
 	bool success;
 }
 settings_load_event_data_t;
 
-
-struct settings
+typedef struct settings_event_table
 {
-	sync_rwlock_t rwlock;
-
-	hash_table_t table;
-	bool dirty;
-	bool use_timers;
-	bool sealed;
-
-	const char* path;
-
-	time_timers_t* timers;
-	time_timer_t save_timer;
-
 	event_target_t save_target;
 	event_target_t load_target;
-};
+}
+settings_event_table_t;
 
 
-extern void
+extern settings_t
 settings_init(
-	settings_t* settings,
 	const char* path,
-	time_timers_t* timers
+	time_timers_t timers
 	);
 
 
 extern void
 settings_free(
-	settings_t* settings
+	settings_t settings
 	);
 
 
 extern void
 settings_save(
-	settings_t* settings
+	settings_t settings
 	);
 
 
 extern void
 settings_load(
-	settings_t* settings
+	settings_t settings
 	);
 
 
 extern void
 settings_seal(
-	settings_t* settings
+	settings_t settings
+	);
+
+
+extern settings_event_table_t*
+settings_get_event_table(
+	settings_t settings
 	);
 
 
 extern setting_t*
 settings_add_i64(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	int64_t value,
 	int64_t min,
@@ -171,7 +156,7 @@ settings_add_i64(
 
 extern setting_t*
 settings_add_f32(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	float value,
 	float min,
@@ -182,7 +167,7 @@ settings_add_f32(
 
 extern setting_t*
 settings_add_boolean(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	bool value,
 	event_target_t* change_target
@@ -191,7 +176,7 @@ settings_add_boolean(
 
 extern setting_t*
 settings_add_str(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	str_t value,
 	uint64_t max_len,
@@ -201,7 +186,7 @@ settings_add_str(
 
 extern setting_t*
 settings_add_color(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	color_argb_t value,
 	event_target_t* change_target
@@ -210,7 +195,7 @@ settings_add_color(
 
 extern void
 settings_modify_i64(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	int64_t value
 	);
@@ -218,7 +203,7 @@ settings_modify_i64(
 
 extern void
 settings_modify_f32(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	float value
 	);
@@ -226,7 +211,7 @@ settings_modify_f32(
 
 extern void
 settings_modify_boolean(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	bool value
 	);
@@ -234,7 +219,7 @@ settings_modify_boolean(
 
 extern void
 settings_modify_str(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	str_t value
 	);
@@ -242,7 +227,7 @@ settings_modify_str(
 
 extern void
 settings_modify_color(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	color_argb_t value
 	);

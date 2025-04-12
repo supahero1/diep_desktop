@@ -96,7 +96,7 @@ event_target_add_common(
 		data =
 		(event_listener_data_t)
 		{
-			.fn = (event_fn_t) event_once_fn,
+			.fn = (void*) event_once_fn,
 			.data = listener
 		};
 	}
@@ -256,7 +256,7 @@ event_target_wait(
 
 	event_listener_data_t data =
 	{
-		.fn = (event_fn_t) event_target_wait_fn,
+		.fn = (void*) event_target_wait_fn,
 		.data = &wait_data
 	};
 	event_listener_t* listener = event_target_add(target, data);

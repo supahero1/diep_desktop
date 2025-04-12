@@ -80,15 +80,15 @@ main(
 
 	uint32_t table_size = UINT32_C(1) << 24;
 
-	font_glyph_data_t* glyph_data = alloc_malloc(sizeof(font_glyph_data_t) * table_size);
+	font_glyph_data_t* glyph_data = alloc_malloc(sizeof(*glyph_data) * table_size);
 	assert_not_null(glyph_data);
 
 	font_glyph_data_t* cur_glyph_data = glyph_data + 1;
 
-	uint32_t* glyph_map = alloc_calloc(sizeof(uint32_t) * table_size);
+	uint32_t* glyph_map = alloc_calloc(sizeof(*glyph_map) * table_size);
 	assert_not_null(glyph_map);
 
-	uint32_t* codepoint_map = alloc_calloc(sizeof(uint32_t) * table_size);
+	uint32_t* codepoint_map = alloc_calloc(sizeof(*codepoint_map) * table_size);
 	assert_not_null(codepoint_map);
 
 	codepoint_map['\t'] = ' ';
@@ -365,7 +365,7 @@ main(
 			assert_neq(status, 0);
 		}
 
-		alloc_free(img_size, bg_img);
+		alloc_free(bg_img, img_size);
 
 
 		goto_skip:
@@ -444,7 +444,7 @@ main(
 		str += sprintf(str, "\n");
 	}
 
-	alloc_free(sizeof(*glyph_data) * table_size, glyph_data);
+	alloc_free(glyph_data, sizeof(*glyph_data) * table_size);
 
 	str += sprintf(str, "};\n\n");
 	str += sprintf(str, "#undef _\n");
@@ -474,7 +474,7 @@ main(
 		*(str - 1) = '\n';
 	}
 
-	alloc_free(sizeof(uint32_t) * table_size, glyph_map);
+	alloc_free(glyph_map, sizeof(*glyph_map) * table_size);
 
 	str += sprintf(str, "};\n");
 
@@ -531,7 +531,7 @@ main(
 	str += sprintf(str, "\n\treturn codepoint;\n\n\tdefault: return 0;\n\n\t}\n}\n");
 	str += sprintf(str, "\n#undef _\n");
 
-	alloc_free(sizeof(uint32_t) * table_size, codepoint_map);
+	alloc_free(codepoint_map, sizeof(*codepoint_map) * table_size);
 
 	file_t filter_c =
 	{
@@ -540,7 +540,7 @@ main(
 	};
 	file_write("src/client/font/filter.c", filter_c);
 
-	alloc_free(TEXT_FILE_SIZE, data);
+	alloc_free(data, TEXT_FILE_SIZE);
 
 	return 0;
 }

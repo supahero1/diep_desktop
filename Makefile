@@ -237,14 +237,14 @@ ifeq ($(OS),Windows_NT)
 		$(CP) "C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll" DiepDesktop/; \
 	fi
 else
-	if [[ ! -f DiepDesktop/libvulkan.so.1 ]]; then \
-		$(CP) \
-			$$(ls -1 /usr/lib/x86_64-linux-gnu/libvulkan.so.1.4.* | sort -V | tail -n 1) \
-			DiepDesktop/libvulkan.so.1; \
+	if [[ ! -f DiepDesktop/libvulkan.so ]]; then \
+		$(CP) -L \
+			$$(ldconfig -p | grep 'libvulkan.so ' | awk '{print $$NF}') \
+			DiepDesktop/; \
 	fi
-	if ! ls DiepDesktop/libSDL3.so.* 1>/dev/null 2>&1; then \
-		$(CP) \
-			$$(ls -1 /usr/local/lib/libSDL3.so.* | sort -V | tail -n 1) \
+	if [[ ! -f DiepDesktop/libSDL3.so ]]; then \
+		$(CP) -L \
+			$$(ldconfig -p | grep 'libSDL3.so ' | awk '{print $$NF}') \
 			DiepDesktop/; \
 	fi
 endif
@@ -268,5 +268,4 @@ cloc:
 	cloc --skip-uniqueness $(shell find . -type f \
 		\( -name "*.c" -o -name "*.h" -o -name "*.glsl" \
 			-o -name "Makefile" -o -name "SConstruct" \) \
-		! -name "volk.c" ! -name "volk.h" \
 		! -path "*client/tex/*" ! -path "*client/font/*")

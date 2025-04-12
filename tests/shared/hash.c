@@ -25,18 +25,8 @@ test_normal_pass__hash_table_init_free(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 256);
-	hash_table_free(&table);
-}
-
-
-void assert_used
-test_normal_fail__hash_table_init_null(
-	void
-	)
-{
-	hash_table_init(NULL, 1);
+	hash_table_t table = hash_table_init(256, NULL, NULL);
+	hash_table_free(table);
 }
 
 
@@ -45,8 +35,7 @@ test_normal_fail__hash_table_init_zero_buckets(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 0);
+	hash_table_init(0, NULL, NULL);
 }
 
 
@@ -91,38 +80,37 @@ test_normal_pass__hash_table_functions(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 8);
+	hash_table_t table = hash_table_init(8, NULL, NULL);
 
-	assert_false(hash_table_has(&table, "foo"));
-	assert_false(hash_table_has(&table, "bar"));
-	assert_false(hash_table_modify(&table, "foo", (void*) 1));
-	assert_false(hash_table_del(&table, "foo"));
+	assert_false(hash_table_has(table, "foo"));
+	assert_false(hash_table_has(table, "bar"));
+	assert_false(hash_table_modify(table, "foo", (void*) 1));
+	assert_false(hash_table_del(table, "foo"));
 
-	hash_table_clear(&table);
+	hash_table_clear(table);
 
-	assert_true(hash_table_add(&table, "foo", (void*) 1));
-	assert_true(hash_table_has(&table, "foo"));
-	assert_eq(hash_table_get(&table, "foo"), (void*) 1);
+	assert_true(hash_table_add(table, "foo", (void*) 1));
+	assert_true(hash_table_has(table, "foo"));
+	assert_eq(hash_table_get(table, "foo"), (void*) 1);
 
-	assert_false(hash_table_set(&table, "bar", (void*) 2));
-	assert_false(hash_table_add(&table, "bar", (void*) 3));
+	assert_false(hash_table_set(table, "bar", (void*) 2));
+	assert_false(hash_table_add(table, "bar", (void*) 3));
 
-	assert_true(hash_table_has(&table, "foo"));
-	assert_eq(hash_table_get(&table, "foo"), (void*) 1);
+	assert_true(hash_table_has(table, "foo"));
+	assert_eq(hash_table_get(table, "foo"), (void*) 1);
 
-	assert_true(hash_table_has(&table, "bar"));
-	assert_eq(hash_table_get(&table, "bar"), (void*) 2);
+	assert_true(hash_table_has(table, "bar"));
+	assert_eq(hash_table_get(table, "bar"), (void*) 2);
 
-	assert_true(hash_table_modify(&table, "foo", (void*) 3));
-	assert_eq(hash_table_get(&table, "foo"), (void*) 3);
+	assert_true(hash_table_modify(table, "foo", (void*) 3));
+	assert_eq(hash_table_get(table, "foo"), (void*) 3);
 
-	assert_true(hash_table_set(&table, "foo", (void*) 1));
-	assert_eq(hash_table_get(&table, "foo"), (void*) 1);
+	assert_true(hash_table_set(table, "foo", (void*) 1));
+	assert_eq(hash_table_get(table, "foo"), (void*) 1);
 
 	for_each_data_t data[4];
 	for_each_data_t* data_end = data;
-	hash_table_for_each(&table, hash_table_for_each_fn, &data_end);
+	hash_table_for_each(table, hash_table_for_each_fn, &data_end);
 	assert_eq(data_end, data + 2);
 
 	for(for_each_data_t* cur = data; cur != data_end; ++cur)
@@ -143,14 +131,14 @@ test_normal_pass__hash_table_functions(
 		}
 	}
 
-	assert_true(hash_table_del(&table, "foo"));
-	assert_false(hash_table_has(&table, "foo"));
-	assert_false(hash_table_del(&table, "foo"));
-	assert_true(hash_table_has(&table, "bar"));
-	assert_eq(hash_table_get(&table, "bar"), (void*) 2);
+	assert_true(hash_table_del(table, "foo"));
+	assert_false(hash_table_has(table, "foo"));
+	assert_false(hash_table_del(table, "foo"));
+	assert_true(hash_table_has(table, "bar"));
+	assert_eq(hash_table_get(table, "bar"), (void*) 2);
 
 	data_end = data;
-	hash_table_for_each(&table, hash_table_for_each_fn, &data_end);
+	hash_table_for_each(table, hash_table_for_each_fn, &data_end);
 	assert_eq(data_end, data + 1);
 
 	for(for_each_data_t* cur = data; cur != data_end; ++cur)
@@ -160,16 +148,70 @@ test_normal_pass__hash_table_functions(
 		assert_eq(cur->value, (void*) 2);
 	}
 
-	hash_table_clear(&table);
+	hash_table_clear(table);
 
-	assert_false(hash_table_has(&table, "foo"));
-	assert_false(hash_table_has(&table, "bar"));
+	assert_false(hash_table_has(table, "foo"));
+	assert_false(hash_table_has(table, "bar"));
 
 	data_end = data;
-	hash_table_for_each(&table, hash_table_for_each_fn, &data_end);
+	hash_table_for_each(table, hash_table_for_each_fn, &data_end);
 	assert_eq(data_end, data + 0);
 
-	hash_table_free(&table);
+	hash_table_free(table);
+}
+
+
+private void
+hash_table_key_dtor(
+	str_t key
+	)
+{
+	assert_not_null(key);
+
+	assert_eq(key->len, 3);
+	str_clear(key);
+}
+
+
+private void
+hash_table_value_dtor(
+	void* value
+	)
+{
+	assert_not_null(value);
+
+	assert_true(str_cmp_cstr(value, "test"));
+	str_free(value);
+}
+
+
+void assert_used
+test_normal_pass__hash_table_key_value_dtors(
+	void
+	)
+{
+	hash_table_t table = hash_table_init(8, hash_table_key_dtor, hash_table_value_dtor);
+
+	str_t key = str_init_copy_cstr("foo");
+	str_t value = str_init_copy_cstr("test");
+	assert_true(hash_table_add(table, key->str, value));
+	assert_true(hash_table_has(table, "foo"));
+	str_reset(key);
+	str_free(key);
+
+	key = str_init_copy_cstr("bar");
+	value = str_init_copy_cstr("test");
+	assert_true(hash_table_add(table, key->str, value));
+	assert_true(hash_table_has(table, "bar"));
+	str_reset(key);
+	str_free(key);
+
+	key = str_init_copy_cstr("bar");
+	value = str_init_copy_cstr("test");
+	assert_true(hash_table_modify(table, key->str, value));
+	assert_true(hash_table_del(table, "bar"));
+
+	hash_table_free(table);
 }
 
 
@@ -187,9 +229,8 @@ test_normal_fail__hash_table_has_null_key(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 1);
-	hash_table_has(&table, NULL);
+	hash_table_t table = hash_table_init(1, NULL, NULL);
+	hash_table_has(table, NULL);
 }
 
 
@@ -216,9 +257,8 @@ test_normal_fail__hash_table_add_null_key(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 1);
-	hash_table_add(&table, NULL, (void*) 1);
+	hash_table_t table = hash_table_init(1, NULL, NULL);
+	hash_table_add(table, NULL, (void*) 1);
 }
 
 
@@ -245,9 +285,8 @@ test_normal_fail__hash_table_get_null_key(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 1);
-	hash_table_get(&table, NULL);
+	hash_table_t table = hash_table_init(1, NULL, NULL);
+	hash_table_get(table, NULL);
 }
 
 
@@ -274,9 +313,8 @@ test_normal_fail__hash_table_del_null_key(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 1);
-	hash_table_del(&table, NULL);
+	hash_table_t table = hash_table_init(1, NULL, NULL);
+	hash_table_del(table, NULL);
 }
 
 
@@ -303,9 +341,8 @@ test_normal_fail__hash_table_for_each_null_fn(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 1);
-	hash_table_for_each(&table, NULL, NULL);
+	hash_table_t table = hash_table_init(1, NULL, NULL);
+	hash_table_for_each(table, NULL, NULL);
 }
 
 
@@ -341,9 +378,8 @@ test_normal_fail__hash_table_set_null_key(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 1);
-	hash_table_set(&table, NULL, (void*) 1);
+	hash_table_t table = hash_table_init(1, NULL, NULL);
+	hash_table_set(table, NULL, (void*) 1);
 }
 
 
@@ -370,9 +406,8 @@ test_normal_fail__hash_table_modify_null_key(
 	void
 	)
 {
-	hash_table_t table;
-	hash_table_init(&table, 1);
-	hash_table_modify(&table, NULL, (void*) 1);
+	hash_table_t table = hash_table_init(1, NULL, NULL);
+	hash_table_modify(table, NULL, (void*) 1);
 }
 
 

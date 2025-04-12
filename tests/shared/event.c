@@ -178,7 +178,7 @@ test_normal_pass__event_target_fire(
 
 	event_listener_data_t data =
 	{
-		.fn = (event_fn_t) event_listener_bool_fn,
+		.fn = (void*) event_listener_bool_fn,
 		.data = &called
 	};
 	event_listener_t* listener = event_target_add(&target, data);
@@ -204,7 +204,7 @@ test_normal_pass__event_target_fire_once(
 
 	event_listener_data_t data =
 	{
-		.fn = (event_fn_t) event_listener_bool_fn,
+		.fn = (void*) event_listener_bool_fn,
 		.data = &called
 	};
 	event_target_once(&target, data);
@@ -233,7 +233,7 @@ test_normal_pass__event_target_fire_on_removed_listener(
 
 	event_listener_data_t data =
 	{
-		.fn = (event_fn_t) event_listener_bool_fn,
+		.fn = (void*) event_listener_bool_fn,
 		.data = &called
 	};
 	event_listener_t* listener = event_target_add(&target, data);
@@ -258,7 +258,7 @@ test_normal_pass__event_target_fire_on_removed_once_listener(
 
 	event_listener_data_t data =
 	{
-		.fn = (event_fn_t) event_listener_bool_fn,
+		.fn = (void*) event_listener_bool_fn,
 		.data = &called
 	};
 	event_listener_t* listener = event_target_once(&target, data);
@@ -291,7 +291,7 @@ test_normal_pass__event_listener_remove_itself(
 
 	event_listener_data_t data =
 	{
-		.fn = (event_fn_t) event_listener_remove_itself_fn,
+		.fn = (void*) event_listener_remove_itself_fn,
 		.data = &target
 	};
 	event_listener_t* listener = event_target_add(&target, data);
@@ -312,7 +312,7 @@ test_normal_fail__event_listener_remove_itself_twice(
 
 	event_listener_data_t data =
 	{
-		.fn = (event_fn_t) event_listener_remove_itself_fn,
+		.fn = (void*) event_listener_remove_itself_fn,
 		.data = &target
 	};
 	event_listener_t* listener = event_target_add(&target, data);
@@ -345,7 +345,7 @@ test_priority_pass__event_target_wait(
 	thread_t thread;
 	thread_data_t data =
 	{
-		.fn = (thread_fn_t) event_target_wait_thread_fn,
+		.fn = (void*) event_target_wait_thread_fn,
 		.data = &target
 	};
 	thread_init(&thread, data);

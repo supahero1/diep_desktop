@@ -19,16 +19,16 @@ import subprocess
 
 
 
-env = Environment(tools = ["mingw"] if os.name == "nt" else ["default"])
+env = Environment(tools = ["mingw"] if os.name == "nt" else ["default"], ENV=os.environ)
 
 flags = Split("-std=gnu23 -Wall -Iinclude/ -D_GNU_SOURCE")
 
 freetype2_flags = subprocess.check_output(["pkg-config", "--cflags", "freetype2"], text=True)
-flags.extend(Split(freetype2_flags))
+flags.extend([Split(freetype2_flags)[0]])
 
 release = int(ARGUMENTS["RELEASE"] if "RELEASE" in ARGUMENTS else os.environ.get("RELEASE", "0"))
 if release <= 0:
-	flags.extend(Split("-O0 -g3 -D_FORTIFY_SOURCE=3"))
+	flags.extend(Split("-O0 -g3"))
 	if os.name != "nt":
 		env.Append(LINKFLAGS=Split("-rdynamic"))
 else:
@@ -190,7 +190,8 @@ def add_test(object):
 	test = env.Command(output, program, "$SOURCE --file > $TARGET 2>&1")
 	valgrind_output = output + ".val"
 	valgrind_test = env.Command(valgrind_output, program,
-		"valgrind --leak-check=full --show-leak-kinds=all --suppressions=val_sup.txt -- $SOURCE --file > $TARGET 2>&1")
+		"DEBUGINFOD_URLS=https://debuginfod.archlinux.org valgrind --leak-check=full " +
+		"--show-leak-kinds=all --suppressions=val_sup.txt -- $SOURCE --file > $TARGET 2>&1")
 	return [test, valgrind_test]
 
 def add_tests(objects):

@@ -19,29 +19,18 @@
 #include <DiepDesktop/shared/str.h>
 
 
-typedef struct hash_table_entry
-{
-	const char* key;
-	void* value;
-
-	uint32_t len;
-	uint32_t next;
-}
-hash_table_entry_t;
+typedef struct hash_table* hash_table_t;
 
 
-typedef struct hash_table
-{
-	uint32_t* buckets;
-	hash_table_entry_t* entries;
+typedef void
+(*hash_table_key_free_fn_t)(
+	str_t key
+	);
 
-	uint32_t bucket_count;
-	uint32_t entries_used;
-	uint32_t entries_size;
-	uint32_t free_entry;
-}
-hash_table_t;
-
+typedef void
+(*hash_table_value_free_fn_t)(
+	void* value
+	);
 
 typedef void
 (*hash_table_for_each_fn_t)(
@@ -51,28 +40,29 @@ typedef void
 	);
 
 
-extern void
+extern hash_table_t
 hash_table_init(
-	hash_table_t* table,
-	uint32_t bucket_count
+	uint32_t bucket_count,
+	hash_table_key_free_fn_t key_free_fn,
+	hash_table_value_free_fn_t value_free_fn
 	);
 
 
 extern void
 hash_table_free(
-	hash_table_t* table
+	hash_table_t table
 	);
 
 
 extern void
 hash_table_clear(
-	hash_table_t* table
+	hash_table_t table
 	);
 
 
 extern void
 hash_table_for_each(
-	hash_table_t* table,
+	hash_table_t table,
 	hash_table_for_each_fn_t fn,
 	void* data
 	);
@@ -81,7 +71,7 @@ hash_table_for_each(
 /* false if not found */
 extern bool
 hash_table_has(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key
 	);
 
@@ -89,7 +79,7 @@ hash_table_has(
 /* false if already exists */
 extern bool
 hash_table_add(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key,
 	void* value
 	);
@@ -98,7 +88,7 @@ hash_table_add(
 /* false if this is a new entry */
 extern bool
 hash_table_set(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key,
 	void* value
 	);
@@ -107,7 +97,7 @@ hash_table_set(
 /* false if not found */
 extern bool
 hash_table_modify(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key,
 	void* value
 	);
@@ -115,7 +105,7 @@ hash_table_modify(
 
 extern void*
 hash_table_get(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key
 	);
 
@@ -123,6 +113,6 @@ hash_table_get(
 /* false if not found */
 extern bool
 hash_table_del(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key
 	);

@@ -160,26 +160,7 @@ typedef struct time_interval
 time_interval_t;
 
 
-typedef struct time_timers
-{
-	time_timeout_t* timeouts;
-	uint32_t timeouts_used;
-	uint32_t timeouts_size;
-
-	time_interval_t* intervals;
-	uint32_t intervals_used;
-	uint32_t intervals_size;
-
-	thread_t thread;
-	sync_mtx_t mtx;
-	sync_sem_t work_sem;
-	sync_sem_t updates_sem;
-
-	time_timer_t* current_timer;
-
-	_Atomic uint64_t latest;
-}
-time_timers_t;
+typedef struct time_timers* time_timers_t;
 
 
 extern void
@@ -188,33 +169,33 @@ time_timers_fn(
 	);
 
 
-extern void
+extern time_timers_t
 time_timers_init(
-	time_timers_t* timers
+	void
 	);
 
 
 extern void
 time_timers_free(
-	time_timers_t* timers
+	time_timers_t timers
 	);
 
 
 extern void
 time_timers_lock(
-	time_timers_t* timers
+	time_timers_t timers
 	);
 
 
 extern void
 time_timers_unlock(
-	time_timers_t* timers
+	time_timers_t timers
 	);
 
 
 extern time_timer_t*
 time_timers_get_current_timer(
-	time_timers_t* timers
+	time_timers_t timers
 	);
 
 
@@ -227,14 +208,14 @@ time_timer_init(
 
 extern bool
 time_timers_is_timer_expired_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern bool
 time_timers_is_timer_expired(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
@@ -248,56 +229,56 @@ time_timer_free(
 
 extern void
 time_timers_add_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timeout_t timeout
 	);
 
 
 extern void
 time_timers_add_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timeout_t timeout
 	);
 
 
 extern bool
 time_timers_cancel_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern bool
 time_timers_cancel_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern time_timeout_t*
 time_timers_open_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern time_timeout_t*
 time_timers_open_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern void
 time_timers_close_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern void
 time_timers_close_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
@@ -310,14 +291,14 @@ time_timer_get_timeout_u(
 
 extern uint64_t
 time_timers_get_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern uint64_t
 time_timers_get_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
@@ -331,7 +312,7 @@ time_timer_set_timeout_u(
 
 extern bool
 time_timers_set_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t time
 	);
@@ -339,7 +320,7 @@ time_timers_set_timeout_u(
 
 extern bool
 time_timers_set_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t time
 	);
@@ -347,7 +328,7 @@ time_timers_set_timeout(
 
 extern void
 time_timers_update_timeout_timer_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timeout_t* timeout
 	);
 
@@ -355,56 +336,56 @@ time_timers_update_timeout_timer_u(
 
 extern void
 time_timers_add_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_interval_t interval
 	);
 
 
 extern void
 time_timers_add_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_interval_t interval
 	);
 
 
 extern bool
 time_timers_cancel_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern bool
 time_timers_cancel_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern time_interval_t*
 time_timers_open_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern time_interval_t*
 time_timers_open_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern void
 time_timers_close_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern void
 time_timers_close_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
@@ -417,14 +398,14 @@ time_timer_get_interval_u(
 
 extern uint64_t
 time_timers_get_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
 
 extern uint64_t
 time_timers_get_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	);
 
@@ -440,7 +421,7 @@ time_timer_set_interval_u(
 
 extern bool
 time_timers_set_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t base_time,
 	uint64_t interval_time,
@@ -450,7 +431,7 @@ time_timers_set_interval_u(
 
 extern bool
 time_timers_set_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t base_time,
 	uint64_t interval_time,
@@ -460,6 +441,6 @@ time_timers_set_interval(
 
 extern void
 time_timers_update_interval_timer_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_interval_t* interval
 	);

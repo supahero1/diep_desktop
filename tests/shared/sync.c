@@ -352,7 +352,7 @@ test_normal_pass__sync_cond_wait_wake(
 	};
 	thread_data_t data =
 	{
-		.fn = (thread_fn_t) thread_cond_wake_fn,
+		.fn = (void*) thread_cond_wake_fn,
 		.data = &thread_data
 	};
 	thread_t thread;

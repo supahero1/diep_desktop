@@ -22,7 +22,7 @@
 
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
-#include <DiepDesktop/client/window/volk.h>
+#include <volk.h>
 
 #define VULKAN_MAX_IMAGES 8
 
@@ -226,7 +226,7 @@ graphics_init(
 
 	event_listener_data_t free_data =
 	{
-		.fn = (event_fn_t) graphics_free,
+		.fn = (void*) graphics_free,
 		.data = graphics
 	};
 	(void) event_target_once(&table->free_target, free_data);

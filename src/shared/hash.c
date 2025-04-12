@@ -21,6 +21,31 @@
 #include <string.h>
 
 
+typedef struct hash_table_entry
+{
+	const char* key;
+	void* value;
+
+	uint32_t len;
+	uint32_t next;
+}
+hash_table_entry_t;
+
+struct hash_table
+{
+	uint32_t* buckets;
+	hash_table_entry_t* entries;
+
+	uint32_t bucket_count;
+	uint32_t entries_used;
+	uint32_t entries_size;
+	uint32_t free_entry;
+
+	hash_table_key_free_fn_t key_free_fn;
+	hash_table_value_free_fn_t value_free_fn;
+};
+
+
 private uint32_t
 hash_table_hash(
 	const char* key,
@@ -41,14 +66,45 @@ hash_table_hash(
 }
 
 
-void
-hash_table_init(
-	hash_table_t* table,
-	uint32_t bucket_count
+private void
+hash_table_default_key_free_fn(
+	str_t key
 	)
 {
-	assert_not_null(table);
+	(void) key;
+}
+
+
+private void
+hash_table_default_value_free_fn(
+	void* value
+	)
+{
+	(void) value;
+}
+
+
+hash_table_t
+hash_table_init(
+	uint32_t bucket_count,
+	hash_table_key_free_fn_t key_free_fn,
+	hash_table_value_free_fn_t value_free_fn
+	)
+{
 	assert_gt(bucket_count, 0);
+
+	if(!key_free_fn)
+	{
+		key_free_fn = hash_table_default_key_free_fn;
+	}
+
+	if(!value_free_fn)
+	{
+		value_free_fn = hash_table_default_value_free_fn;
+	}
+
+	hash_table_t table = alloc_malloc(sizeof(*table));
+	assert_not_null(table);
 
 	table->bucket_count = bucket_count;
 	assert_neq(table->bucket_count, 0);
@@ -61,15 +117,54 @@ hash_table_init(
 	assert_not_null(table->buckets);
 
 	table->entries = NULL;
+
+	table->key_free_fn = key_free_fn;
+	table->value_free_fn = value_free_fn;
+
+	return table;
+}
+
+
+private void
+hash_table_for_each_free_fn(
+	str_t key,
+	void* value,
+	void* data
+	)
+{
+	hash_table_t table = data;
+	assert_not_null(table);
+
+	table->key_free_fn(key);
+	table->value_free_fn(value);
+}
+
+
+private void
+hash_table_for_each_free(
+	hash_table_t table
+	)
+{
+	assert_not_null(table);
+
+	if(
+		table->key_free_fn != hash_table_default_key_free_fn ||
+		table->value_free_fn != hash_table_default_value_free_fn
+		)
+	{
+		hash_table_for_each(table, hash_table_for_each_free_fn, table);
+	}
 }
 
 
 void
 hash_table_free(
-	hash_table_t* table
+	hash_table_t table
 	)
 {
 	assert_not_null(table);
+
+	hash_table_for_each_free(table);
 
 	alloc_free(table->buckets, sizeof(*table->buckets) * table->bucket_count);
 	alloc_free(table->entries, sizeof(*table->entries) * table->entries_size);
@@ -78,10 +173,12 @@ hash_table_free(
 
 void
 hash_table_clear(
-	hash_table_t* table
+	hash_table_t table
 	)
 {
 	assert_not_null(table);
+
+	hash_table_for_each_free(table);
 
 	(void) memset(table->buckets, 0, sizeof(*table->buckets) * table->bucket_count);
 
@@ -96,7 +193,7 @@ hash_table_clear(
 
 void
 hash_table_for_each(
-	hash_table_t* table,
+	hash_table_t table,
 	hash_table_for_each_fn_t fn,
 	void* data
 	)
@@ -123,18 +220,11 @@ hash_table_for_each(
 }
 
 
-private uint32_t
-hash_table_get_entry(
-	hash_table_t* table
+private void
+hash_table_ensure_entry(
+	hash_table_t table
 	)
 {
-	if(table->free_entry)
-	{
-		uint32_t entry = table->free_entry;
-		table->free_entry = table->entries[entry].next;
-		return entry;
-	}
-
 	if(table->entries_used >= table->entries_size)
 	{
 		uint32_t new_size = (table->entries_used << 1) | 1;
@@ -147,6 +237,22 @@ hash_table_get_entry(
 
 		table->entries_size = new_size;
 	}
+}
+
+
+private uint32_t
+hash_table_get_entry(
+	hash_table_t table
+	)
+{
+	if(table->free_entry)
+	{
+		uint32_t entry = table->free_entry;
+		table->free_entry = table->entries[entry].next;
+		return entry;
+	}
+
+	hash_table_ensure_entry(table);
 
 	return table->entries_used++;
 }
@@ -154,7 +260,7 @@ hash_table_get_entry(
 
 private void
 hash_table_ret_entry(
-	hash_table_t* table,
+	hash_table_t table,
 	uint32_t entry
 	)
 {
@@ -165,7 +271,7 @@ hash_table_ret_entry(
 
 bool
 hash_table_has(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key
 	)
 {
@@ -198,13 +304,15 @@ hash_table_has(
 
 bool
 hash_table_add(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key,
 	void* value
 	)
 {
 	assert_not_null(table);
 	assert_not_null(key);
+
+	hash_table_ensure_entry(table);
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
@@ -243,13 +351,15 @@ hash_table_add(
 
 bool
 hash_table_set(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key,
 	void* value
 	)
 {
 	assert_not_null(table);
 	assert_not_null(key);
+
+	hash_table_ensure_entry(table);
 
 	uint32_t len;
 	uint32_t hash = hash_table_hash(key, &len) % table->bucket_count;
@@ -265,7 +375,12 @@ hash_table_set(
 
 		if(str_case_cmp(search_key, entry_key))
 		{
+			table->key_free_fn(entry_key);
+			table->value_free_fn(entry->value);
+
+			entry->key = key;
 			entry->value = value;
+
 			return true;
 		}
 
@@ -289,7 +404,7 @@ hash_table_set(
 
 bool
 hash_table_modify(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key,
 	void* value
 	)
@@ -311,7 +426,12 @@ hash_table_modify(
 
 		if(str_case_cmp(search_key, entry_key))
 		{
+			table->key_free_fn(entry_key);
+			table->value_free_fn(entry->value);
+
+			entry->key = key;
 			entry->value = value;
+
 			return true;
 		}
 
@@ -324,7 +444,7 @@ hash_table_modify(
 
 void*
 hash_table_get(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key
 	)
 {
@@ -357,7 +477,7 @@ hash_table_get(
 
 bool
 hash_table_del(
-	hash_table_t* table,
+	hash_table_t table,
 	const char* key
 	)
 {
@@ -378,9 +498,13 @@ hash_table_del(
 
 		if(str_case_cmp(search_key, entry_key))
 		{
+			table->key_free_fn(entry_key);
+			table->value_free_fn(entry->value);
+
 			uint32_t next_idx = *next;
 			*next = table->entries[next_idx].next;
 			hash_table_ret_entry(table, next_idx);
+
 			return true;
 		}
 

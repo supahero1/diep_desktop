@@ -211,7 +211,7 @@ window_init(
 
 	event_listener_data_t free_data =
 	{
-		.fn = (event_fn_t) window_free_once_fn,
+		.fn = (void*) window_free_once_fn,
 		.data = window
 	};
 	(void) event_target_once(&window->event_table.free_target, free_data);

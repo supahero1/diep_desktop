@@ -21,6 +21,283 @@
 
 
 void assert_used
+test_normal_pass__cstr_alloc_free(
+	void
+	)
+{
+	void* cstr = cstr_alloc(0);
+	assert_true(cstr_cmp(cstr, ""));
+	cstr_free(cstr);
+
+	cstr = cstr_alloc(5);
+	memcpy(cstr, "test", 4);
+	cstr_free(cstr);
+}
+
+
+void assert_used
+test_normal_pass__cstr_resize(
+	void
+	)
+{
+	void* cstr = cstr_alloc(0);
+	assert_true(cstr_cmp(cstr, ""));
+
+	cstr = cstr_resize(cstr, 5);
+	memcpy(cstr, "test", 4);
+	assert_true(cstr_cmp(cstr, "test"));
+
+	cstr = cstr_resize(cstr, 0);
+	assert_true(cstr_cmp(cstr, ""));
+
+	cstr_free(cstr);
+}
+
+
+void assert_used
+test_normal_pass__cstr_resize_len(
+	void
+	)
+{
+	void* cstr = cstr_alloc(0);
+	assert_true(cstr_cmp(cstr, ""));
+
+	cstr = cstr_resize_len(cstr, 0, 5);
+	memcpy(cstr, "test", 4);
+	assert_true(cstr_cmp(cstr, "test"));
+
+	cstr = cstr_resize_len(cstr, 5, 0);
+	assert_true(cstr_cmp(cstr, ""));
+
+	cstr_free(cstr);
+}
+
+
+void assert_used
+test_normal_pass__cstr_init_free(
+	void
+	)
+{
+	void* cstr = cstr_init("test");
+	cstr_free(cstr);
+}
+
+
+void assert_used
+test_normal_pass__cstr_init_len_free(
+	void
+	)
+{
+	void* cstr = cstr_init_len("testo", 4);
+	assert_true(cstr_cmp(cstr, "test"));
+	cstr_free(cstr);
+}
+
+
+void assert_used
+test_normal_pass__cstr_init_len_free_null(
+	void
+	)
+{
+	void* cstr = cstr_init_len(NULL, 0);
+	assert_true(cstr_cmp(cstr, ""));
+	cstr_free(cstr);
+}
+
+
+void assert_used
+test_normal_pass__cstr_cmp(
+	void
+	)
+{
+	void* cstr1 = cstr_init_len("testa", 4);
+	void* cstr2 = cstr_init_len("test", 4);
+	assert_true(cstr_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+
+	cstr1 = cstr_init_len("foo", 3);
+	cstr2 = cstr_init_len("bar", 3);
+	assert_false(cstr_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+
+	cstr1 = cstr_init_len("foo", 3);
+	cstr2 = cstr_init_len("fooo", 4);
+	assert_false(cstr_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+
+	cstr1 = cstr_init_len("foo", 3);
+	cstr2 = cstr_init_len("fOo", 3);
+	assert_false(cstr_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+}
+
+
+void assert_used
+test_normal_pass__cstr_case_cmp(
+	void
+	)
+{
+	void* cstr1 = cstr_init_len("test", 4);
+	void* cstr2 = cstr_init_len("testa", 4);
+	assert_true(cstr_case_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+
+	cstr1 = cstr_init_len("foo", 3);
+	cstr2 = cstr_init_len("bar", 3);
+	assert_false(cstr_case_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+
+	cstr1 = cstr_init_len("foo", 3);
+	cstr2 = cstr_init_len("fooo", 4);
+	assert_false(cstr_case_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+
+	cstr1 = cstr_init_len("foo", 3);
+	cstr2 = cstr_init_len("fOo", 3);
+	assert_true(cstr_case_cmp(cstr1, cstr2));
+	cstr_free(cstr2);
+	cstr_free(cstr1);
+}
+
+
+void assert_used
+test_normal_fail___cstr_resize_null(
+	void
+	)
+{
+	cstr_resize(NULL, 0);
+}
+
+
+void assert_used
+test_normal_pass__cstr_resize_len_null(
+	void
+	)
+{
+	void* cstr = cstr_resize_len(NULL, 0, 5);
+	memcpy(cstr, "test", 4);
+	assert_true(cstr_cmp(cstr, "test"));
+
+	cstr_free(cstr);
+}
+
+
+void assert_used
+test_normal_fail__cstr_resize_len_null_non_zero_len(
+	void
+	)
+{
+	cstr_resize_len(NULL, 4, 0);
+}
+
+
+void assert_used
+test_normal_fail__cstr_init_null(
+	void
+	)
+{
+	cstr_init(NULL);
+}
+
+
+void assert_used
+test_normal_fail__cstr_init_len_null_non_zero_len(
+	void
+	)
+{
+	cstr_init_len(NULL, 4);
+}
+
+
+void assert_used
+test_normal_pass__cstr_free_null(
+	void
+	)
+{
+	cstr_free(NULL);
+}
+
+
+void assert_used
+test_normal_pass__cstr_free_null_len(
+	void
+	)
+{
+	cstr_free_len(NULL, 0);
+}
+
+
+void assert_used
+test_normal_fail__cstr_free_null_len_non_zero_len(
+	void
+	)
+{
+	cstr_free_len(NULL, 4);
+}
+
+
+void assert_used
+test_normal_fail__cstr_cmp_null_cstr1(
+	void
+	)
+{
+	cstr_cmp(NULL, "test");
+}
+
+
+void assert_used
+test_normal_fail__cstr_cmp_null_cstr2(
+	void
+	)
+{
+	cstr_cmp("test", NULL);
+}
+
+
+void assert_used
+test_normal_fail__cstr_cmp_null(
+	void
+	)
+{
+	cstr_cmp(NULL, NULL);
+}
+
+
+void assert_used
+test_normal_fail__cstr_case_cmp_null_cstr1(
+	void
+	)
+{
+	cstr_case_cmp(NULL, "test");
+}
+
+
+void assert_used
+test_normal_fail__cstr_case_cmp_null_cstr2(
+	void
+	)
+{
+	cstr_case_cmp("test", NULL);
+}
+
+
+void assert_used
+test_normal_fail__cstr_case_cmp_null(
+	void
+	)
+{
+	cstr_case_cmp(NULL, NULL);
+}
+
+
+void assert_used
 test_normal_pass__str_init_free(
 	void
 	)
@@ -150,7 +427,7 @@ test_normal_pass__str_cmp(
 	void
 	)
 {
-	str_t str1 = str_init_copy_len("test", 4);
+	str_t str1 = str_init_copy_len("testa", 4);
 	str_t str2 = str_init_copy_len("test", 4);
 	assert_true(str_cmp(str1, str2));
 
@@ -177,7 +454,7 @@ test_normal_pass__str_case_cmp(
 	)
 {
 	str_t str1 = str_init_copy_len("test", 4);
-	str_t str2 = str_init_copy_len("test", 4);
+	str_t str2 = str_init_copy_len("testa", 4);
 	assert_true(str_case_cmp(str1, str2));
 
 	str_set_copy_len(str1, "foo", 3);
@@ -583,4 +860,80 @@ test_normal_fail__str_case_cmp_cstr_null(
 	)
 {
 	str_case_cmp_cstr(NULL, NULL);
+}
+
+
+void assert_used
+test_normal_fail__str_cmp_len_null_str(
+	void
+	)
+{
+	str_cmp_len(NULL, "test", 4);
+}
+
+
+void assert_used
+test_normal_pass__str_cmp_len_null_cstr(
+	void
+	)
+{
+	str_t str = str_init_copy_len("test", 4);
+	assert_false(str_cmp_len(str, NULL, 0));
+}
+
+
+void assert_used
+test_normal_fail__str_cmp_len_null_cstr_non_zero_len(
+	void
+	)
+{
+	str_t str = str_init_copy_len("test", 4);
+	str_cmp_len(str, NULL, 4);
+}
+
+
+void assert_used
+test_normal_fail__str_cmp_len_null(
+	void
+	)
+{
+	str_cmp_len(NULL, NULL, 4);
+}
+
+
+void assert_used
+test_normal_fail__str_case_cmp_len_null_str(
+	void
+	)
+{
+	str_case_cmp_len(NULL, "test", 4);
+}
+
+
+void assert_used
+test_normal_pass__str_case_cmp_len_null_cstr(
+	void
+	)
+{
+	str_t str = str_init_copy_len("test", 4);
+	assert_false(str_case_cmp_len(str, NULL, 0));
+}
+
+
+void assert_used
+test_normal_fail__str_case_cmp_len_null_cstr_non_zero_len(
+	void
+	)
+{
+	str_t str = str_init_copy_len("test", 4);
+	str_case_cmp_len(str, NULL, 4);
+}
+
+
+void assert_used
+test_normal_fail__str_case_cmp_len_null(
+	void
+	)
+{
+	str_case_cmp_len(NULL, NULL, 4);
 }

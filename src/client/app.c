@@ -88,8 +88,8 @@ app_window_on_move_fn(
 	window_move_event_data_t* event_data
 	)
 {
-	settings_modify_f32(&app->settings, app->window_pos_x, event_data->new_pos.x);
-	settings_modify_f32(&app->settings, app->window_pos_y, event_data->new_pos.y);
+	settings_modify_f32(app->settings, app->window_pos_x, event_data->new_pos.x);
+	settings_modify_f32(app->settings, app->window_pos_y, event_data->new_pos.y);
 }
 
 
@@ -99,8 +99,8 @@ app_window_on_resize_fn(
 	window_resize_event_data_t* event_data
 	)
 {
-	settings_modify_f32(&app->settings, app->window_w, event_data->new_size.w);
-	settings_modify_f32(&app->settings, app->window_h, event_data->new_size.h);
+	settings_modify_f32(app->settings, app->window_w, event_data->new_size.w);
+	settings_modify_f32(app->settings, app->window_h, event_data->new_size.h);
 
 	if(event_data->new_size.w >= 1600.0f)
 	{
@@ -115,7 +115,7 @@ app_window_on_fullscreen_fn(
 	window_focus_event_data_t* event_data
 	)
 {
-	settings_modify_boolean(&app->settings, app->window_fullscreen, true);
+	settings_modify_boolean(app->settings, app->window_fullscreen, true);
 }
 
 
@@ -141,18 +141,18 @@ app_init(
 
 	dir_create("settings");
 
-	time_timers_init(&app->timers);
-	settings_init(&app->settings, "settings/window.bin", &app->timers);
+	app->timers = time_timers_init();
+	app->settings = settings_init("settings/window.bin", app->timers);
 
-	app->window_pos_x = settings_add_f32(&app->settings, "main_window_pos_x", 0.0f, -16384.0f, 16384.0f, NULL);
-	app->window_pos_y = settings_add_f32(&app->settings, "main_window_pos_y", 0.0f, -16384.0f, 16384.0f, NULL);
-	app->window_w = settings_add_f32(&app->settings, "main_window_w", 1280.0f, 480.0f, 16384.0f, NULL);
-	app->window_h = settings_add_f32(&app->settings, "main_window_h", 720.0f, 270.0f, 16384.0f, NULL);
-	app->window_fullscreen = settings_add_boolean(&app->settings, "main_window_fullscreen", false, NULL);
+	app->window_pos_x = settings_add_f32(app->settings, "main_window_pos_x", 0.0f, -16384.0f, 16384.0f, NULL);
+	app->window_pos_y = settings_add_f32(app->settings, "main_window_pos_y", 0.0f, -16384.0f, 16384.0f, NULL);
+	app->window_w = settings_add_f32(app->settings, "main_window_w", 1280.0f, 480.0f, 16384.0f, NULL);
+	app->window_h = settings_add_f32(app->settings, "main_window_h", 720.0f, 270.0f, 16384.0f, NULL);
+	app->window_fullscreen = settings_add_boolean(app->settings, "main_window_fullscreen", false, NULL);
 
-	settings_seal(&app->settings);
+	settings_seal(app->settings);
 
-	settings_load(&app->settings);
+	settings_load(app->settings);
 
 	window_history_t history =
 	{
@@ -176,35 +176,35 @@ app_init(
 
 	event_listener_data_t close_once_data =
 	{
-		.fn = (event_fn_t) app_window_close_once_fn,
+		.fn = (void*) app_window_close_once_fn,
 		.data = app
 	};
 	app->window_close_once_listener = event_target_once(&table->close_target, close_once_data);
 
 	event_listener_data_t free_once_data =
 	{
-		.fn = (event_fn_t) app_window_free_once_fn,
+		.fn = (void*) app_window_free_once_fn,
 		.data = app
 	};
 	event_target_once(&table->free_target, free_once_data);
 
 	event_listener_data_t move_data =
 	{
-		.fn = (event_fn_t) app_window_on_move_fn,
+		.fn = (void*) app_window_on_move_fn,
 		.data = app
 	};
 	app->window_move_listener = event_target_add(&table->move_target, move_data);
 
 	event_listener_data_t resize_data =
 	{
-		.fn = (event_fn_t) app_window_on_resize_fn,
+		.fn = (void*) app_window_on_resize_fn,
 		.data = app
 	};
 	app->window_resize_listener = event_target_add(&table->resize_target, resize_data);
 
 	event_listener_data_t fullscreen_data =
 	{
-		.fn = (event_fn_t) app_window_on_fullscreen_fn,
+		.fn = (void*) app_window_on_fullscreen_fn,
 		.data = app
 	};
 	app->window_fullscreen_listener = event_target_add(&table->fullscreen_target, fullscreen_data);
@@ -224,8 +224,8 @@ app_free(
 
 	window_manager_free(app->manager);
 
-	settings_free(&app->settings);
-	time_timers_free(&app->timers);
+	settings_free(app->settings);
+	time_timers_free(app->timers);
 
 	alloc_free(app, sizeof(*app));
 }

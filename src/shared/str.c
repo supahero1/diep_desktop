@@ -21,6 +21,133 @@
 #include <string.h>
 
 
+void*
+cstr_alloc(
+	uint64_t len
+	)
+{
+	void* cstr = alloc_malloc(len + 1);
+	assert_not_null(cstr);
+
+	((uint8_t*) cstr)[len] = '\0';
+
+	return cstr;
+}
+
+
+void*
+cstr_resize(
+	void* cstr,
+	uint64_t new_len
+	)
+{
+	assert_not_null(cstr);
+
+	return cstr_resize_len(cstr, strlen(cstr), new_len);
+}
+
+
+void*
+cstr_resize_len(
+	void* cstr,
+	uint64_t old_len,
+	uint64_t new_len
+	)
+{
+	assert_ptr(cstr, old_len);
+
+	cstr = alloc_remalloc(cstr, old_len + 1, new_len + 1);
+	assert_not_null(cstr);
+
+	((uint8_t*) cstr)[new_len] = '\0';
+
+	return cstr;
+}
+
+
+void*
+cstr_init(
+	const void* cstr
+	)
+{
+	assert_not_null(cstr);
+
+	return cstr_init_len(cstr, strlen(cstr));
+}
+
+
+void*
+cstr_init_len(
+	const void* cstr,
+	uint64_t len
+	)
+{
+	assert_ptr(cstr, len);
+
+	void* copy = cstr_alloc(len);
+	(void) memcpy(copy, cstr, len);
+	return copy;
+}
+
+
+void
+cstr_free(
+	const void* cstr
+	)
+{
+	if(!cstr)
+	{
+		return;
+	}
+
+	cstr_free_len(cstr, strlen(cstr));
+}
+
+
+void
+cstr_free_len(
+	const void* cstr,
+	uint64_t len
+	)
+{
+	assert_ptr(cstr, len);
+
+	if(cstr)
+	{
+		alloc_free(cstr, len + 1);
+	}
+}
+
+
+bool
+cstr_cmp(
+	const void* cstr1,
+	const void* cstr2
+	)
+{
+	assert_not_null(cstr1);
+	assert_not_null(cstr2);
+
+	return !strcmp(cstr1, cstr2);
+}
+
+
+bool
+cstr_case_cmp(
+	const void* cstr1,
+	const void* cstr2
+	)
+{
+	assert_not_null(cstr1);
+	assert_not_null(cstr2);
+
+	return !strcasecmp(cstr1, cstr2);
+}
+
+
+
+
+
 str_t
 str_init(
 	void
@@ -141,14 +268,7 @@ str_free_str(
 {
 	assert_not_null(str);
 
-	if(str->str)
-	{
-		alloc_free(str->str, str->len + 1);
-	}
-	else
-	{
-		assert_eq(str->len, 0);
-	}
+	cstr_free_len(str->str, str->len);
 }
 
 
@@ -306,10 +426,7 @@ str_set_copy(
 	if(other->str)
 	{
 		str->len = other->len;
-		str->str = alloc_malloc(str->len + 1);
-		assert_not_null(str->str);
-
-		(void) memcpy(str->str, other->str, str->len + 1);
+		str->str = cstr_init_len(other->str, other->len);
 	}
 }
 
@@ -341,22 +458,8 @@ str_resize(
 {
 	assert_not_null(str);
 
-	if(len == str->len)
-	{
-		return;
-	}
-
-	if(len == 0)
-	{
-		str_clear(str);
-		return;
-	}
-
-	str->str = alloc_remalloc(str->str, str->len + 1, len + 1);
-	assert_not_null(str->str);
-
+	str->str = cstr_resize_len(str->str, str->len, len);
 	str->len = len;
-	((uint8_t*) str->str)[len] = '\0';
 }
 
 
@@ -376,7 +479,7 @@ str_cmp(
 		return false;
 	}
 
-	return !strncmp((void*) str1->str, (void*) str2->str, str1->len);
+	return !strncmp(str1->str, str2->str, str1->len);
 }
 
 
@@ -396,7 +499,7 @@ str_case_cmp(
 		return false;
 	}
 
-	return !strncasecmp((void*) str1->str, (void*) str2->str, str1->len);
+	return !strncasecmp(str1->str, str2->str, str1->len);
 }
 
 
@@ -410,14 +513,8 @@ str_cmp_cstr(
 	assert_not_null(cstr);
 	assert_ptr(str->str, str->len);
 
-	uint64_t cstr_len = strlen((void*) cstr);
-
-	if(str->len != cstr_len)
-	{
-		return false;
-	}
-
-	return !strncmp((void*) str->str, (void*) cstr, str->len);
+	uint64_t cstr_len = strlen(cstr);
+	return str_cmp_len(str, cstr, cstr_len);
 }
 
 
@@ -431,12 +528,46 @@ str_case_cmp_cstr(
 	assert_not_null(cstr);
 	assert_ptr(str->str, str->len);
 
-	uint64_t cstr_len = strlen((void*) cstr);
+	uint64_t cstr_len = strlen(cstr);
+	return str_case_cmp_len(str, cstr, cstr_len);
+}
 
-	if(str->len != cstr_len)
+
+bool
+str_cmp_len(
+	const str_t str,
+	const void* cstr,
+	uint64_t len
+	)
+{
+	assert_not_null(str);
+	assert_ptr(cstr, len);
+	assert_ptr(str->str, str->len);
+
+	if(str->len != len)
 	{
 		return false;
 	}
 
-	return !strncasecmp((void*) str->str, (void*) cstr, str->len);
+	return !strncmp(str->str, cstr, str->len);
+}
+
+
+bool
+str_case_cmp_len(
+	const str_t str,
+	const void* cstr,
+	uint64_t len
+	)
+{
+	assert_not_null(str);
+	assert_ptr(cstr, len);
+	assert_ptr(str->str, str->len);
+
+	if(str->len != len)
+	{
+		return false;
+	}
+
+	return !strncasecmp(str->str, cstr, str->len);
 }

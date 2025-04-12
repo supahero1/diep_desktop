@@ -182,9 +182,30 @@ time_get_with_ns(
 
 
 
+struct time_timers
+{
+	time_timeout_t* timeouts;
+	uint32_t timeouts_used;
+	uint32_t timeouts_size;
+
+	time_interval_t* intervals;
+	uint32_t intervals_used;
+	uint32_t intervals_size;
+
+	thread_t thread;
+	sync_mtx_t mtx;
+	sync_sem_t work_sem;
+	sync_sem_t updates_sem;
+
+	time_timer_t* current_timer;
+
+	_Atomic uint64_t latest;
+};
+
+
 private uint64_t
 time_timers_get_latest(
-	time_timers_t* timers
+	time_timers_t timers
 	)
 {
 	return atomic_load_explicit(&timers->latest, memory_order_acquire);
@@ -206,7 +227,7 @@ time_timers_get_latest(
 
 private void
 time_timers_set_latest(
-	time_timers_t* timers
+	time_timers_t timers
 	)
 {
 	uint64_t old = time_timers_get_latest(timers);
@@ -240,7 +261,7 @@ time_timers_set_latest(
 																								\
 private void																					\
 time_timers_swap_##names (																		\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	uint32_t idx_a,																				\
 	uint32_t idx_b																				\
 	)																							\
@@ -256,7 +277,7 @@ time_timers_swap_##names (																		\
 																								\
 private void																					\
 time_timers_##names##_down (																	\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	uint32_t timer_idx																			\
 	)																							\
 {																								\
@@ -300,7 +321,7 @@ time_timers_##names##_down (																	\
 																								\
 private bool																					\
 time_timers_##names##_up (																		\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	uint32_t timer_idx																			\
 	)																							\
 {																								\
@@ -331,7 +352,7 @@ time_timers_##names##_up (																		\
 																								\
 private void																					\
 time_timers_free_##names (																		\
-	time_timers_t* timers																		\
+	time_timers_t timers																		\
 	)																							\
 {																								\
 	alloc_free(timers-> names , sizeof(* timers-> names ) * timers-> names##_size );			\
@@ -340,7 +361,7 @@ time_timers_free_##names (																		\
 																								\
 private void																					\
 time_timers_resize_##names (																	\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	uint32_t count																				\
 	)																							\
 {																								\
@@ -363,7 +384,7 @@ time_timers_resize_##names (																	\
 																								\
 private void																					\
 time_timers_add_##name##_common (																\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_##name##_t name,																		\
 	bool lock																					\
 	)																							\
@@ -400,7 +421,7 @@ time_timers_add_##name##_common (																\
 																								\
 void																							\
 time_timers_add_##name##_u (																	\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_##name##_t name																		\
 	)																							\
 {																								\
@@ -410,7 +431,7 @@ time_timers_add_##name##_u (																	\
 																								\
 void																							\
 time_timers_add_##name (																		\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_##name##_t name																		\
 	)																							\
 {																								\
@@ -420,7 +441,7 @@ time_timers_add_##name (																		\
 																								\
 bool																							\
 time_timers_cancel_##name##_u (																	\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_timer_t* timer																			\
 	)																							\
 {																								\
@@ -446,7 +467,7 @@ time_timers_cancel_##name##_u (																	\
 																								\
 bool																							\
 time_timers_cancel_##name (																		\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_timer_t* timer																			\
 	)																							\
 {																								\
@@ -460,7 +481,7 @@ time_timers_cancel_##name (																		\
 																								\
 time_##name##_t *																				\
 time_timers_open_##name##_u (																	\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_timer_t* timer																			\
 	)																							\
 {																								\
@@ -475,7 +496,7 @@ time_timers_open_##name##_u (																	\
 																								\
 time_##name##_t *																				\
 time_timers_open_##name (																		\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_timer_t* timer																			\
 	)																							\
 {																								\
@@ -494,7 +515,7 @@ time_timers_open_##name (																		\
 																								\
 void																							\
 time_timers_close_##name##_u (																	\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_timer_t* timer																			\
 	)																							\
 {																								\
@@ -514,7 +535,7 @@ time_timers_close_##name##_u (																	\
 																								\
 void																							\
 time_timers_close_##name (																		\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_timer_t* timer																			\
 	)																							\
 {																								\
@@ -525,7 +546,7 @@ time_timers_close_##name (																		\
 																								\
 void																							\
 time_timers_update_##name##_timer_u (															\
-	time_timers_t* timers,																		\
+	time_timers_t timers,																		\
 	time_##name##_t * name																		\
 	)																							\
 {																								\
@@ -558,7 +579,7 @@ time_timer_get_timeout_u(
 
 uint64_t
 time_timers_get_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	)
 {
@@ -577,7 +598,7 @@ time_timers_get_timeout_u(
 
 uint64_t
 time_timers_get_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	)
 {
@@ -603,7 +624,7 @@ time_timer_set_timeout_u(
 
 bool
 time_timers_set_timeout_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t time
 	)
@@ -623,7 +644,7 @@ time_timers_set_timeout_u(
 
 bool
 time_timers_set_timeout(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t time
 	)
@@ -653,7 +674,7 @@ time_timer_get_interval_u(
 
 uint64_t
 time_timers_get_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	)
 {
@@ -672,7 +693,7 @@ time_timers_get_interval_u(
 
 uint64_t
 time_timers_get_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	)
 {
@@ -703,7 +724,7 @@ time_timer_set_interval_u(
 
 bool
 time_timers_set_interval_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t base_time,
 	uint64_t interval_time,
@@ -725,7 +746,7 @@ time_timers_set_interval_u(
 
 bool
 time_timers_set_interval(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer,
 	uint64_t base_time,
 	uint64_t interval_time,
@@ -749,7 +770,7 @@ time_timers_fn(
 	)
 {
 	assert_not_null(data);
-	time_timers_t* timers = data;
+	time_timers_t timers = data;
 
 	while(1)
 	{
@@ -849,11 +870,12 @@ time_timers_fn(
 }
 
 
-void
+time_timers_t
 time_timers_init(
-	time_timers_t* timers
+	void
 	)
 {
+	time_timers_t timers = alloc_malloc(sizeof(*timers));
 	assert_not_null(timers);
 
 	timers->timeouts = NULL;
@@ -878,12 +900,14 @@ time_timers_init(
 		.data = timers
 	};
 	thread_init(&timers->thread, data);
+
+	return timers;
 }
 
 
 void
 time_timers_free(
-	time_timers_t* timers
+	time_timers_t timers
 	)
 {
 	assert_not_null(timers);
@@ -902,7 +926,7 @@ time_timers_free(
 
 void
 time_timers_lock(
-	time_timers_t* timers
+	time_timers_t timers
 	)
 {
 	assert_not_null(timers);
@@ -913,7 +937,7 @@ time_timers_lock(
 
 void
 time_timers_unlock(
-	time_timers_t* timers
+	time_timers_t timers
 	)
 {
 	assert_not_null(timers);
@@ -924,7 +948,7 @@ time_timers_unlock(
 
 time_timer_t*
 time_timers_get_current_timer(
-	time_timers_t* timers
+	time_timers_t timers
 	)
 {
 	assert_not_null(timers);
@@ -949,7 +973,7 @@ time_timer_init(
 
 bool
 time_timers_is_timer_expired_u(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	)
 {
@@ -962,7 +986,7 @@ time_timers_is_timer_expired_u(
 
 bool
 time_timers_is_timer_expired(
-	time_timers_t* timers,
+	time_timers_t timers,
 	time_timer_t* timer
 	)
 {

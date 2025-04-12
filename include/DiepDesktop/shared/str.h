@@ -19,6 +19,70 @@
 #include <stdint.h>
 
 
+extern void*
+cstr_alloc(
+	uint64_t len
+	);
+
+
+extern void*
+cstr_resize(
+	void* cstr,
+	uint64_t new_len
+	);
+
+
+extern void*
+cstr_resize_len(
+	void* cstr,
+	uint64_t old_len,
+	uint64_t new_len
+	);
+
+
+extern void*
+cstr_init(
+	const void* cstr
+	);
+
+
+extern void*
+cstr_init_len(
+	const void* cstr,
+	uint64_t len
+	);
+
+
+extern void
+cstr_free(
+	const void* cstr
+	);
+
+
+extern void
+cstr_free_len(
+	const void* cstr,
+	uint64_t len
+	);
+
+
+extern bool
+cstr_cmp(
+	const void* cstr1,
+	const void* cstr2
+	);
+
+
+extern bool
+cstr_case_cmp(
+	const void* cstr1,
+	const void* cstr2
+	);
+
+
+
+
+
 typedef struct str
 {
 	void* str;
@@ -171,4 +235,20 @@ extern bool
 str_case_cmp_cstr(
 	const str_t str,
 	const void* cstr
+	);
+
+
+extern bool
+str_cmp_len(
+	const str_t str,
+	const void* cstr,
+	uint64_t len
+	);
+
+
+extern bool
+str_case_cmp_len(
+	const str_t str,
+	const void* cstr,
+	uint64_t len
 	);

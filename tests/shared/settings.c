@@ -29,14 +29,12 @@ test_normal_pass__settings_init_free(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
+	time_timers_t timers = time_timers_init();
 
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, &timers);
-	settings_free(&settings);
+	settings_t settings = settings_init(TEST_FILENAME, timers);
+	settings_free(settings);
 
-	time_timers_free(&timers);
+	time_timers_free(timers);
 }
 
 
@@ -87,27 +85,26 @@ test_normal_pass__settings_save_load(
 	void
 	)
 {
-	time_timers_t timers;
-	time_timers_init(&timers);
+	time_timers_t timers = time_timers_init();
+	settings_t settings = settings_init(TEST_FILENAME, timers);
 
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, &timers);
+	settings_event_table_t* event_table = settings_get_event_table(settings);
 
 	bool saved = false;
 	event_listener_data_t save_listener_data =
 	{
-		.fn = (event_fn_t) settings_onsave_fn,
+		.fn = (void*) settings_onsave_fn,
 		.data = &saved
 	};
-	event_listener_t* save_listener = event_target_add(&settings.save_target, save_listener_data);
+	event_listener_t* save_listener = event_target_add(&event_table->save_target, save_listener_data);
 
 	bool loaded = false;
 	event_listener_data_t load_listener_data =
 	{
-		.fn = (event_fn_t) settings_onload_fn,
+		.fn = (void*) settings_onload_fn,
 		.data = &loaded
 	};
-	event_listener_t* load_listener = event_target_add(&settings.load_target, load_listener_data);
+	event_listener_t* load_listener = event_target_add(&event_table->load_target, load_listener_data);
 
 	event_target_t i64_change_target;
 	event_target_init(&i64_change_target);
@@ -115,17 +112,17 @@ test_normal_pass__settings_save_load(
 	int64_t i64_change = 0;
 	event_listener_data_t i64_listener_data =
 	{
-		.fn = (event_fn_t) setting_change_i64_fn,
+		.fn = (void*) setting_change_i64_fn,
 		.data = &i64_change
 	};
 	event_listener_t* i64_listener = event_target_add(&i64_change_target, i64_listener_data);
 
-	setting_t* i64_s = settings_add_i64(&settings, "foo", 42, 0, 100, &i64_change_target);
+	setting_t* i64_s = settings_add_i64(settings, "foo", 42, 0, 100, &i64_change_target);
 	assert_eq(i64_change, 0);
 	assert_false(saved);
 	assert_false(loaded);
 
-	(void) settings_add_i64(&settings, "foobar", 2, 1, 3, NULL);
+	(void) settings_add_i64(settings, "foobar", 2, 1, 3, NULL);
 	assert_eq(i64_change, 0);
 	assert_false(saved);
 	assert_false(loaded);
@@ -138,93 +135,95 @@ test_normal_pass__settings_save_load(
 	float f32_change = 0.0f;
 	event_listener_data_t f32_listener_data =
 	{
-		.fn = (event_fn_t) setting_change_f32_fn,
+		.fn = (void*) setting_change_f32_fn,
 		.data = &f32_change
 	};
 	event_listener_t* f32_listener = event_target_add(&f32_change_target, f32_listener_data);
 
-	(void) settings_add_f32(&settings, "barfoo", 2.0f, 1.0f, 3.0f, NULL);
+	(void) settings_add_f32(settings, "barfoo", 2.0f, 1.0f, 3.0f, NULL);
 	assert_eq(f32_change, 0.0f);
 	assert_false(saved);
 	assert_false(loaded);
 
-	setting_t* f32_s = settings_add_f32(&settings, "bar", 1.23f, 0.0f, 2.0f, &f32_change_target);
+	setting_t* f32_s = settings_add_f32(settings, "bar", 1.23f, 0.0f, 2.0f, &f32_change_target);
 	assert_eq(f32_change, 0.0f);
 	assert_false(saved);
 	assert_false(loaded);
 
 	assert_eq(setting_get_f32(f32_s), 1.23f);
 
-	settings_seal(&settings);
+	settings_seal(settings);
 
 	assert_eq(setting_get_i64(i64_s), 42);
 	assert_eq(setting_get_f32(f32_s), 1.23f);
 
-	settings_save(&settings);
+	settings_save(settings);
 	assert_eq(i64_change, 0);
 	assert_eq(f32_change, 0.0f);
 	assert_false(saved);
 	assert_false(loaded);
 
-	settings_modify_i64(&settings, i64_s, 200);
+	settings_modify_i64(settings, i64_s, 200);
 	assert_eq(i64_change, 100); i64_change = 0;
 	assert_false(saved);
 	assert_false(loaded);
 
-	settings_modify_i64(&settings, i64_s, 43);
+	settings_modify_i64(settings, i64_s, 43);
 	assert_eq(i64_change, 43); i64_change = 0;
 	assert_false(saved);
 	assert_false(loaded);
 
-	settings_modify_f32(&settings, f32_s, 2.5f);
+	settings_modify_f32(settings, f32_s, 2.5f);
 	assert_eq(f32_change, 2.0f); f32_change = 0.0f;
 	assert_false(saved);
 	assert_false(loaded);
 
-	settings_save(&settings);
+	settings_save(settings);
 	assert_eq(i64_change, 0);
 	assert_eq(f32_change, 0.0f);
 	assert_true(saved); saved = false;
 	assert_false(loaded);
 
-	event_target_del(&settings.load_target, load_listener);
-	event_target_del(&settings.save_target, save_listener);
+	event_target_del(&event_table->load_target, load_listener);
+	event_target_del(&event_table->save_target, save_listener);
 
-	settings_free(&settings);
-	time_timers_free(&timers);
+	settings_free(settings);
+	time_timers_free(timers);
 
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings = settings_init(TEST_FILENAME, NULL);
 	assert_eq(i64_change, 0);
 	assert_eq(f32_change, 0.0f);
 	assert_false(saved);
 	assert_false(loaded);
 
-	save_listener = event_target_add(&settings.save_target, save_listener_data);
-	load_listener = event_target_add(&settings.load_target, load_listener_data);
+	event_table = settings_get_event_table(settings);
 
-	(void) settings_add_f32(&settings, "barfoo", 2.0f, 1.0f, 3.0f, NULL);
+	save_listener = event_target_add(&event_table->save_target, save_listener_data);
+	load_listener = event_target_add(&event_table->load_target, load_listener_data);
+
+	(void) settings_add_f32(settings, "barfoo", 2.0f, 1.0f, 3.0f, NULL);
 	assert_eq(f32_change, 0.0f);
 	assert_false(saved);
 	assert_false(loaded);
 
-	i64_s = settings_add_i64(&settings, "foo", 44, 40, 45, &i64_change_target);
+	i64_s = settings_add_i64(settings, "foo", 44, 40, 45, &i64_change_target);
 	assert_eq(i64_change, 0);
 	assert_false(saved);
 	assert_false(loaded);
 
-	f32_s = settings_add_f32(&settings, "bar", 1.5f, 1.0f, 3.0f, &f32_change_target);
+	f32_s = settings_add_f32(settings, "bar", 1.5f, 1.0f, 3.0f, &f32_change_target);
 	assert_eq(f32_change, 0.0f);
 	assert_false(saved);
 	assert_false(loaded);
 
-	(void) settings_add_i64(&settings, "foobar", 2, 1, 3, NULL);
+	(void) settings_add_i64(settings, "foobar", 2, 1, 3, NULL);
 	assert_eq(i64_change, 0);
 	assert_false(saved);
 	assert_false(loaded);
 
-	settings_seal(&settings);
+	settings_seal(settings);
 
-	settings_load(&settings);
+	settings_load(settings);
 	assert_eq(i64_change, 43); i64_change = 0;
 	assert_eq(setting_get_i64(i64_s), 43);
 	assert_eq(f32_change, 2.0f); f32_change = 0.0f;
@@ -238,19 +237,10 @@ test_normal_pass__settings_save_load(
 	event_target_del(&i64_change_target, i64_listener);
 	event_target_free(&i64_change_target);
 
-	event_target_del(&settings.load_target, load_listener);
-	event_target_del(&settings.save_target, save_listener);
+	event_target_del(&event_table->load_target, load_listener);
+	event_target_del(&event_table->save_target, save_listener);
 
-	settings_free(&settings);
-}
-
-
-void assert_used
-test_normal_fail__settings_init_null_settings(
-	void
-	)
-{
-	settings_init(NULL, TEST_FILENAME, NULL);
+	settings_free(settings);
 }
 
 
@@ -259,17 +249,7 @@ test_normal_fail__settings_init_null_path(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, NULL, NULL);
-}
-
-
-void assert_used
-test_normal_fail__settings_init_null(
-	void
-	)
-{
-	settings_init(NULL, NULL, NULL);
+	settings_init(NULL, NULL);
 }
 
 
@@ -314,10 +294,9 @@ test_normal_fail__settings_add_i64_null_name(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
-	settings_add_i64(&settings, NULL, 0, 0, 0, NULL);
+	settings_add_i64(settings, NULL, 0, 0, 0, NULL);
 }
 
 
@@ -335,10 +314,9 @@ test_normal_fail__settings_add_i64_invalid_value(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
-	settings_add_i64(&settings, "0", 1, 0, 0, NULL);
+	settings_add_i64(settings, "0", 1, 0, 0, NULL);
 }
 
 
@@ -347,10 +325,9 @@ test_normal_fail__settings_add_i64_invalid_constaint(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
-	settings_add_i64(&settings, "0", 0, 1, 0, NULL);
+	settings_add_i64(settings, "0", 0, 1, 0, NULL);
 }
 
 
@@ -368,10 +345,9 @@ test_normal_fail__settings_add_f32_null_name(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
-	settings_add_f32(&settings, NULL, 0.0f, 0.0f, 0.0f, NULL);
+	settings_add_f32(settings, NULL, 0.0f, 0.0f, 0.0f, NULL);
 }
 
 
@@ -389,10 +365,9 @@ test_normal_fail__settings_add_f32_invalid_value(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
-	settings_add_f32(&settings, "0", 1.0f, 0.0f, 0.0f, NULL);
+	settings_add_f32(settings, "0", 1.0f, 0.0f, 0.0f, NULL);
 }
 
 
@@ -401,10 +376,9 @@ test_normal_fail__settings_add_f32_invalid_constaint(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
-	settings_add_f32(&settings, "0", 0.0f, 1.0f, 0.0f, NULL);
+	settings_add_f32(settings, "0", 0.0f, 1.0f, 0.0f, NULL);
 }
 
 
@@ -422,10 +396,9 @@ test_normal_fail__settings_add_boolean_null_name(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
-	settings_add_boolean(&settings, NULL, false, NULL);
+	settings_add_boolean(settings, NULL, false, NULL);
 }
 
 
@@ -454,12 +427,11 @@ test_normal_fail__settings_add_str_null_name(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
 	str_t str = str_init();
 
-	settings_add_str(&settings, NULL, str, 0, NULL);
+	settings_add_str(settings, NULL, str, 0, NULL);
 }
 
 
@@ -489,11 +461,10 @@ test_normal_fail__settings_add_color_null_name(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
 	color_argb_t color = {0};
-	settings_add_color(&settings, NULL, color, NULL);
+	settings_add_color(settings, NULL, color, NULL);
 }
 
 
@@ -604,12 +575,11 @@ test_normal_fail__settings_modify_str_null_name(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
 	str_t str = str_init();
 
-	settings_modify_str(&settings, NULL, str);
+	settings_modify_str(settings, NULL, str);
 }
 
 
@@ -639,11 +609,10 @@ test_normal_fail__settings_modify_color_null_name(
 	void
 	)
 {
-	settings_t settings;
-	settings_init(&settings, TEST_FILENAME, NULL);
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
 
 	color_argb_t color = {0};
-	settings_modify_color(&settings, NULL, color);
+	settings_modify_color(settings, NULL, color);
 }
 
 

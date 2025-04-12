@@ -15,8 +15,9 @@
  */
 
 #include <DiepDesktop/shared/file.h>
+#include <DiepDesktop/shared/hash.h>
+#include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/threads.h>
 #include <DiepDesktop/shared/settings.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/shared/bit_buffer.h>
@@ -26,38 +27,36 @@
 #include <string.h>
 
 
-void
-settings_init(
-	settings_t* settings,
-	const char* path,
-	time_timers_t* timers
-	)
+struct setting
 {
-	assert_not_null(settings);
-	assert_not_null(path);
+	sync_mtx_t mtx;
+	setting_type_t type;
+	setting_value_t value;
+	setting_constraint_t constraint;
+	event_target_t* change_target;
+};
 
-	sync_rwlock_init(&settings->rwlock);
+struct settings
+{
+	sync_rwlock_t rwlock;
 
-	hash_table_init(&settings->table, 256);
-	settings->dirty = false;
-	settings->use_timers = !!timers;
-	settings->sealed = false;
+	hash_table_t table;
+	bool dirty;
+	bool use_timers;
+	bool sealed;
 
-	settings->path = path;
+	const char* path;
 
-	settings->timers = timers;
-	time_timer_init(&settings->save_timer);
+	time_timers_t timers;
+	time_timer_t save_timer;
 
-	event_target_init(&settings->save_target);
-	event_target_init(&settings->load_target);
-}
+	settings_event_table_t event_table;
+};
 
 
 private void
-settings_for_each_free_fn(
-	str_t name,
-	setting_t* setting,
-	void* data
+settings_value_free_fn(
+	setting_t* setting
 	)
 {
 	if(setting->type == SETTING_TYPE_STR)
@@ -71,9 +70,39 @@ settings_for_each_free_fn(
 }
 
 
+settings_t
+settings_init(
+	const char* path,
+	time_timers_t timers
+	)
+{
+	assert_not_null(path);
+
+	settings_t settings = alloc_malloc(sizeof(*settings));
+	assert_not_null(settings);
+
+	sync_rwlock_init(&settings->rwlock);
+
+	settings->table = hash_table_init(256, NULL, (void*) settings_value_free_fn);
+	settings->dirty = false;
+	settings->use_timers = !!timers;
+	settings->sealed = false;
+
+	settings->path = path;
+
+	settings->timers = timers;
+	time_timer_init(&settings->save_timer);
+
+	event_target_init(&settings->event_table.save_target);
+	event_target_init(&settings->event_table.load_target);
+
+	return settings;
+}
+
+
 void
 settings_free(
-	settings_t* settings
+	settings_t settings
 	)
 {
 	assert_not_null(settings);
@@ -86,15 +115,12 @@ settings_free(
 		settings_save(settings);
 	}
 
-	event_target_free(&settings->load_target);
-	event_target_free(&settings->save_target);
+	event_target_free(&settings->event_table.load_target);
+	event_target_free(&settings->event_table.save_target);
 
 	time_timer_free(&settings->save_timer);
 
-	hash_table_for_each(&settings->table,
-		(hash_table_for_each_fn_t) settings_for_each_free_fn, NULL);
-
-	hash_table_free(&settings->table);
+	hash_table_free(settings->table);
 
 	sync_rwlock_free(&settings->rwlock);
 }
@@ -202,7 +228,7 @@ settings_for_each_set_fn(
 
 void
 settings_save(
-	settings_t* settings
+	settings_t settings
 	)
 {
 	assert_not_null(settings);
@@ -216,8 +242,7 @@ settings_save(
 	sync_rwlock_wrlock(&settings->rwlock);
 
 	uint64_t sum = 0;
-	hash_table_for_each(&settings->table,
-		(hash_table_for_each_fn_t) settings_for_each_sum_fn, &sum);
+	hash_table_for_each(settings->table, (void*) settings_for_each_sum_fn, &sum);
 	sum = MACRO_TO_BYTES(sum + 60);
 
 	bit_buffer_t buffer;
@@ -227,8 +252,7 @@ settings_save(
 	uint32_t magic = 0x015FF510;
 	bit_buffer_set_bits(&buffer, magic, 60);
 
-	hash_table_for_each(&settings->table,
-		(hash_table_for_each_fn_t) settings_for_each_set_fn, &buffer);
+	hash_table_for_each(settings->table, (void*) settings_for_each_set_fn, &buffer);
 
 	assert_eq(bit_buffer_consumed_bytes(&buffer), sum);
 
@@ -257,18 +281,18 @@ settings_save(
 		.settings = settings,
 		.success = status
 	};
-	event_target_fire(&settings->save_target, &save_data);
+	event_target_fire(&settings->event_table.save_target, &save_data);
 }
 
 
 private void
 settings_save_fn(
-	settings_t* settings
+	settings_t settings
 	)
 {
 	thread_data_t data =
 	{
-		.fn = (thread_fn_t) settings_save,
+		.fn = (void*) settings_save,
 		.data = settings
 	};
 	thread_init(NULL, data);
@@ -277,7 +301,7 @@ settings_save_fn(
 
 void
 settings_load(
-	settings_t* settings
+	settings_t settings
 	)
 {
 	assert_not_null(settings);
@@ -342,11 +366,12 @@ settings_load(
 		setting_type_t type = bit_buffer_get_bits_var_safe(&buffer, SETTING_TYPE__BITS, &status);
 		if(!status)
 		{
+			str_free(name);
 			goto goto_failure_compressed;
 		}
 
 
-		setting_t* setting = hash_table_get(&settings->table, name->str);
+		setting_t* setting = hash_table_get(settings->table, name->str);
 		str_free(name);
 		if(!setting)
 		{
@@ -432,7 +457,7 @@ settings_load(
 	alloc_free(decompressed, decompressed_size);
 
 	load_data.success = true;
-	event_target_fire(&settings->load_target, &load_data);
+	event_target_fire(&settings->event_table.load_target, &load_data);
 
 	return;
 
@@ -444,13 +469,13 @@ settings_load(
 	file_free(file);
 
 	goto_failure:
-	event_target_fire(&settings->load_target, &load_data);
+	event_target_fire(&settings->event_table.load_target, &load_data);
 }
 
 
 void
 settings_seal(
-	settings_t* settings
+	settings_t settings
 	)
 {
 	assert_not_null(settings);
@@ -460,9 +485,20 @@ settings_seal(
 }
 
 
+settings_event_table_t*
+settings_get_event_table(
+	settings_t settings
+	)
+{
+	assert_not_null(settings);
+
+	return &settings->event_table;
+}
+
+
 setting_t*
 settings_add_i64(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	int64_t value,
 	int64_t min,
@@ -494,7 +530,7 @@ settings_add_i64(
 	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		bool status = hash_table_add(settings->table, name, setting_ptr);
 		assert_true(status);
 	sync_rwlock_unlock(&settings->rwlock);
 
@@ -504,7 +540,7 @@ settings_add_i64(
 
 setting_t*
 settings_add_f32(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	float value,
 	float min,
@@ -536,7 +572,7 @@ settings_add_f32(
 	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		bool status = hash_table_add(settings->table, name, setting_ptr);
 		assert_true(status);
 	sync_rwlock_unlock(&settings->rwlock);
 
@@ -546,7 +582,7 @@ settings_add_f32(
 
 setting_t*
 settings_add_boolean(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	bool value,
 	event_target_t* change_target
@@ -570,7 +606,7 @@ settings_add_boolean(
 	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		bool status = hash_table_add(settings->table, name, setting_ptr);
 		assert_true(status);
 	sync_rwlock_unlock(&settings->rwlock);
 
@@ -580,7 +616,7 @@ settings_add_boolean(
 
 setting_t*
 settings_add_str(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	str_t value,
 	uint64_t max_len,
@@ -608,7 +644,7 @@ settings_add_str(
 	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		bool status = hash_table_add(settings->table, name, setting_ptr);
 		assert_true(status);
 	sync_rwlock_unlock(&settings->rwlock);
 
@@ -618,7 +654,7 @@ settings_add_str(
 
 setting_t*
 settings_add_color(
-	settings_t* settings,
+	settings_t settings,
 	const char* name,
 	color_argb_t value,
 	event_target_t* change_target
@@ -642,7 +678,7 @@ settings_add_color(
 	sync_mtx_init(&setting_ptr->mtx);
 
 	sync_rwlock_rdlock(&settings->rwlock);
-		bool status = hash_table_add(&settings->table, name, setting_ptr);
+		bool status = hash_table_add(settings->table, name, setting_ptr);
 		assert_true(status);
 	sync_rwlock_unlock(&settings->rwlock);
 
@@ -652,7 +688,7 @@ settings_add_color(
 
 static void
 settings_modify(
-	settings_t* settings
+	settings_t settings
 	)
 {
 	settings->dirty = true;
@@ -668,7 +704,7 @@ settings_modify(
 					.timer = &settings->save_timer,
 					.data =
 					{
-						.fn = (time_fn_t) settings_save_fn,
+						.fn = (void*) settings_save_fn,
 						.data = settings
 					},
 					.time = time
@@ -682,7 +718,7 @@ settings_modify(
 
 void
 settings_modify_i64(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	int64_t value
 	)
@@ -720,7 +756,7 @@ settings_modify_i64(
 
 void
 settings_modify_f32(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	float value
 	)
@@ -758,7 +794,7 @@ settings_modify_f32(
 
 void
 settings_modify_boolean(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	bool value
 	)
@@ -794,7 +830,7 @@ settings_modify_boolean(
 
 void
 settings_modify_str(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	str_t value
 	)
@@ -835,7 +871,7 @@ settings_modify_str(
 
 void
 settings_modify_color(
-	settings_t* settings,
+	settings_t settings,
 	setting_t* setting,
 	color_argb_t value
 	)

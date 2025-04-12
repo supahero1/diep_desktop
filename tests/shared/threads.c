@@ -219,7 +219,7 @@ test_normal_pass__thread_auto_detach(
 
 	thread_data_t data =
 	{
-		.fn = (thread_fn_t) sync_thread_fn,
+		.fn = (void*) sync_thread_fn,
 		.data = &mtx
 	};
 
@@ -270,7 +270,7 @@ test_normal_pass__thread_pool_and_threads(
 
 	thread_data_t thread_data =
 	{
-		.fn = (thread_fn_t) thread_pool_work_fn,
+		.fn = (void*) thread_pool_work_fn,
 		.data = &data
 	};
 
@@ -329,7 +329,7 @@ test_normal_pass__thread_pool_try_work(
 
 	thread_data_t thread_data =
 	{
-		.fn = (thread_fn_t) thread_pool_work_manually_fn,
+		.fn = (void*) thread_pool_work_manually_fn,
 		.data = &counter
 	};
 
