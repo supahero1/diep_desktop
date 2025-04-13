@@ -879,6 +879,7 @@ test_normal_pass__str_cmp_len_null_cstr(
 {
 	str_t str = str_init_copy_len("test", 4);
 	assert_false(str_cmp_len(str, NULL, 0));
+	str_free(str);
 }
 
 
@@ -917,6 +918,7 @@ test_normal_pass__str_case_cmp_len_null_cstr(
 {
 	str_t str = str_init_copy_len("test", 4);
 	assert_false(str_case_cmp_len(str, NULL, 0));
+	str_free(str);
 }
 
 

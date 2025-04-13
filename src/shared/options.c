@@ -22,6 +22,9 @@
 #include <string.h>
 
 
+options_t global_options = NULL;
+
+
 struct options
 {
 	hash_table_t table;

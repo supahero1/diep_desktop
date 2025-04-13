@@ -22,6 +22,9 @@
 typedef struct options* options_t;
 
 
+extern options_t global_options;
+
+
 extern options_t
 options_init(
 	int argc,

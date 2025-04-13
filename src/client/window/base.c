@@ -495,12 +495,15 @@ window_get_vulkan_extensions(
 }
 
 
-window_proc_addr_fn
+void*
 window_get_vulkan_proc_addr_fn(
 	void
 	)
 {
-	return SDL_Vulkan_GetVkGetInstanceProcAddr();
+	void* ptr = SDL_Vulkan_GetVkGetInstanceProcAddr();
+	hard_assert_not_null(ptr, window_sdl_log_error());
+
+	return ptr;
 }
 
 
@@ -818,17 +821,25 @@ window_manager_add(
 
 	str_t title_str = str_init_copy_cstr(title);
 
-	window_history_t* history_copy;
+	window_history_t* history_copy = alloc_malloc(sizeof(*history_copy));
+	assert_not_null(history_copy);
+
 	if(history)
 	{
-		history_copy = alloc_malloc(sizeof(*history_copy));
-		assert_ptr(history_copy, sizeof(*history_copy));
-
 		*history_copy = *history;
 	}
 	else
 	{
-		history_copy = NULL;
+		*history_copy =
+		(window_history_t)
+		{
+			.extent =
+			{
+				.w = 1280,
+				.h = 720
+			},
+			.fullscreen = false
+		};
 	}
 
 	*data =
@@ -927,25 +938,20 @@ window_manager_process_user_event(
 			SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
 		hard_assert_true(status, window_sdl_log_error());
 
-		if(data->history)
-		{
-			status = SDL_SetNumberProperty(sdl_props,
-				SDL_PROP_WINDOW_CREATE_X_NUMBER, data->history->extent.x);
-			hard_assert_true(status, window_sdl_log_error());
-
-			status = SDL_SetNumberProperty(sdl_props,
-				SDL_PROP_WINDOW_CREATE_Y_NUMBER, data->history->extent.y);
-			hard_assert_true(status, window_sdl_log_error());
-		}
-
 		status = SDL_SetNumberProperty(sdl_props,
-			SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER,
-			data->history ? data->history->extent.w : 1280);
+			SDL_PROP_WINDOW_CREATE_X_NUMBER, data->history->extent.x);
 		hard_assert_true(status, window_sdl_log_error());
 
 		status = SDL_SetNumberProperty(sdl_props,
-			SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER,
-			data->history ? data->history->extent.h : 720);
+			SDL_PROP_WINDOW_CREATE_Y_NUMBER, data->history->extent.y);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetNumberProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, data->history->extent.w);
+		hard_assert_true(status, window_sdl_log_error());
+
+		status = SDL_SetNumberProperty(sdl_props,
+			SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, data->history->extent.h);
 		hard_assert_true(status, window_sdl_log_error());
 
 		status = SDL_SetStringProperty(sdl_props,

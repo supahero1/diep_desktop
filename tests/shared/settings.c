@@ -281,6 +281,16 @@ test_normal_fail__settings_load_null(
 
 
 void assert_used
+test_normal_fail__settings_load_unsealed(
+	void
+	)
+{
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
+	settings_load(settings);
+}
+
+
+void assert_used
 test_normal_fail__settings_add_i64_null_settings(
 	void
 	)

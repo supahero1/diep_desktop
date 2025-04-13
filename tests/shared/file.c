@@ -150,6 +150,8 @@ test_normal_pass__file_read_multiple_not_move_cursor(
 	assert_eq(file.len, len);
 	assert_false(memcmp(file.data, data, len));
 
+	file_free(file);
+
 	status = file_read("tests/shared/file_read.txt", &file);
 	assert_true(status);
 

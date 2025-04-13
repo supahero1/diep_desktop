@@ -18,6 +18,7 @@
 #include <DiepDesktop/shared/file.h>
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/options.h>
 #include <DiepDesktop/shared/settings.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/client/window/graphics.h>
@@ -74,11 +75,7 @@ app_window_free_once_fn(
 	event_target_del(&table->fullscreen_target, app->window_fullscreen_listener);
 	event_target_del(&table->resize_target, app->window_resize_listener);
 	event_target_del(&table->move_target, app->window_move_listener);
-
-	if(app->window_close_once_listener)
-	{
-		event_target_del_once(&table->close_target, app->window_close_once_listener);
-	}
+	event_target_del_once(&table->close_target, app->window_close_once_listener);
 }
 
 
@@ -138,6 +135,8 @@ app_init(
 
 	int status = chdir(dir);
 	hard_assert_eq(status, 0);
+
+	global_options = options_init(argc, (void*) argv);
 
 	dir_create("settings");
 
@@ -226,6 +225,9 @@ app_free(
 
 	settings_free(app->settings);
 	time_timers_free(app->timers);
+
+	options_free(global_options);
+	global_options = NULL;
 
 	alloc_free(app, sizeof(*app));
 }

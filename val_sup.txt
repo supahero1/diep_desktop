@@ -135,10 +135,19 @@
 }
 
 {
-	libtest
+	libtest arr
 	Memcheck:Leak
 	...
 	fun:alloc_remalloc
+	fun:main
+	...
+}
+
+{
+	libtest str
+	Memcheck:Leak
+	...
+	fun:str_init_copy_cstr
 	fun:main
 	...
 }

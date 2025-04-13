@@ -168,6 +168,8 @@ hash_table_free(
 
 	alloc_free(table->buckets, sizeof(*table->buckets) * table->bucket_count);
 	alloc_free(table->entries, sizeof(*table->entries) * table->entries_size);
+
+	alloc_free(table, sizeof(*table));
 }
 
 
@@ -328,6 +330,9 @@ hash_table_add(
 
 		if(str_case_cmp(search_key, entry_key))
 		{
+			table->key_free_fn(search_key);
+			table->value_free_fn(value);
+
 			return false;
 		}
 

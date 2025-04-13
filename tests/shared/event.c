@@ -132,7 +132,7 @@ test_normal_fail__event_target_del_null_target(
 
 
 void assert_used
-test_normal_fail__event_target_del_null_listener(
+test_normal_pass__event_target_del_null_listener(
 	void
 	)
 {

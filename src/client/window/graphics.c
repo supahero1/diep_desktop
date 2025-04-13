@@ -198,12 +198,37 @@ private const graphics_vertex_input_t graphics_vertex_input[] =
 
 
 private void
+graphics_init_fn(
+	graphics_t graphics,
+	window_init_event_data_t* event_data
+	)
+{
+	assert_not_null(graphics);
+
+
+}
+
+
+private void
+graphics_free_fn(
+	graphics_t graphics
+	)
+{
+	assert_not_null(graphics);
+
+
+}
+
+
+private void
 graphics_free(
 	graphics_t graphics,
 	window_free_event_data_t* event_data
 	)
 {
 	assert_not_null(graphics);
+
+	graphics_free_fn(graphics);
 
 	event_target_free(&graphics->event_table.draw_target);
 
@@ -223,6 +248,13 @@ graphics_init(
 
 	graphics->window = window;
 	window_event_table_t* table = window_get_event_table(window);
+
+	event_listener_data_t init_data =
+	{
+		.fn = (event_fn_t) graphics_init_fn,
+		.data = graphics
+	};
+	event_target_once(&table->init_target, init_data);
 
 	event_listener_data_t free_data =
 	{

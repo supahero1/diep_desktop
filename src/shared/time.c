@@ -921,6 +921,8 @@ time_timers_free(
 
 	time_timers_free_intervals(timers);
 	time_timers_free_timeouts(timers);
+
+	alloc_free(timers, sizeof(*timers));
 }
 
 

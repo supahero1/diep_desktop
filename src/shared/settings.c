@@ -123,6 +123,8 @@ settings_free(
 	hash_table_free(settings->table);
 
 	sync_rwlock_free(&settings->rwlock);
+
+	alloc_free(settings, sizeof(*settings));
 }
 
 

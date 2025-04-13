@@ -209,6 +209,10 @@ test_normal_pass__hash_table_key_value_dtors(
 	key = str_init_copy_cstr("bar");
 	value = str_init_copy_cstr("test");
 	assert_true(hash_table_modify(table, key->str, value));
+	assert_true(hash_table_has(table, "bar"));
+	str_reset(key);
+	str_free(key);
+
 	assert_true(hash_table_del(table, "bar"));
 
 	hash_table_free(table);

@@ -149,7 +149,11 @@ event_target_del_common(
 	)
 {
 	assert_not_null(target);
-	assert_not_null(listener);
+
+	if(!listener)
+	{
+		return;
+	}
 
 #ifndef NDEBUG
 	event_listener_t* current = target->head;
