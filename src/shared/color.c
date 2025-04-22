@@ -14,9 +14,8 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/debug.h>
 #include <DiepDesktop/shared/color.h>
+#include <DiepDesktop/shared/debug.h>
 
 #include <math.h>
 

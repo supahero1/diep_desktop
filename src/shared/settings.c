@@ -16,15 +16,13 @@
 
 #include <DiepDesktop/shared/file.h>
 #include <DiepDesktop/shared/hash.h>
-#include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/threads.h>
 #include <DiepDesktop/shared/settings.h>
 #include <DiepDesktop/shared/alloc_ext.h>
 #include <DiepDesktop/shared/bit_buffer.h>
 
 #include <zstd.h>
-
-#include <string.h>
 
 
 struct setting

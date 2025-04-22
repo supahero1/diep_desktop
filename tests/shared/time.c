@@ -16,6 +16,7 @@
 
 #include <DiepDesktop/shared/time.h>
 #include <DiepDesktop/shared/debug.h>
+#include <DiepDesktop/shared/threads.h>
 
 
 void assert_used

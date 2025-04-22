@@ -16,8 +16,10 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/sync.h>
 #include <DiepDesktop/shared/macro.h>
+
+#include <stddef.h>
+#include <stdint.h>
 
 #ifndef _const_func_
 	#define _const_func_ __attribute__((const))
@@ -82,8 +84,7 @@ alloc_handle_flag_t;
 
 typedef struct alloc_handle
 {
-	alloc_t _[10 + MACRO_ALIGN_UP_CONST(sizeof(sync_mtx_t),
-		sizeof(alloc_t) - 1) / sizeof(alloc_t)];
+	alloc_t _[10 + 22];
 }
 alloc_handle_t;
 
@@ -119,10 +120,10 @@ typedef struct alloc_state
 	alloc_t handle_count;
 	alloc_handle_t handles[];
 }
-alloc_state;
+alloc_state_t;
 
 
-extern _const_func_ const alloc_state*
+extern _const_func_ const alloc_state_t*
 alloc_get_global_state(
 	void
 	);
@@ -207,27 +208,27 @@ alloc_free_handle(
 	);
 
 
-extern _alloc_func_ const alloc_state*
+extern _alloc_func_ const alloc_state_t*
 alloc_alloc_state(
 	_in_ alloc_state_info_t* info
 	);
 
 
-extern _alloc_func_ const alloc_state*
+extern _alloc_func_ const alloc_state_t*
 alloc_clone_state(
-	_in_ alloc_state* source
+	_in_ alloc_state_t* source
 	);
 
 
 extern void
 alloc_free_state(
-	_opaque_ alloc_state* state
+	_opaque_ alloc_state_t* state
 	);
 
 
 extern _pure_func_ _opaque_ alloc_handle_t*
 alloc_get_handle_s(
-	_in_ alloc_state* state,
+	_in_ alloc_state_t* state,
 	alloc_t size
 	);
 

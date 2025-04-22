@@ -14,20 +14,17 @@
  *  limitations under the License.
  */
 
+#include <DiepDesktop/shared/sync.h>
 #include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/macro.h>
 #include <DiepDesktop/shared/alloc.h>
 
 #if !defined(NDEBUG) && (defined(VALGRIND) || __has_include(<valgrind/valgrind.h>))
 	#define ALLOC_VALGRIND
 
-	#include <stdlib.h>
-
 	#include <valgrind/valgrind.h>
 #endif
 
 #include <stdio.h>
-#include <assert.h>
 #include <string.h>
 
 #ifndef _packed_
@@ -412,7 +409,7 @@ struct alloc_handle_impl
 	alloc_free_fn_t free_fn;
 };
 
-static_assert(sizeof(alloc_handle_t) == sizeof(alloc_handle_impl_t),
+static_assert(sizeof(alloc_handle_t) >= sizeof(alloc_handle_impl_t),
 	"alloc_handle_t size mismatch");
 
 
@@ -549,7 +546,7 @@ private alloc_state_info_t alloc_default_state_info =
 private alloc_t alloc_page_size;
 private alloc_t alloc_page_size_mask;
 private uint32_t alloc_page_size_shift;
-private const alloc_state* alloc_global_state;
+private const alloc_state_t* alloc_global_state;
 
 
 
@@ -592,7 +589,7 @@ aloc_library_free(
 }
 
 
-_const_func_ const alloc_state*
+_const_func_ const alloc_state_t*
 alloc_get_global_state(
 	void
 	)
@@ -1316,7 +1313,7 @@ alloc_default_idx_fn(
 }
 
 
-_alloc_func_ const alloc_state*
+_alloc_func_ const alloc_state_t*
 alloc_alloc_state(
 	_in_ alloc_state_info_t* info
 	)
@@ -1328,8 +1325,8 @@ alloc_alloc_state(
 
 
 	alloc_t handle_count = info->handle_count + 1;
-	alloc_state* state = alloc_alloc_virtual(
-		sizeof(alloc_state) + sizeof(alloc_handle_t) * handle_count);
+	alloc_state_t* state = alloc_alloc_virtual(
+		sizeof(alloc_state_t) + sizeof(alloc_handle_t) * handle_count);
 	if(!state)
 	{
 		return NULL;
@@ -1364,15 +1361,15 @@ alloc_alloc_state(
 }
 
 
-_alloc_func_ const alloc_state*
+_alloc_func_ const alloc_state_t*
 alloc_clone_state(
-	_in_ alloc_state* source
+	_in_ alloc_state_t* source
 	)
 {
 	alloc_t handle_count = source->handle_count;
-	alloc_t total_size = sizeof(alloc_state) + sizeof(alloc_handle_t) * handle_count;
+	alloc_t total_size = sizeof(alloc_state_t) + sizeof(alloc_handle_t) * handle_count;
 
-	alloc_state* state = alloc_alloc_virtual(total_size);
+	alloc_state_t* state = alloc_alloc_virtual(total_size);
 	if(!state)
 	{
 		return NULL;
@@ -1399,7 +1396,7 @@ alloc_clone_state(
 
 void
 alloc_free_state(
-	_opaque_ alloc_state* state
+	_opaque_ alloc_state_t* state
 	)
 {
 	if(!state)
@@ -1416,14 +1413,14 @@ alloc_free_state(
 		alloc_free_handle(&state->handles[i]);
 	}
 
-	alloc_free_virtual(state, sizeof(alloc_state) +
+	alloc_free_virtual(state, sizeof(alloc_state_t) +
 		handle_count * sizeof(alloc_handle_impl_t));
 }
 
 
 _pure_func_ _opaque_ alloc_handle_t*
 alloc_get_handle_s(
-	_in_ alloc_state* state,
+	_in_ alloc_state_t* state,
 	alloc_t size
 	)
 {
