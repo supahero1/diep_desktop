@@ -14,8 +14,8 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/rand.h>
-#include <DiepDesktop/shared/debug.h>
+#include <shared/rand.h>
+#include <shared/debug.h>
 
 #include <math.h>
 

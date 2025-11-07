@@ -16,20 +16,20 @@
  *  limitations under the License.
  */
 
-// #include <DiepDesktop/socket.h>
+// #include <socket.h>
 
-#include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/time.h>
-#include <DiepDesktop/shared/rand.h>
-#include <DiepDesktop/shared/debug.h>
-// #include <DiepDesktop/client/window.h>
-#include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/shared/bit_buffer.h>
+#include <shared/base.h>
+#include <shared/time.h>
+#include <shared/rand.h>
+#include <shared/debug.h>
+// #include <client/window.h>
+#include <shared/threads.h>
+#include <shared/alloc_ext.h>
+#include <shared/bit_buffer.h>
 
-#include <DiepDesktop/client/window/base.h>
+#include <client/window/base.h>
 
-#include <DiepDesktop/shared/base64.h>
+#include <shared/base64.h>
 
 
 

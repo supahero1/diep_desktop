@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/file.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -100,10 +100,10 @@ file_read_cap(
 		goto goto_end;
 	}
 
-	file->data = alloc_malloc(file->len);
-	hard_assert_not_null(file->data);
+	file->data = alloc_malloc(file->data, file->len);
+	hard_assert_ptr(file->data, file->len);
 
-	if(read(fd, file->data, file->len) != file->len)
+	if(file->len && read(fd, file->data, file->len) != file->len)
 	{
 		file_free(*file);
 	}

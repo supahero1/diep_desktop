@@ -190,3 +190,6 @@ _Generic((x),					\
 
 #define MACRO_FORMAT_TYPE_CONST(x)	\
 MACRO_FORMAT_TYPE((x) 0)
+
+#define MACRO_CONTAINER_OF(ptr, type, member)	\
+((type*)((char*)(ptr) - offsetof(type, member)))

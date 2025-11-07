@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/str.h>
+#include <shared/str.h>
 
 
 typedef struct options* options_t;
@@ -58,6 +58,42 @@ extern const str_t
 options_get(
 	options_t options,
 	const char* key
+	);
+
+
+extern int64_t
+options_get_i64(
+	options_t options,
+	const char* key,
+	int64_t min_value,
+	int64_t max_value,
+	int64_t default_value
+	);
+
+
+extern float
+options_get_f32(
+	options_t options,
+	const char* key,
+	float min_value,
+	float max_value,
+	float default_value
+	);
+
+
+extern bool
+options_get_boolean(
+	options_t options,
+	const char* key,
+	bool default_value
+	);
+
+
+extern const str_t
+options_get_str(
+	options_t options,
+	const char* key,
+	const char* default_value
 	);
 
 

@@ -16,11 +16,11 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/client/window.h>
-#include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/client/ui/base.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/debug.h>
+#include <client/window.h>
+#include <shared/threads.h>
+#include <client/ui/base.h>
+#include <shared/alloc_ext.h>
 
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_keycode.h>

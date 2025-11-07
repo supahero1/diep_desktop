@@ -14,13 +14,13 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/hash.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/shared/settings.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/shared/bit_buffer.h>
+#include <shared/file.h>
+#include <shared/hash.h>
+#include <shared/debug.h>
+#include <shared/threads.h>
+#include <shared/settings.h>
+#include <shared/alloc_ext.h>
+#include <shared/bit_buffer.h>
 
 #include <zstd.h>
 
@@ -64,7 +64,7 @@ settings_value_free_fn(
 
 	sync_mtx_free(&setting->mtx);
 
-	alloc_free(setting, sizeof(*setting));
+	alloc_free(setting, 1);
 }
 
 
@@ -76,7 +76,7 @@ settings_init(
 {
 	assert_not_null(path);
 
-	settings_t settings = alloc_malloc(sizeof(*settings));
+	settings_t settings = alloc_malloc(settings, 1);
 	assert_not_null(settings);
 
 	sync_rwlock_init(&settings->rwlock);
@@ -122,7 +122,7 @@ settings_free(
 
 	sync_rwlock_free(&settings->rwlock);
 
-	alloc_free(settings, sizeof(*settings));
+	alloc_free(settings, 1);
 }
 
 
@@ -246,7 +246,7 @@ settings_save(
 	sum = MACRO_TO_BYTES(sum + 60);
 
 	bit_buffer_t buffer;
-	bit_buffer_set(&buffer, alloc_calloc(sum), sum);
+	bit_buffer_set(&buffer, alloc_calloc(NULL, sum), sum);
 	assert_not_null(buffer.data);
 
 	uint32_t magic = 0x015FF510;
@@ -259,7 +259,7 @@ settings_save(
 	sync_rwlock_unlock(&settings->rwlock);
 
 	uint64_t compressed_size = ZSTD_compressBound(buffer.len);
-	uint8_t* compressed = alloc_malloc(compressed_size);
+	uint8_t* compressed = alloc_malloc(compressed, compressed_size);
 	assert_not_null(compressed);
 
 	uint64_t actual_compressed_size = ZSTD_compress(
@@ -326,7 +326,7 @@ settings_load(
 		goto goto_failure_file;
 	}
 
-	uint8_t* decompressed = alloc_malloc(decompressed_size);
+	uint8_t* decompressed = alloc_malloc(decompressed, decompressed_size);
 	if(!decompressed)
 	{
 		goto goto_failure_file;
@@ -514,7 +514,7 @@ settings_add_i64(
 	assert_ge(value, min);
 	assert_le(value, max);
 
-	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	setting_t* setting_ptr = alloc_malloc(setting_ptr, 1);
 	assert_not_null(setting_ptr);
 
 	*setting_ptr =
@@ -556,7 +556,7 @@ settings_add_f32(
 	assert_ge(value, min);
 	assert_le(value, max);
 
-	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	setting_t* setting_ptr = alloc_malloc(setting_ptr, 1);
 	assert_not_null(setting_ptr);
 
 	*setting_ptr =
@@ -592,7 +592,7 @@ settings_add_boolean(
 	assert_not_null(name);
 	assert_false(settings->sealed);
 
-	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	setting_t* setting_ptr = alloc_malloc(setting_ptr, 1);
 	assert_not_null(setting_ptr);
 
 	*setting_ptr =
@@ -629,7 +629,7 @@ settings_add_str(
 
 	assert_le(value->len, max_len);
 
-	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	setting_t* setting_ptr = alloc_malloc(setting_ptr, 1);
 	assert_not_null(setting_ptr);
 
 	*setting_ptr =
@@ -664,7 +664,7 @@ settings_add_color(
 	assert_not_null(name);
 	assert_false(settings->sealed);
 
-	setting_t* setting_ptr = alloc_malloc(sizeof(*setting_ptr));
+	setting_t* setting_ptr = alloc_malloc(setting_ptr, 1);
 	assert_not_null(setting_ptr);
 
 	*setting_ptr =

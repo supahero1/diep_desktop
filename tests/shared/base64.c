@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/base64.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/debug.h>
+#include <shared/base64.h>
+#include <shared/alloc_ext.h>
 
 #include <string.h>
 

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/extent.h>
+#include <shared/extent.h>
 
 /* Above or equal, if can, 1 node splits into 4 */
 #define QUADTREE_SPLIT_THRESHOLD 8

@@ -37,8 +37,8 @@ endif
 TEX_DIRS := $(wildcard tex/img/[0-9]*/)
 TEX_FILES := $(TEX_DIRS:tex/img/%/=tex/dds/%.dds)
 
-SRC_TEX_DIRS := src/client/tex/ include/DiepDesktop/client/tex/
-SRC_FONT_DIRS := src/client/font/ include/DiepDesktop/client/font/
+SRC_TEX_DIRS := src/client/tex/ include/client/tex/
+SRC_FONT_DIRS := src/client/font/ include/client/font/
 
 
 .PHONY: all
@@ -144,7 +144,7 @@ tex_build: $(SORT_EXE) | tex/img/
 .PHONY: tex_gen
 tex_gen: $(TEX_GEN_EXE) | tex/img/ $(SRC_TEX_DIRS)
 	./$(TEX_GEN_EXE)
-	TEX_COUNT=$$(grep -oP '#define TEX__COUNT \K\d+' include/DiepDesktop/client/tex/base.h); \
+	TEX_COUNT=$$(grep -oP '#define TEX__COUNT \K\d+' include/client/tex/base.h); \
 	sed -i "s/inTex\[[0-9]*\];/inTex[$$TEX_COUNT];/g" shaders/frag.glsl
 
 .PHONY: tex_clean
@@ -209,7 +209,7 @@ bin/tex/%: | bin/tex/
 
 .PHONY: client
 client: shaders
-	if [[ ! -f include/DiepDesktop/client/tex/base.h || ! -d tex/dds/ ]]; then \
+	if [[ ! -f include/client/tex/base.h || ! -d tex/dds/ ]]; then \
 		echo "Run \`make tex_reset\` first."; \
 		exit 1; \
 	fi

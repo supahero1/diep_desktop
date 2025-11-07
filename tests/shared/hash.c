@@ -14,8 +14,8 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/hash.h>
-#include <DiepDesktop/shared/debug.h>
+#include <shared/hash.h>
+#include <shared/debug.h>
 
 #include <string.h>
 

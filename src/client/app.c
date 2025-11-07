@@ -14,16 +14,15 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/client/app.h>
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/time.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/options.h>
-#include <DiepDesktop/shared/settings.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/client/window/graphics.h>
+#include <client/app.h>
+#include <shared/file.h>
+#include <shared/time.h>
+#include <shared/debug.h>
+#include <shared/options.h>
+#include <shared/settings.h>
+#include <shared/alloc_ext.h>
+#include <client/window/graphics.h>
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
 #include <limits.h>
@@ -122,8 +121,8 @@ app_init(
 	char** argv
 	)
 {
-	app_t app = alloc_malloc(sizeof(*app));
-	assert_ptr(app, sizeof(*app));
+	app_t app = alloc_malloc(app, 1);
+	assert_ptr(app, 1);
 
 	assert_ge(argc, 1);
 	assert_not_null(argv);
@@ -229,7 +228,7 @@ app_free(
 	options_free(global_options);
 	global_options = NULL;
 
-	alloc_free(app, sizeof(*app));
+	alloc_free(app, 1);
 }
 
 

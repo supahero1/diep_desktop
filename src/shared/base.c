@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/base.h>
+#include <shared/base.h>
 
 
 const float ShapeRadius[] =

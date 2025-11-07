@@ -21,10 +21,10 @@
  *
  */
 
-#include <DiepDesktop/shared/time.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/event.h>
-#include <DiepDesktop/shared/threads.h>
+#include <shared/time.h>
+#include <shared/debug.h>
+#include <shared/event.h>
+#include <shared/threads.h>
 
 
 void assert_used
@@ -326,10 +326,10 @@ test_normal_fail__event_listener_remove_itself_twice(
 
 void
 event_target_wait_thread_fn(
-	event_target_t* target
+	event_wait_state_t* state
 	)
 {
-	void* data = event_target_wait(target);
+	void* data = event_target_wait(state);
 	assert_eq(data, (void*) 0x123);
 }
 
@@ -342,20 +342,15 @@ test_priority_pass__event_target_wait(
 	event_target_t target;
 	event_target_init(&target);
 
+	event_wait_state_t* state = event_target_init_wait(&target);
+
 	thread_t thread;
 	thread_data_t data =
 	{
 		.fn = (void*) event_target_wait_thread_fn,
-		.data = &target
+		.data = state
 	};
 	thread_init(&thread, data);
-
-	while(!target.head)
-	{
-		thread_sleep(time_ms_to_ns(10));
-	}
-
-	thread_sleep(time_ms_to_ns(10));
 
 	event_target_fire(&target, (void*) 0x123);
 
@@ -383,5 +378,6 @@ test_normal_timeout__event_target_wait_timeout(
 	event_target_t target;
 	event_target_init(&target);
 
-	event_target_wait(&target);
+	event_wait_state_t* state = event_target_init_wait(&target);
+	event_target_wait(state);
 }

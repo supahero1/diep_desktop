@@ -14,32 +14,25 @@
  *  limitations under the License.
  */
 
-#include <shared/debug.h>
+#pragma once
 
-#include <unistd.h>
+#include <stdatomic.h>
 
+#define atomic_load_acq(value)							\
+({														\
+	atomic_load_explicit(value, memory_order_acquire);	\
+})
 
-void assert_used
-test_normal_pass__test_normal_pass(
-	void
-	)
-{
-}
+#define atomic_store_rel(value, new_value)							\
+({																	\
+	atomic_store_explicit(value, new_value, memory_order_release);	\
+})
 
-
-void assert_used
-test_normal_fail__test_normal_fail(
-	void
-	)
-{
-	assert_unreachable();
-}
-
-
-void assert_used
-test_normal_timeout__test_normal_timeout(
-	void
-	)
-{
-	sleep(99);
-}
+#define atomic_exchange_acq_rel(value, old_value, new_value)	\
+({																\
+	typeof(old_value) old_val = old_value;						\
+	atomic_compare_exchange_strong_explicit(					\
+		value, &old_val, new_value,								\
+		memory_order_acq_rel, memory_order_acquire);			\
+	old_val;													\
+})

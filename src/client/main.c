@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/client/app.h>
+#include <client/app.h>
 
 
 int

@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/color.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/file.h>
+#include <shared/color.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>

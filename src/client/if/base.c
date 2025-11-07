@@ -1,7 +1,7 @@
 /* skip */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/client/if/base.h>
+#include <shared/debug.h>
+#include <client/if/base.h>
 
 #include <string.h>
 #include <inttypes.h>

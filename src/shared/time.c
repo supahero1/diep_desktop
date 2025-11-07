@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/time.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/time.h>
+#include <shared/debug.h>
+#include <shared/threads.h>
+#include <shared/alloc_ext.h>
 
 #include <stdatomic.h>
 
@@ -355,7 +355,7 @@ time_timers_free_##names (																		\
 	time_timers_t timers																		\
 	)																							\
 {																								\
-	alloc_free(timers-> names , sizeof(* timers-> names ) * timers-> names##_size );			\
+	alloc_free(timers-> names , timers-> names##_size );										\
 }																								\
 																								\
 																								\
@@ -371,10 +371,7 @@ time_timers_resize_##names (																	\
 	{																							\
 		uint32_t new_size = (new_used << 1) | 1;												\
 																								\
-		timers-> names = alloc_remalloc(														\
-			timers-> names ,																	\
-			sizeof(* timers-> names ) * timers-> names##_size ,									\
-			sizeof(* timers-> names ) * new_size);												\
+		timers-> names = alloc_remalloc(timers-> names , timers-> names##_size , new_size);		\
 		assert_not_null(timers-> names);														\
 																								\
 		timers-> names##_size = new_size;														\
@@ -875,7 +872,7 @@ time_timers_init(
 	void
 	)
 {
-	time_timers_t timers = alloc_malloc(sizeof(*timers));
+	time_timers_t timers = alloc_malloc(timers, 1);
 	assert_not_null(timers);
 
 	timers->timeouts = NULL;
@@ -922,7 +919,7 @@ time_timers_free(
 	time_timers_free_intervals(timers);
 	time_timers_free_timeouts(timers);
 
-	alloc_free(timers, sizeof(*timers));
+	alloc_free(timers, 1);
 }
 
 

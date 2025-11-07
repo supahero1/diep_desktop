@@ -16,10 +16,10 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/client/ui/checkbox.h>
-#include <DiepDesktop/client/ui/container.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
+#include <client/ui/checkbox.h>
+#include <client/ui/container.h>
 
 
 private void

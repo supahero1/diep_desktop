@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/sync.h>
+#include <shared/sync.h>
 
 
 typedef pthread_t thread_t;

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/macro.h>
+#include <shared/macro.h>
 
 #include <stdint.h>
 

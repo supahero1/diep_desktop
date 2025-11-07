@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/client/window/dds.h>
+#include <shared/file.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
+#include <client/window/dds.h>
 
 #include <zstd.h>
 
@@ -34,7 +34,7 @@ dds_load(
 	uint64_t decompressed_size = ZSTD_getFrameContentSize(file.data, file.len);
 	hard_assert_lt(decompressed_size, /* 1GiB*/ 0x40000000);
 
-	uint8_t* content = alloc_malloc(decompressed_size);
+	uint8_t* content = alloc_malloc(content, decompressed_size);
 	hard_assert_not_null(content);
 
 	uint64_t actual_decompressed_size = ZSTD_decompress(content, decompressed_size, file.data, file.len);
@@ -63,7 +63,7 @@ dds_free(
 	dds_tex_t* tex
 	)
 {
-	alloc_free(tex, sizeof(dds_tex_t) + dds_data_size(tex));
+	alloc_free((void*) tex, sizeof(dds_tex_t) + dds_data_size(tex));
 }
 
 

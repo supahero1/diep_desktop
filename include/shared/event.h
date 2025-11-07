@@ -98,7 +98,16 @@ event_target_fire(
 	);
 
 
+typedef struct event_wait_state event_wait_state_t;
+
+
+extern event_wait_state_t*
+event_target_init_wait(
+	event_target_t* target
+	);
+
+
 extern void*
 event_target_wait(
-	event_target_t* target
+	event_wait_state_t* state
 	);

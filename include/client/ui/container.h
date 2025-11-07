@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <DiepDesktop/client/ui/base.h>
-#include <DiepDesktop/client/tex/base.h>
+#include <client/ui/base.h>
+#include <client/tex/base.h>
 
 
 typedef struct UIContainer

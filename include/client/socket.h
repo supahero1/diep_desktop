@@ -29,7 +29,7 @@
 	typedef int SocketID;
 #endif
 
-#include <DiepDesktop/threads.h>
+#include <threads.h>
 
 
 typedef void

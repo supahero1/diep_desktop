@@ -116,3 +116,29 @@ typedef struct rect_extent
 	};
 }
 rect_extent_t;
+
+
+extern bool
+rect_extent_intersects(
+	rect_extent_t a,
+	rect_extent_t b
+	);
+
+
+extern bool
+rect_extent_is_inside(
+	rect_extent_t a,
+	rect_extent_t b
+	);
+
+
+extern rect_extent_t
+half_to_rect_extent(
+	half_extent_t extent
+	);
+
+
+extern half_extent_t
+rect_to_half_extent(
+	rect_extent_t extent
+	);

@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/time.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/threads.h>
+#include <shared/time.h>
+#include <shared/debug.h>
+#include <shared/threads.h>
 
 
 void assert_used

@@ -80,7 +80,7 @@ def add_file(path):
 	with open(path, "r") as f:
 		if f.readline().startswith("/* skip */"):
 			return False
-		include_lines = [line for line in f if line.startswith("#include <DiepDesktop/")]
+		include_lines = [line for line in f if line.startswith(("#include <shared/", "#include <client/", "#include <server/"))]
 		headers = ["include/" + line[10:-2] for line in include_lines]
 		deps[path] = headers
 		for header in headers:
@@ -91,7 +91,7 @@ def add_file(path):
 		if path.startswith("tests/"):
 			sources = []
 			for header in headers:
-				source = "src/" + header[20:-1] + "c"
+				source = "src/" + header[8:-1] + "c"
 				if source in deps:
 					sources.append(source)
 			headers.extend(sources)
@@ -166,7 +166,7 @@ def add_recur(obj_deps, obj):
 		if header.endswith(".c"):
 			add_recur(obj_deps, objects[header])
 		else:
-			source = "src/" + header[20:-1] + "c"
+			source = "src/" + header[8:-1] + "c"
 			if source in objects:
 				add_recur(obj_deps, objects[source])
 

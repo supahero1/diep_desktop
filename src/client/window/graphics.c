@@ -1,3 +1,4 @@
+/* skip */
 /*
  *   Copyright 2024-2025 Franciszek Balcerak
  *
@@ -14,11 +15,11 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/client/tex/base.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/client/window/graphics.h>
+#include <shared/debug.h>
+#include <shared/threads.h>
+#include <client/tex/base.h>
+#include <shared/alloc_ext.h>
+#include <client/window/graphics.h>
 
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>

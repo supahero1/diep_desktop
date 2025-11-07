@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/hash.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/hash.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
 
 #include <string.h>
 
@@ -103,7 +103,7 @@ hash_table_init(
 		value_free_fn = hash_table_default_value_free_fn;
 	}
 
-	hash_table_t table = alloc_malloc(sizeof(*table));
+	hash_table_t table = alloc_malloc(table, 1);
 	assert_not_null(table);
 
 	table->bucket_count = bucket_count;
@@ -113,8 +113,8 @@ hash_table_init(
 	table->entries_size = 0;
 	table->free_entry = 0;
 
-	table->buckets = alloc_calloc(sizeof(*table->buckets) * table->bucket_count);
-	assert_not_null(table->buckets);
+	table->buckets = alloc_calloc(table->buckets, table->bucket_count);
+	assert_ptr(table->buckets, table->bucket_count);
 
 	table->entries = NULL;
 
@@ -166,10 +166,10 @@ hash_table_free(
 
 	hash_table_for_each_free(table);
 
-	alloc_free(table->buckets, sizeof(*table->buckets) * table->bucket_count);
-	alloc_free(table->entries, sizeof(*table->entries) * table->entries_size);
+	alloc_free(table->buckets, table->bucket_count);
+	alloc_free(table->entries, table->entries_size);
 
-	alloc_free(table, sizeof(*table));
+	alloc_free(table, 1);
 }
 
 
@@ -184,7 +184,7 @@ hash_table_clear(
 
 	(void) memset(table->buckets, 0, sizeof(*table->buckets) * table->bucket_count);
 
-	alloc_free(table->entries, sizeof(*table->entries) * table->entries_size);
+	alloc_free(table->entries, table->entries_size);
 
 	table->entries = NULL;
 	table->entries_used = 1;
@@ -230,11 +230,8 @@ hash_table_ensure_entry(
 	if(table->entries_used >= table->entries_size)
 	{
 		uint32_t new_size = (table->entries_used << 1) | 1;
-		table->entries = alloc_remalloc(
-			table->entries,
-			sizeof(*table->entries) * table->entries_size,
-			sizeof(*table->entries) * new_size
-			);
+
+		table->entries = alloc_remalloc(table->entries, table->entries_size, new_size);
 		assert_not_null(table->entries);
 
 		table->entries_size = new_size;

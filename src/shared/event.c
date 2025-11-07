@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/sync.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/event.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/sync.h>
+#include <shared/debug.h>
+#include <shared/event.h>
+#include <shared/alloc_ext.h>
 
 
 void
@@ -45,22 +45,29 @@ event_target_free(
 }
 
 
-typedef struct event_once_data
+typedef struct event_once_payload
 {
 	event_target_t* target;
 	event_listener_data_t data;
+}
+event_once_payload_t;
+
+typedef struct event_once_data
+{
+	event_listener_t listener;
+	event_once_payload_t once;
 }
 event_once_data_t;
 
 
 private void
 event_once_fn(
-	event_listener_t* listener,
+	event_once_data_t* data,
 	void* event_data
 	)
 {
-	event_once_data_t once = *(event_once_data_t*)(listener + 1);
-	event_target_del_once(once.target, listener);
+	event_once_payload_t once = data->once;
+	event_target_del_once(once.target, &data->listener);
 	once.data.fn(once.data.data, event_data);
 }
 
@@ -79,15 +86,11 @@ event_target_add_common(
 
 	if(once)
 	{
-		event_once_data_t* once_data;
+		event_once_data_t* once_data = alloc_malloc(once_data, 1);
+		assert_not_null(once_data);
 
-		listener = alloc_malloc(sizeof(*listener) + sizeof(*once_data));
-		assert_not_null(listener);
-
-		once_data = (void*)(listener + 1);
-
-		*once_data =
-		(event_once_data_t)
+		once_data->once =
+		(event_once_payload_t)
 		{
 			.target = target,
 			.data = data
@@ -97,12 +100,14 @@ event_target_add_common(
 		(event_listener_data_t)
 		{
 			.fn = (void*) event_once_fn,
-			.data = listener
+			.data = once_data
 		};
+
+		listener = &once_data->listener;
 	}
 	else
 	{
-		listener = alloc_malloc(sizeof(*listener));
+		listener = alloc_malloc(listener, 1);
 		assert_not_null(listener);
 	}
 
@@ -145,7 +150,7 @@ private void
 event_target_del_common(
 	event_target_t* target,
 	event_listener_t* listener,
-	alloc_t size
+	alloc_t additional_size
 	)
 {
 	assert_not_null(target);
@@ -187,7 +192,7 @@ event_target_del_common(
 		listener->next->prev = listener->prev;
 	}
 
-	alloc_free(listener, size);
+	alloc_free((void*) listener, sizeof(*listener) + additional_size);
 }
 
 
@@ -197,7 +202,7 @@ event_target_del(
 	event_listener_t* listener
 	)
 {
-	event_target_del_common(target, listener, sizeof(*listener));
+	event_target_del_common(target, listener, 0);
 }
 
 
@@ -207,8 +212,7 @@ event_target_del_once(
 	event_listener_t* listener
 	)
 {
-	event_target_del_common(target, listener,
-		sizeof(*listener) + sizeof(event_once_data_t));
+	event_target_del_common(target, listener, sizeof(event_once_payload_t));
 }
 
 
@@ -237,6 +241,13 @@ typedef struct event_wait_data
 }
 event_wait_data_t;
 
+struct event_wait_state
+{
+	event_target_t* target;
+	event_listener_t* listener;
+	event_wait_data_t wait_data;
+};
+
 
 private void
 event_target_wait_fn(
@@ -249,28 +260,45 @@ event_target_wait_fn(
 }
 
 
-void*
-event_target_wait(
+event_wait_state_t*
+event_target_init_wait(
 	event_target_t* target
 	)
 {
-	event_wait_data_t wait_data;
-	sync_mtx_init(&wait_data.mtx);
-	sync_mtx_lock(&wait_data.mtx);
+	event_wait_state_t* state = alloc_malloc(state, 1);
+	assert_not_null(state);
+
+	state->target = target;
+	sync_mtx_init(&state->wait_data.mtx);
+	sync_mtx_lock(&state->wait_data.mtx);
 
 	event_listener_data_t data =
 	{
 		.fn = (void*) event_target_wait_fn,
-		.data = &wait_data
+		.data = &state->wait_data
 	};
-	event_listener_t* listener = event_target_add(target, data);
+	state->listener = event_target_add(target, data);
 
-	sync_mtx_lock(&wait_data.mtx);
+	return state;
+}
 
-	event_target_del(target, listener);
 
-	sync_mtx_unlock(&wait_data.mtx);
-	sync_mtx_free(&wait_data.mtx);
+void*
+event_target_wait(
+	event_wait_state_t* state
+	)
+{
+	assert_not_null(state);
 
-	return wait_data.event_data;
+	sync_mtx_lock(&state->wait_data.mtx);
+
+	event_target_del(state->target, state->listener);
+
+	sync_mtx_unlock(&state->wait_data.mtx);
+	sync_mtx_free(&state->wait_data.mtx);
+
+	void* event_data = state->wait_data.event_data;
+	alloc_free(state, 1);
+
+	return event_data;
 }

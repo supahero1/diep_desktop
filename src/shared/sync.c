@@ -14,8 +14,8 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/sync.h>
-#include <DiepDesktop/shared/debug.h>
+#include <shared/sync.h>
+#include <shared/debug.h>
 
 #include <errno.h>
 #include <stdio.h>

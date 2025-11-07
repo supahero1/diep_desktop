@@ -14,8 +14,8 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/str.h>
-#include <DiepDesktop/shared/debug.h>
+#include <shared/str.h>
+#include <shared/debug.h>
 
 #include <string.h>
 

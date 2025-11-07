@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/base64.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/debug.h>
+#include <shared/base64.h>
+#include <shared/alloc_ext.h>
 
 
 private uint64_t
@@ -52,7 +52,7 @@ base64_encode(
 	assert_ptr(data, in_len);
 
 	uint64_t encoded_len = base64_encoded_len(in_len);
-	uint8_t* encoded = alloc_malloc(encoded_len);
+	uint8_t* encoded = alloc_malloc(encoded, encoded_len);
 	assert_ptr(encoded, encoded_len);
 
 	uint64_t full_encodes = in_len / 3;
@@ -149,7 +149,7 @@ base64_decode(
 	assert_true(base64_is_valid(data, in_len));
 
 	uint64_t decoded_len = base64_decoded_len(in_len);
-	uint8_t* decoded = alloc_malloc(decoded_len);
+	uint8_t* decoded = alloc_malloc(decoded, decoded_len);
 	assert_ptr(decoded, decoded_len);
 
 	const uint8_t* data_end = data + in_len;

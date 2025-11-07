@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/color.h>
-#include <DiepDesktop/shared/event.h>
-#include <DiepDesktop/client/tex/base.h>
+#include <shared/base.h>
+#include <shared/color.h>
+#include <shared/event.h>
+#include <client/tex/base.h>
 
 #define CGLM_FORCE_RADIANS
 #define CGLM_FORCE_LEFT_HANDED

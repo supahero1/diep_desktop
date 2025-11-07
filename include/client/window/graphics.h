@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/color.h>
-#include <DiepDesktop/client/tex/base.h>
-#include <DiepDesktop/client/window/base.h>
+#include <shared/color.h>
+#include <client/tex/base.h>
+#include <client/window/base.h>
 
 
 typedef struct graphics_draw_data

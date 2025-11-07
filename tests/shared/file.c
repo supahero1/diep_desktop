@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/tests/base.h>
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/debug.h>
+#include <tests/base.h>
+#include <shared/file.h>
+#include <shared/debug.h>
 
 #include <string.h>
 
@@ -67,16 +67,31 @@ test_normal_pass__file_exists_remove(
 
 
 void assert_used
-test_normal_pass__file_read(
+test_normal_pass__file_read_not_empty(
 	void
 	)
 {
 	file_t file;
-	bool status = file_read("tests/shared/file_read.txt", &file);
+	bool status = file_read("tests/shared/file_read_1.txt", &file);
 	assert_true(status);
 
 	assert_eq(file.len, len);
 	assert_false(memcmp(file.data, data, len));
+
+	file_free(file);
+}
+
+
+void assert_used
+test_normal_pass__file_read_empty(
+	void
+	)
+{
+	file_t file;
+	bool status = file_read("tests/shared/file_read_2.txt", &file);
+	assert_true(status);
+
+	assert_eq(file.len, 0);
 
 	file_free(file);
 }
@@ -99,7 +114,23 @@ test_normal_pass__file_read_cap(
 	)
 {
 	file_t file;
-	bool status = file_read_cap("tests/shared/file_read.txt", &file, len - 1);
+	bool status = file_read_cap("tests/shared/file_read_1.txt", &file, len);
+	assert_true(status);
+
+	assert_eq(file.len, len);
+	assert_false(memcmp(file.data, data, len));
+
+	file_free(file);
+}
+
+
+void assert_used
+test_normal_pass__file_read_cap_too_small(
+	void
+	)
+{
+	file_t file;
+	bool status = file_read_cap("tests/shared/file_read_1.txt", &file, len - 1);
 	assert_false(status);
 }
 
@@ -144,7 +175,7 @@ test_normal_pass__file_read_multiple_not_move_cursor(
 	)
 {
 	file_t file;
-	bool status = file_read("tests/shared/file_read.txt", &file);
+	bool status = file_read("tests/shared/file_read_1.txt", &file);
 	assert_true(status);
 
 	assert_eq(file.len, len);
@@ -152,7 +183,7 @@ test_normal_pass__file_read_multiple_not_move_cursor(
 
 	file_free(file);
 
-	status = file_read("tests/shared/file_read.txt", &file);
+	status = file_read("tests/shared/file_read_1.txt", &file);
 	assert_true(status);
 
 	assert_eq(file.len, len);

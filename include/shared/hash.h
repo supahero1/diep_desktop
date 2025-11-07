@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/str.h>
+#include <shared/str.h>
 
 
 typedef struct hash_table* hash_table_t;

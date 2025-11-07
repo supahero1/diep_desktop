@@ -1,5 +1,5 @@
-#include <DiepDesktop/server/sort.h>
-#include <DiepDesktop/shared/debug.h>
+#include <server/sort.h>
+#include <shared/debug.h>
 
 
 private void

@@ -16,18 +16,18 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/file.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/client/window.h>
-#include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/client/tex/base.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/client/window/dds.h>
+#include <shared/base.h>
+#include <shared/file.h>
+#include <shared/debug.h>
+#include <client/window.h>
+#include <shared/threads.h>
+#include <client/tex/base.h>
+#include <shared/alloc_ext.h>
+#include <client/window/dds.h>
 
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
-#include <DiepDesktop/client/window/volk.h>
+#include <client/window/volk.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>

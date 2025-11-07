@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/str.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/str.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
 
 #include <string.h>
 
@@ -26,10 +26,10 @@ cstr_alloc(
 	uint64_t len
 	)
 {
-	void* cstr = alloc_malloc(len + 1);
+	uint8_t* cstr = alloc_malloc(cstr, len + 1);
 	assert_not_null(cstr);
 
-	((uint8_t*) cstr)[len] = '\0';
+	cstr[len] = '\0';
 
 	return cstr;
 }
@@ -153,7 +153,7 @@ str_init(
 	void
 	)
 {
-	str_t str = alloc_malloc(sizeof(*str));
+	str_t str = alloc_malloc(str, 1);
 	assert_not_null(str);
 
 	str->str = NULL;
@@ -284,7 +284,7 @@ str_free(
 
 	str_free_str(str);
 
-	alloc_free(str, sizeof(*str));
+	alloc_free(str, 1);
 }
 
 

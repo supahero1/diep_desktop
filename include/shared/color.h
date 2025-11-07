@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/extent.h>
+#include <shared/extent.h>
 
 
 typedef struct color_hsv

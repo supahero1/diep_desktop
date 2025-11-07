@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/event.h>
-#include <DiepDesktop/shared/color.h>
-#include <DiepDesktop/client/window.h>
+#include <shared/base.h>
+#include <shared/event.h>
+#include <shared/color.h>
+#include <client/window.h>
 
 
 typedef enum UIAlign : uint8_t

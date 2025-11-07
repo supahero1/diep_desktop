@@ -23,8 +23,8 @@
  * 1) Check for no Valgrind warnings in the output.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
 
 
 void assert_used
@@ -32,7 +32,7 @@ test_normal_pass__alloc_zero(
 	void
 	)
 {
-	void* ptr = alloc_malloc(0);
+	void* ptr = alloc_malloc(ptr, 0);
 	assert_null(ptr);
 }
 
@@ -42,12 +42,12 @@ test_priority_pass__alloc_2048_sizes(
 	void
 	)
 {
-	uint8_t** ptrs = alloc_malloc(sizeof(*ptrs) * 2049);
+	uint8_t** ptrs = alloc_malloc(ptrs, 2049);
 	assert_not_null(ptrs);
 
 	for(uint64_t i = 1; i <= 2048; ++i)
 	{
-		uint8_t* ptr = alloc_malloc(i);
+		uint8_t* ptr = alloc_malloc(ptr, i);
 		assert_not_null(ptr);
 
 		for(uint64_t j = 0; j < i; ++j)
@@ -71,7 +71,7 @@ test_priority_pass__alloc_2048_sizes(
 		alloc_free(ptrs[i], i);
 	}
 
-	alloc_free(ptrs, sizeof(*ptrs) * 2049);
+	alloc_free(ptrs, 2049);
 }
 
 
@@ -80,10 +80,10 @@ test_normal_pass__alloc_null(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(0);
+	uint8_t* ptr = alloc_malloc(ptr, 0);
 	assert_null(ptr);
 
-	ptr = alloc_calloc(0);
+	ptr = alloc_calloc(ptr, 0);
 	assert_null(ptr);
 
 	ptr = alloc_remalloc(NULL, 0, 0);
@@ -101,11 +101,11 @@ test_normal_pass__alloc_one(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(1);
+	uint8_t* ptr = alloc_malloc(ptr, 1);
 	assert_not_null(ptr);
 	alloc_free(ptr, 1);
 
-	ptr = alloc_calloc(1);
+	ptr = alloc_calloc(ptr, 1);
 	assert_not_null(ptr);
 	assert_false(*ptr);
 	alloc_free(ptr, 1);
@@ -126,13 +126,13 @@ test_normal_pass__alloc_realloc_to_zero(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(1);
+	uint8_t* ptr = alloc_malloc(ptr, 1);
 	assert_not_null(ptr);
 
 	ptr = alloc_remalloc(ptr, 1, 0);
 	assert_null(ptr);
 
-	ptr = alloc_calloc(1);
+	ptr = alloc_calloc(ptr, 1);
 	assert_not_null(ptr);
 
 	ptr = alloc_recalloc(ptr, 1, 0);
@@ -145,7 +145,7 @@ test_normal_pass__alloc_realloc_with_data(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(1);
+	uint8_t* ptr = alloc_malloc(ptr, 1);
 	assert_not_null(ptr);
 	*ptr = 0x55;
 
@@ -178,7 +178,7 @@ test_normal_pass__alloc_recalloc(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(1);
+	uint8_t* ptr = alloc_malloc(ptr, 1);
 	assert_not_null(ptr);
 	*ptr = 0x55;
 
@@ -211,7 +211,7 @@ test_normal_fail__alloc_free_invalid_size_1_to_0(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(1);
+	uint8_t* ptr = alloc_malloc(ptr, 1);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 0);
@@ -223,7 +223,7 @@ test_normal_fail__alloc_free_invalid_size_2_to_0(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(2);
+	uint8_t* ptr = alloc_malloc(ptr, 2);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 0);
@@ -235,7 +235,7 @@ test_normal_fail__alloc_free_invalid_size_4_to_0(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(4);
+	uint8_t* ptr = alloc_malloc(ptr, 4);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 0);
@@ -247,7 +247,7 @@ test_normal_fail__alloc_free_invalid_size_10_to_0(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(10);
+	uint8_t* ptr = alloc_malloc(ptr, 10);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 0);
@@ -259,7 +259,7 @@ test_normal_fail__alloc_free_invalid_size_20_to_10(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(20);
+	uint8_t* ptr = alloc_malloc(ptr, 20);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 10);
@@ -271,7 +271,7 @@ test_normal_fail__alloc_free_invalid_size_20_to_0(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(20);
+	uint8_t* ptr = alloc_malloc(ptr, 20);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 0);
@@ -283,7 +283,7 @@ test_normal_fail__alloc_free_invalid_size_40_to_20(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(40);
+	uint8_t* ptr = alloc_malloc(ptr, 40);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 20);
@@ -295,7 +295,7 @@ test_normal_fail__alloc_free_invalid_size_40_to_10(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(40);
+	uint8_t* ptr = alloc_malloc(ptr, 40);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 10);
@@ -307,7 +307,7 @@ test_normal_fail__alloc_free_invalid_size_40_to_0(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(40);
+	uint8_t* ptr = alloc_malloc(ptr, 40);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 0);
@@ -319,7 +319,7 @@ test_normal_fail__alloc_free_invalid_size_10_to_20(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(10);
+	uint8_t* ptr = alloc_malloc(ptr, 10);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 20);
@@ -331,7 +331,7 @@ test_normal_fail__alloc_free_invalid_size_10_to_40(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(10);
+	uint8_t* ptr = alloc_malloc(ptr, 10);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 40);
@@ -343,7 +343,7 @@ test_normal_fail__alloc_free_invalid_size_20_to_40(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(20);
+	uint8_t* ptr = alloc_malloc(ptr, 20);
 	assert_not_null(ptr);
 
 	alloc_free(ptr, 40);
@@ -364,7 +364,7 @@ test_normal_fail__alloc_free_unaligned_allocated_ptr(
 	void
 	)
 {
-	uint8_t* ptr = alloc_malloc(4);
+	uint8_t* ptr = alloc_malloc(ptr, 4);
 	assert_not_null(ptr);
 
 	alloc_free(ptr + 1, 4);
@@ -387,7 +387,7 @@ test_normal_pass__alloc_reuse_spot_malloc(
 {
 	/* 1) */
 
-	uint8_t* ptr = alloc_malloc(4);
+	uint8_t* ptr = alloc_malloc(ptr, 4);
 	assert_not_null(ptr);
 
 	volatile uint8_t val1 = *ptr;
@@ -395,7 +395,7 @@ test_normal_pass__alloc_reuse_spot_malloc(
 
 	alloc_free(ptr, 4);
 
-	ptr = alloc_malloc(4);
+	ptr = alloc_malloc(ptr, 4);
 	assert_not_null(ptr);
 
 	volatile uint8_t val2 = *ptr;
@@ -412,7 +412,7 @@ test_normal_pass__alloc_reuse_spot_calloc(
 {
 	/* 1) */
 
-	uint8_t* ptr = alloc_calloc(4);
+	uint8_t* ptr = alloc_calloc(ptr, 4);
 	assert_not_null(ptr);
 
 	volatile uint8_t val1 = *ptr;
@@ -420,7 +420,7 @@ test_normal_pass__alloc_reuse_spot_calloc(
 
 	alloc_free(ptr, 4);
 
-	ptr = alloc_calloc(4);
+	ptr = alloc_calloc(ptr, 4);
 	assert_not_null(ptr);
 
 	volatile uint8_t val2 = *ptr;

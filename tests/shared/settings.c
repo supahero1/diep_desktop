@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/tests/base.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/settings.h>
+#include <tests/base.h>
+#include <shared/debug.h>
+#include <shared/settings.h>
 
 #include <string.h>
 

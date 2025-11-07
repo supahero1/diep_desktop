@@ -14,8 +14,8 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/options.h>
+#include <shared/debug.h>
+#include <shared/options.h>
 
 #include <stddef.h>
 

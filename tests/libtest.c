@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/tests/base.h>
-#include <DiepDesktop/shared/str.h>
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <tests/base.h>
+#include <shared/str.h>
+#include <shared/debug.h>
+#include <shared/alloc_ext.h>
 
 #include <gelf.h>
 #include <valgrind/valgrind.h>
@@ -162,26 +162,24 @@ wait_and_run_tests(
 	}
 	else
 	{
-		test_shout("\033[31m%-50s FAILED !!!\033[39m", (char*) test.name->str);
-
 		if(WIFSIGNALED(status))
 		{
-			test_shout("\033[31m%-50s was aborted with signal %s\033[39m",
+			test_shout("\033[31m%-48s failed: aborted with signal %s\033[39m",
 				(char*) test.name->str, sigabbrev_np(WTERMSIG(status)));
 		}
 		else if(WIFEXITED(status))
 		{
-			test_shout("\033[31m%-50s exited with status %d\033[39m",
+			test_shout("\033[31m%-48s failed: exited with status %d\033[39m",
 				(char*) test.name->str, WEXITSTATUS(status));
 		}
 		else if(WIFSTOPPED(status))
 		{
-			test_shout("\033[31m%-50s was stopped with signal %s\033[39m",
+			test_shout("\033[31m%-48s failed: stopped with signal %s\033[39m",
 				(char*) test.name->str, sigabbrev_np(WSTOPSIG(status)));
 		}
 		else
 		{
-			test_shout("\033[31m%-50s returned unknown status %d\033[39m",
+			test_shout("\033[31m%-48s failed: returned unknown status %d\033[39m",
 				(char*) test.name->str, status);
 		}
 
@@ -357,11 +355,7 @@ main(
 					}
 				}
 
-				tests = alloc_remalloc(
-					tests,
-					sizeof(*tests) * tests_count,
-					sizeof(*tests) * (tests_count + 1)
-					);
+				tests = alloc_remalloc(tests, tests_count, tests_count + 1);
 				assert_not_null(tests);
 
 				str_t name_str = str_init_copy_cstr(name);
@@ -396,7 +390,7 @@ main(
 	test_shout("Ran %d tests, \033[32m%d\033[39m passed, \033[31m%d\033[39m failed",
 		tests_count, tests_passed, tests_failed);
 
-	alloc_free(tests, sizeof(*tests) * tests_count);
+	alloc_free(tests, tests_count);
 
 	close(tty_fd);
 

@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/str.h>
-#include <DiepDesktop/shared/time.h>
-#include <DiepDesktop/shared/color.h>
-#include <DiepDesktop/shared/event.h>
-#include <DiepDesktop/shared/macro.h>
+#include <shared/str.h>
+#include <shared/time.h>
+#include <shared/color.h>
+#include <shared/event.h>
+#include <shared/macro.h>
 
 
 typedef enum setting_type : uint8_t

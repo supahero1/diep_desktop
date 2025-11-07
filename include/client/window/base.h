@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/str.h>
-#include <DiepDesktop/shared/base.h>
-#include <DiepDesktop/shared/event.h>
-#include <DiepDesktop/shared/extent.h>
+#include <shared/str.h>
+#include <shared/event.h>
+#include <shared/macro.h>
+#include <shared/extent.h>
 
 
 typedef enum window_cursor : uint32_t
@@ -106,7 +106,6 @@ typedef struct window_history window_history_t;
 typedef enum window_user_event : uint32_t
 {
 	WINDOW_USER_EVENT_WINDOW_INIT,
-	WINDOW_USER_EVENT_WINDOW_FREE,
 	WINDOW_USER_EVENT_WINDOW_CLOSE,
 	WINDOW_USER_EVENT_WINDOW_FULLSCREEN,
 	WINDOW_USER_EVENT_SET_CURSOR,
@@ -248,6 +247,7 @@ typedef struct window_move_event_data
 	window_t window;
 	pair_t old_pos;
 	pair_t new_pos;
+	pair_t rel_pos;
 }
 window_move_event_data_t;
 
@@ -256,6 +256,7 @@ typedef struct window_resize_event_data
 	window_t window;
 	pair_t old_size;
 	pair_t new_size;
+	pair_t rel_size;
 }
 window_resize_event_data_t;
 
@@ -345,6 +346,7 @@ typedef struct window_mouse_move_event_data
 	window_t window;
 	pair_t old_pos;
 	pair_t new_pos;
+	pair_t rel_pos;
 }
 window_mouse_move_event_data_t;
 
@@ -358,11 +360,11 @@ window_mouse_scroll_event_data_t;
 
 typedef struct window_info
 {
-	half_extent_t old_extent;
 	half_extent_t extent;
 	pair_t mouse;
 
 	bool fullscreen;
+	bool rel_mouse_in_fullscreen;
 }
 window_info_t;
 
@@ -392,6 +394,7 @@ struct window_history
 {
 	half_extent_t extent;
 	bool fullscreen;
+	bool rel_mouse_in_fullscreen;
 };
 
 

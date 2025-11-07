@@ -1,9 +1,9 @@
 /* skip */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/threads.h>
-#include <DiepDesktop/client/ui/base.h>
-#include <DiepDesktop/client/tex/font.h>
+#include <shared/debug.h>
+#include <shared/threads.h>
+#include <client/ui/base.h>
+#include <client/tex/font.h>
 
 #include <math.h>
 #include <stdio.h>

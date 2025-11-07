@@ -14,9 +14,8 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/alloc_ext.h>
-#include <DiepDesktop/shared/bit_buffer.h>
+#include <shared/debug.h>
+#include <shared/bit_buffer.h>
 
 #include <string.h>
 

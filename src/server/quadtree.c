@@ -1,12 +1,12 @@
-#include <DiepDesktop/server/quadtree.h>
-#include <DiepDesktop/shared/debug.h>
+#include <server/quadtree.h>
+#include <shared/debug.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #ifdef NDEBUG
-	#include <DiepDesktop/shared/alloc_ext.h>
+	#include <shared/alloc_ext.h>
 
 	#define QT_MALLOC(size) alloc_malloc(size)
 	#define QT_CALLOC(size) alloc_calloc(size)

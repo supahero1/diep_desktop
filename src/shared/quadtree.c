@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-#include <DiepDesktop/shared/debug.h>
-#include <DiepDesktop/shared/quadtree.h>
-#include <DiepDesktop/shared/alloc_ext.h>
+#include <shared/debug.h>
+#include <shared/quadtree.h>
+#include <shared/alloc_ext.h>
 

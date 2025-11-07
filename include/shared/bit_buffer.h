@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <DiepDesktop/shared/str.h>
+#include <shared/str.h>
 
 
 typedef struct bit_buffer

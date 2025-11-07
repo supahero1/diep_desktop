@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <shared/threads.h>
 
 #define TIME_IMMEDIATELY UINT64_C(2)
 #define TIME_STEP UINT64_C(2)
@@ -131,18 +131,9 @@ typedef struct time_timer
 time_timer_t;
 
 
-typedef void
-(*time_fn_t)(
-	void* data
-	);
+typedef thread_fn_t time_fn_t;
 
-
-typedef struct time_data
-{
-	time_fn_t fn;
-	void* data;
-}
-time_data_t;
+typedef thread_data_t time_data_t;
 
 
 typedef struct time_timeout
