@@ -35,7 +35,7 @@ var_bg_tile(
 {
 	uint32_t size = 128;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -73,7 +73,7 @@ var_rect(
 {
 	uint32_t size = 4;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	(void) memset(img, 0xFF, img_size);
@@ -92,7 +92,7 @@ var_text_cursor(
 {
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint32_t ratio = 6;
@@ -134,7 +134,7 @@ var_cs_b(
 {
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -163,7 +163,7 @@ var_cs_red(
 {
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -192,7 +192,7 @@ var_cs_green(
 {
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -221,7 +221,7 @@ var_cs_blue(
 {
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -250,7 +250,7 @@ var_rect8_t(
 {
 	uint32_t size = 8;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -292,7 +292,7 @@ var_rect128_t(
 {
 	uint32_t size = 128;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -334,7 +334,7 @@ var_cs_t(
 {
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 3;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -383,7 +383,7 @@ var_circle_t(
 
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 4;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -436,7 +436,7 @@ var_t_mask(
 {
 	uint32_t size = 256;
 	uint32_t img_size = size * size * 4;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
@@ -466,7 +466,7 @@ var_cs_hs(
 {
 	uint32_t size = 2048;
 	uint32_t img_size = size * size * 4;
-	uint8_t* img = alloc_malloc(img_size);
+	uint8_t* img = alloc_malloc(img, img_size);
 	assert_not_null(img);
 
 	uint8_t* cur = img;
