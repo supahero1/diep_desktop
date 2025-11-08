@@ -161,7 +161,7 @@ test_normal_pass__hash_table_functions(
 }
 
 
-private void
+static void
 hash_table_key_dtor(
 	str_t key
 	)
@@ -173,7 +173,7 @@ hash_table_key_dtor(
 }
 
 
-private void
+static void
 hash_table_value_dtor(
 	void* value
 	)

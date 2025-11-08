@@ -157,29 +157,29 @@ wait_and_run_tests(
 
 	if(success)
 	{
-		test_say("%-50s passed", (char*) test.name->str);
+		test_say("%-60s passed", (char*) test.name->str);
 		++tests_passed;
 	}
 	else
 	{
 		if(WIFSIGNALED(status))
 		{
-			test_shout("\033[31m%-48s failed: aborted with signal %s\033[39m",
+			test_shout("\033[31m%-58s failed: aborted with signal %s\033[39m",
 				(char*) test.name->str, sigabbrev_np(WTERMSIG(status)));
 		}
 		else if(WIFEXITED(status))
 		{
-			test_shout("\033[31m%-48s failed: exited with status %d\033[39m",
+			test_shout("\033[31m%-58s failed: exited with status %d\033[39m",
 				(char*) test.name->str, WEXITSTATUS(status));
 		}
 		else if(WIFSTOPPED(status))
 		{
-			test_shout("\033[31m%-48s failed: stopped with signal %s\033[39m",
+			test_shout("\033[31m%-58s failed: stopped with signal %s\033[39m",
 				(char*) test.name->str, sigabbrev_np(WSTOPSIG(status)));
 		}
 		else
 		{
-			test_shout("\033[31m%-48s failed: returned unknown status %d\033[39m",
+			test_shout("\033[31m%-58s failed: returned unknown status %d\033[39m",
 				(char*) test.name->str, status);
 		}
 
@@ -328,7 +328,7 @@ main(
 				void (*test_func)() = dlsym(handle, sym_name);
 				assert_not_null(test_func);
 
-				test_say("%-50s expecting %s", name, should_pass ? "success" : should_timeout ? "timeout" : "failure");
+				test_say("%-60s expecting %s", name, should_pass ? "success" : should_timeout ? "timeout" : "failure");
 
 				int pid;
 				if(!test_name)

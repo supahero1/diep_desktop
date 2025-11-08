@@ -21,7 +21,7 @@ import subprocess
 
 env = Environment(tools = ["mingw"] if os.name == "nt" else ["default"], ENV=os.environ)
 
-flags = Split("-std=gnu23 -Wall -Iinclude/ -D_GNU_SOURCE")
+flags = Split("-std=gnu23 -Wall -Iinclude/ -Isrc/ -D_GNU_SOURCE")
 
 freetype2_flags = subprocess.check_output(["pkg-config", "--cflags", "freetype2"], text=True)
 flags.extend([Split(freetype2_flags)[0]])
@@ -75,26 +75,40 @@ def prop_headers(dest, headers):
 				prop_headers(dest, deps[header])
 
 def add_file(path):
-	if path in deps or "client/tex/" in path or "client/font/" in path:
+	if "client/tex/" in path or "client/font/" in path:
 		return False
-	with open(path, "r") as f:
-		if f.readline().startswith("/* skip */"):
-			return False
-		include_lines = [line for line in f if line.startswith(("#include <shared/", "#include <client/", "#include <server/"))]
-		headers = ["include/" + line[10:-2] for line in include_lines]
-		deps[path] = headers
-		for header in headers:
-			add_file(header)
-		for header in headers:
-			if header in deps:
-				prop_headers(headers, deps[header])
-		if path.startswith("tests/"):
-			sources = []
+	if path in deps:
+		return True
+	try:
+		with open(path, "r") as f:
+			first_line = f.readline()
+			f.seek(0)
+			include_lines = [line for line in f if line.startswith(("#include <shared/", "#include <client/", "#include <server/", "#include <tests/"))]
+			headers = []
+			for line in include_lines:
+				inc_path_part = line[line.find("<")+1 : line.find(">")]
+				if inc_path_part.endswith(".c"):
+					headers.append("src/" + inc_path_part)
+				else:
+					headers.append("include/" + inc_path_part)
+			deps[path] = headers
 			for header in headers:
-				source = "src/" + header[8:-1] + "c"
-				if source in deps:
-					sources.append(source)
-			headers.extend(sources)
+				add_file(header)
+			for header in headers:
+				if header in deps:
+					prop_headers(headers, deps[header])
+			if path.startswith("tests/"):
+				sources = []
+				for header in headers:
+					source = "src/" + header[8:-1] + "c"
+					if source in deps:
+						sources.append(source)
+				headers.extend(sources)
+	except FileNotFoundError:
+		deps[path] = []
+		return True
+	if first_line.startswith("/* skip */"):
+		return False
 	return True
 
 def add_files(path):
@@ -110,6 +124,7 @@ def add_files(path):
 client_src_files = add_files("src/client")
 server_src_files = add_files("src/server")
 shared_src_files = add_files("src/shared")
+tests_src_files = add_files("src/tests")
 
 tex_src_files = add_files("tex")
 
@@ -125,17 +140,22 @@ shared_test_files = add_files("tests/shared")
 objects = {}
 
 def add_object(file):
-	files = deps[file]
+	if file in objects:
+		return objects[file]
 	obj = env.Object("bin/" + file[:-1] + "o", file)[0]
 	objects[file] = obj
-	for file in files:
-		if file.endswith(".c"):
-			if file not in objects:
-				add_object(file)
-			env.Depends(obj, objects[file])
-		else:
-			env.Depends(obj, file)
+	process_object_deps(obj, file)
 	return obj
+
+def process_object_deps(obj, source_file):
+	if source_file not in deps:
+		return
+	for dependency_path in deps[source_file]:
+		if dependency_path.endswith(".c"):
+			env.Depends(obj, dependency_path)
+			process_object_deps(obj, dependency_path)
+		else:
+			env.Depends(obj, dependency_path)
 
 def add_objects(files):
 	return [add_object(file) for file in files]
@@ -143,6 +163,7 @@ def add_objects(files):
 client_src_objects = add_objects(client_src_files)
 server_src_objects = add_objects(server_src_files)
 shared_src_objects = add_objects(shared_src_files)
+tests_src_objects = add_objects(tests_src_files)
 
 tex_src_objects = add_objects(tex_src_files)
 
@@ -158,26 +179,31 @@ server = env.Program("bin/server", shared_src_objects + server_src_objects)
 env.Alias("client", client)
 env.Alias("server", server)
 
-def add_recur(obj_deps, obj):
+def add_program_deps(obj_deps, obj):
 	if obj in obj_deps:
 		return
 	obj_deps.append(obj)
-	for header in deps[str(obj)[4:-1] + "c"]:
-		if header.endswith(".c"):
-			add_recur(obj_deps, objects[header])
+	process_program_deps(obj_deps, str(obj)[4:-1] + "c")
+
+def process_program_deps(obj_deps, source_file):
+	if source_file not in deps:
+		return
+	for dependency_path in deps[source_file]:
+		if dependency_path.endswith(".c"):
+			process_program_deps(obj_deps, dependency_path)
 		else:
-			source = "src/" + header[8:-1] + "c"
+			source = "src/" + dependency_path[8:-1] + "c"
 			if source in objects:
-				add_recur(obj_deps, objects[source])
+				add_program_deps(obj_deps, objects[source])
 
 libtest_obj_deps = []
-add_recur(libtest_obj_deps, libtest_object)
+add_program_deps(libtest_obj_deps, libtest_object)
 libtest = env.Library("bin/tests/libtest", libtest_obj_deps)
 env.Alias("libtest", libtest)
 
 def add_program(object, use_libtest=False):
 	obj_deps = []
-	add_recur(obj_deps, object)
+	add_program_deps(obj_deps, object)
 	program = env.Program(str(object)[:-2], obj_deps,
 		LIBPATH = Split("bin/tests/") if use_libtest else [],
 		LIBS = libs + Split("libtest elf") if use_libtest else libs)

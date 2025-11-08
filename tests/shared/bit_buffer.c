@@ -341,6 +341,7 @@ test_normal_pass__bit_buffer_set_get_bytes(
 		str_free(str_out);
 
 		assert_eq(bit_buffer_consumed_bits(&buffer), i + 7 + str->len * 8);
+		str_free(str);
 	}
 }
 

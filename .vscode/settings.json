@@ -1,6 +1,7 @@
 {
 	"files.eol": "\n",
 	"clangd.fallbackFlags": [
-		"-I${workspaceFolder}/include"
+		"-I${workspaceFolder}/include",
+		"-I${workspaceFolder}/src"
 	]
 }

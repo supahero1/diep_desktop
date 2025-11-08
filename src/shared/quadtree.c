@@ -1,3 +1,4 @@
+/* skip */
 /*
  *   Copyright 2025 Franciszek Balcerak
  *
@@ -28,6 +29,31 @@ quadtree_init(
 {
 	assert_not_null(qt);
 
+	if(!qt->split_threshold)
+	{
+		qt->split_threshold = 17;
+	}
+
+	if(!qt->merge_threshold && !qt->merge_threshold_set)
+	{
+		qt->merge_threshold = 16;
+	}
+	qt->merge_threshold = MACRO_MIN(qt->merge_threshold, qt->split_threshold - 1);
+
+	if(!qt->max_depth)
+	{
+		qt->max_depth = 30;
+	}
+
+	qt->dfs_length = qt->max_depth * 3 + 1;
+
+	qt->merge_ht_size = MACRO_NEXT_OR_EQUAL_POWER_OF_2(qt->merge_threshold * 2);
+
+	if(!qt->min_size)
+	{
+		qt->min_size = 1.0f;
+	}
+
 	qt->nodes = alloc_malloc(qt->nodes, 1);
 	qt->node_entities = NULL;
 	qt->entities = NULL;
@@ -38,6 +64,10 @@ quadtree_init(
 	qt->node_removals = NULL;
 	qt->insertions = NULL;
 	qt->reinsertions = NULL;
+	qt->merge_ht = alloc_malloc(qt->merge_ht, qt->merge_ht_size);
+
+	assert_not_null(qt->nodes);
+	assert_ptr(qt->merge_ht, qt->merge_ht_size);
 
 	qt->nodes_used = 1;
 	qt->nodes_size = 1;
@@ -65,11 +95,10 @@ quadtree_init(
 	qt->reinsertions_used = 0;
 	qt->reinsertions_size = 0;
 
-	assert_not_null(qt->nodes);
-
 	qt->nodes[0].head = 0;
-	qt->nodes[0].count = 0;
 	qt->nodes[0].position_flags = 0b1111; /* TRBL */
+	qt->nodes[0].count = 0;
+	qt->nodes[0].type = QUADTREE_NODE_TYPE_LEAF;
 }
 
 
@@ -80,20 +109,31 @@ quadtree_free(
 {
 	assert_not_null(qt);
 
-	alloc_free(qt->nodes, qt->nodes_size);
-	alloc_free(qt->node_entities, qt->node_entities_size);
-	alloc_free(qt->entities, qt->entities_size);
+	alloc_free(qt->merge_ht, qt->merge_ht_size);
+	alloc_free(qt->reinsertions, qt->reinsertions_size);
+	alloc_free(qt->insertions, qt->insertions_size);
+	alloc_free(qt->node_removals, qt->node_removals_size);
+	alloc_free(qt->removals, qt->removals_size);
 #if QUADTREE_DEDUPE_COLLISIONS == 1
 	alloc_free(qt->ht_entries, qt->ht_entries_size);
 #endif
-	alloc_free(qt->removals, qt->removals_size);
-	alloc_free(qt->node_removals, qt->node_removals_size);
-	alloc_free(qt->insertions, qt->insertions_size);
-	alloc_free(qt->reinsertions, qt->reinsertions_size);
+	alloc_free(qt->entities, qt->entities_size);
+	alloc_free(qt->node_entities, qt->node_entities_size);
+	alloc_free(qt->nodes, qt->nodes_size);
 }
 
 
-#define quadtree_descend(_extent)					\
+#define quadtree_fill_node_default(_node_idx, _extent)	\
+(quadtree_node_info_t)									\
+{														\
+	.node_idx = _node_idx,								\
+	.extent = _extent									\
+}
+
+#define quadtree_fill_node(...)			\
+quadtree_fill_node_default(__VA_ARGS__)
+
+#define quadtree_descend(_extent, ...)				\
 do													\
 {													\
 	float half_w = info.extent.w * 0.5f;			\
@@ -103,73 +143,150 @@ do													\
 	{												\
 		if(_extent.min_y <= info.extent.y)			\
 		{											\
-			*(node_info++) =						\
-			(quadtree_node_info_t)					\
-			{										\
-				.node_idx = node->heads[0],			\
-				.extent =							\
-				(half_extent_t)						\
+			*(node_info++) = quadtree_fill_node(	\
+				node->heads[0],						\
+				((half_extent_t)					\
 				{									\
 					.x = info.extent.x - half_w,	\
 					.y = info.extent.y - half_h,	\
 					.w = half_w,					\
 					.h = half_h						\
-				}									\
-			};										\
+				}) __VA_OPT__(,)					\
+				__VA_ARGS__							\
+				);									\
 		}											\
 		if(_extent.max_y >= info.extent.y)			\
 		{											\
-			*(node_info++) =						\
-			(quadtree_node_info_t)					\
-			{										\
-				.node_idx = node->heads[1],			\
-				.extent =							\
-				(half_extent_t)						\
+			*(node_info++) = quadtree_fill_node(	\
+				node->heads[1],						\
+				((half_extent_t)					\
 				{									\
 					.x = info.extent.x - half_w,	\
 					.y = info.extent.y + half_h,	\
 					.w = half_w,					\
 					.h = half_h						\
-				}									\
-			};										\
+				}) __VA_OPT__(,)					\
+				__VA_ARGS__							\
+				);									\
 		}											\
 	}												\
 	if(_extent.max_x >= info.extent.x)				\
 	{												\
 		if(_extent.min_y <= info.extent.y)			\
 		{											\
-			*(node_info++) =						\
-			(quadtree_node_info_t)					\
-			{										\
-				.node_idx = node->heads[2],			\
-				.extent =							\
-				(half_extent_t)						\
+			*(node_info++) = quadtree_fill_node(	\
+				node->heads[2],						\
+				((half_extent_t)					\
 				{									\
 					.x = info.extent.x + half_w,	\
 					.y = info.extent.y - half_h,	\
 					.w = half_w,					\
 					.h = half_h						\
-				}									\
-			};										\
+				}) __VA_OPT__(,)					\
+				__VA_ARGS__							\
+				);									\
 		}											\
 		if(_extent.max_y >= info.extent.y)			\
 		{											\
-			*(node_info++) =						\
-			(quadtree_node_info_t)					\
-			{										\
-				.node_idx = node->heads[3],			\
-				.extent =							\
-				(half_extent_t)						\
+			*(node_info++) = quadtree_fill_node(	\
+				node->heads[3],						\
+				((half_extent_t)					\
 				{									\
 					.x = info.extent.x + half_w,	\
 					.y = info.extent.y + half_h,	\
 					.w = half_w,					\
 					.h = half_h						\
-				}									\
-			};										\
+				}) __VA_OPT__(,)					\
+				__VA_ARGS__							\
+				);									\
 		}											\
 	}												\
 }													\
+while(0)
+
+#define quadtree_descend_all(...)			\
+do											\
+{											\
+	float half_w = info.extent.w * 0.5f;	\
+	float half_h = info.extent.h * 0.5f;	\
+											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[0],						\
+		((half_extent_t)					\
+		{									\
+			.x = info.extent.x - half_w,	\
+			.y = info.extent.y - half_h,	\
+			.w = half_w,					\
+			.h = half_h						\
+		}) __VA_OPT__(,)					\
+		__VA_ARGS__							\
+		);									\
+											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[1],						\
+		((half_extent_t)					\
+		{									\
+			.x = info.extent.x - half_w,	\
+			.y = info.extent.y + half_h,	\
+			.w = half_w,					\
+			.h = half_h						\
+		}) __VA_OPT__(,)					\
+		__VA_ARGS__							\
+		);									\
+											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[2],						\
+		((half_extent_t)					\
+		{									\
+			.x = info.extent.x + half_w,	\
+			.y = info.extent.y - half_h,	\
+			.w = half_w,					\
+			.h = half_h						\
+		}) __VA_OPT__(,)					\
+		__VA_ARGS__							\
+		);									\
+											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[3],						\
+		((half_extent_t)					\
+		{									\
+			.x = info.extent.x + half_w,	\
+			.y = info.extent.y + half_h,	\
+			.w = half_w,					\
+			.h = half_h						\
+		}) __VA_OPT__(,)					\
+		__VA_ARGS__							\
+		);									\
+}											\
+while(0)
+
+#define quadtree_descend_extentless(...)	\
+do											\
+{											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[0],						\
+		((half_extent_t){0}) __VA_OPT__(,)	\
+		__VA_ARGS__							\
+		);									\
+											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[1],						\
+		((half_extent_t){0}) __VA_OPT__(,)	\
+		__VA_ARGS__							\
+		);									\
+											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[2],						\
+		((half_extent_t){0}) __VA_OPT__(,)	\
+		__VA_ARGS__							\
+		);									\
+											\
+	*(node_info++) = quadtree_fill_node(	\
+		node->heads[3],						\
+		((half_extent_t){0}) __VA_OPT__(,)	\
+	  __VA_ARGS__							\
+	  );									\
+}											\
 while(0)
 
 
@@ -196,6 +313,8 @@ quadtree_insert(
 	quadtree_insertion_t* insertion = qt->insertions + insertion_idx;
 
 	insertion->data = *data;
+
+	qt->normalized = false;
 }
 
 
@@ -223,6 +342,8 @@ quadtree_remove(
 	quadtree_removal_t* removal = qt->removals + removal_idx;
 
 	removal->entity_idx = entity_idx;
+
+	qt->normalized = false;
 }
 
 
@@ -233,10 +354,12 @@ quadtree_normalize(
 {
 	assert_not_null(qt);
 
-	if(!qt->insertions_used && !qt->reinsertions_used && !qt->removals_used && !qt->node_removals_used)
+	if(qt->normalized)
 	{
 		return;
 	}
+
+	qt->normalized = true;
 
 	quadtree_node_t* nodes = qt->nodes;
 	quadtree_node_entity_t* node_entities = qt->node_entities;
@@ -250,7 +373,7 @@ quadtree_normalize(
 	uint32_t entities_used = qt->entities_used;
 	uint32_t entities_size = qt->entities_size;
 
-	quadtree_node_info_t node_infos[QUADTREE_DFS_LENGTH];
+	quadtree_node_info_t node_infos[qt->dfs_length];
 	quadtree_node_info_t* node_info;
 
 
@@ -320,7 +443,7 @@ quadtree_normalize(
 				quadtree_node_info_t info = *(--node_info);
 				quadtree_node_t* node = nodes + info.node_idx;
 
-				if(node->count == -1)
+				if(node->type != QUADTREE_NODE_TYPE_LEAF)
 				{
 					quadtree_descend(entity_extent);
 					continue;
@@ -408,7 +531,7 @@ quadtree_normalize(
 				quadtree_node_info_t info = *(--node_info);
 				quadtree_node_t* node = nodes + info.node_idx;
 
-				if(node->count == -1)
+				if(node->type != QUADTREE_NODE_TYPE_LEAF)
 				{
 					quadtree_descend(entity_extent);
 					continue;
@@ -496,6 +619,7 @@ quadtree_normalize(
 			entity->data = *data;
 			entity->query_tick = qt->query_tick;
 			entity->update_tick = qt->update_tick;
+			entity->fully_in_node = false;
 
 			rect_extent_t entity_extent = quadtree_get_entity_rect_extent(entity);
 
@@ -513,7 +637,7 @@ quadtree_normalize(
 				quadtree_node_info_t info = *(--node_info);
 				quadtree_node_t* node = nodes + info.node_idx;
 
-				if(node->count == -1)
+				if(node->type != QUADTREE_NODE_TYPE_LEAF)
 				{
 					quadtree_descend(entity_extent);
 					continue;
@@ -611,13 +735,13 @@ quadtree_normalize(
 		assert_not_null(new_nodes);
 
 		new_node_entities = alloc_malloc(new_node_entities, new_node_entities_size);
-		assert_not_null(new_node_entities);
+		assert_ptr(new_node_entities, new_node_entities_size);
 
 		new_entities = alloc_malloc(new_entities, new_entities_size);
-		assert_not_null(new_entities);
+		assert_ptr(new_entities, new_entities_size);
 
 		uint32_t* entity_map = alloc_calloc(entity_map, entities_size);
-		assert_not_null(entity_map);
+		assert_ptr(entity_map, entities_size);
 
 
 		typedef struct quadtree_node_reorder_info
@@ -626,10 +750,11 @@ quadtree_normalize(
 			half_extent_t extent;
 			uint32_t parent_node_idx;
 			uint32_t head_idx;
+			uint32_t depth;
 		}
 		quadtree_node_reorder_info_t;
 
-		quadtree_node_reorder_info_t node_infos[QUADTREE_DFS_LENGTH];
+		quadtree_node_reorder_info_t node_infos[qt->dfs_length];
 		quadtree_node_reorder_info_t* node_info = node_infos;
 
 		*(node_info++) =
@@ -638,7 +763,8 @@ quadtree_normalize(
 			.node_idx = 0,
 			.extent = qt->half_extent,
 			.parent_node_idx = 0,
-			.head_idx = 0
+			.head_idx = 0,
+			.depth = 1
 		};
 
 		do
@@ -651,11 +777,9 @@ quadtree_normalize(
 
 			new_nodes[info.parent_node_idx].heads[info.head_idx] = new_node_idx;
 
-			if(node->count == -1)
+			if(node->type != QUADTREE_NODE_TYPE_LEAF)
 			{
 				uint32_t total = 0;
-				uint32_t max_idx = 0;
-				uint32_t max_count = 0;
 				bool possible = true;
 
 				for(int i = 0; i < 4; ++i)
@@ -663,22 +787,16 @@ quadtree_normalize(
 					uint32_t node_idx = node->heads[i];
 					quadtree_node_t* node = nodes + node_idx;
 
-					if(node->count == -1)
+					if(node->type != QUADTREE_NODE_TYPE_LEAF)
 					{
 						possible = false;
 						break;
 					}
 
-					if(node->count > max_count)
-					{
-						max_count = node->count;
-						max_idx = i;
-					}
-
 					total += node->count;
 				}
 
-				if(possible && total <= QUADTREE_MERGE_THRESHOLD)
+				if(possible && total <= qt->merge_threshold)
 				{
 					uint32_t heads[4];
 					memcpy(heads, node->heads, sizeof(heads));
@@ -689,81 +807,72 @@ quadtree_normalize(
 						children[i] = nodes + heads[i];
 					}
 
-					quadtree_node_t* max_child = children[max_idx];
-					node->count = max_child->count;
-					node->head = max_child->head;
-					node->position_flags = max_child->position_flags;
+					node->head = 0;
+					node->position_flags = 0;
+					node->count = 0;
+					node->type = QUADTREE_NODE_TYPE_LEAF;
+
+					assert_ge(qt->merge_ht_size, qt->merge_threshold);
+					memset(qt->merge_ht, 0, sizeof(*qt->merge_ht) * qt->merge_ht_size);
 
 					for(int i = 0; i < 4; ++i)
 					{
 						uint32_t child_idx = heads[i];
 						quadtree_node_t* child = children[i];
 
-						if(i == max_idx)
-						{
-							child->next = free_node;
-							free_node = child_idx;
-
-							continue;
-						}
-
 						node->position_flags |= child->position_flags;
-
-						if(!node->count)
-						{
-							node->count = child->count;
-							node->head = child->head;
-
-							child->next = free_node;
-							free_node = child_idx;
-
-							continue;
-						}
 
 						uint32_t node_entity_idx = child->head;
 						while(node_entity_idx)
 						{
 							quadtree_node_entity_t* node_entity = node_entities + node_entity_idx;
 
-							quadtree_node_entity_t* other_node_entity = node_entities + node->head;
+							uint32_t hash = (node_entity->entity * 2654435761u) & (qt->merge_ht_size - 1);
+							uint32_t* ht_entry = qt->merge_ht + hash;
+
+							uint32_t next_node_entity_idx = node_entity->next;
+
 							while(1)
 							{
-								if(node_entity->entity == other_node_entity->entity)
+								if(!*ht_entry)
 								{
-									uint32_t next_node_entity_idx = node_entity->next;
+									*ht_entry = node_entity->entity;
 
-									node_entity->next = free_node_entity;
-									free_node_entity = node_entity_idx;
-
-									node_entity_idx = next_node_entity_idx;
-
-									break;
-								}
-
-								if(!other_node_entity->next)
-								{
-									other_node_entity->next = node_entity_idx;
-									node_entity_idx = node_entity->next;
-									node_entity->next = 0;
+									node_entity->next = node->head;
+									node->head = node_entity_idx;
 
 									++node->count;
 
 									break;
 								}
 
-								other_node_entity = node_entities + other_node_entity->next;
+								if(*ht_entry == node_entity->entity)
+								{
+									node_entity->next = free_node_entity;
+									free_node_entity = node_entity_idx;
+
+									break;
+								}
+
+								hash = (hash + 1) & (qt->merge_ht_size - 1);
+								ht_entry = qt->merge_ht + hash;
 							}
+
+							node_entity_idx = next_node_entity_idx;
 						}
 
 						child->next = free_node;
 						free_node = child_idx;
 					}
+
+					qt->normalized = false;
 				}
 			}
 			else if(
-				node->count >= QUADTREE_SPLIT_THRESHOLD &&
+				node->count >= qt->split_threshold &&
 				info.extent.w >= qt->min_size &&
-				info.extent.h >= qt->min_size
+				info.extent.h >= qt->min_size &&
+				info.depth < qt->max_depth
 				)
 			{
 				uint32_t child_idxs[4];
@@ -821,6 +930,7 @@ quadtree_normalize(
 
 					child->head = 0;
 					child->count = 0;
+					child->type = QUADTREE_NODE_TYPE_LEAF;
 
 					static const uint32_t position_flags_mask[4] =
 					{
@@ -840,6 +950,7 @@ quadtree_normalize(
 
 					uint32_t entity_idx = node_entity->entity;
 					quadtree_entity_t* entity = entities + entity_idx;
+					entity->fully_in_node = false;
 
 					rect_extent_t entity_extent = quadtree_get_entity_rect_extent(entity);
 
@@ -923,14 +1034,13 @@ quadtree_normalize(
 
 					node_entity_idx = next_node_entity_idx;
 				}
-
-				node->count = -1;
 			}
 
-			if(node->count == -1)
+			if(node->type != QUADTREE_NODE_TYPE_LEAF)
 			{
 				float half_w = info.extent.w * 0.5f;
 				float half_h = info.extent.h * 0.5f;
+				uint32_t next_depth = info.depth + 1;
 
 				*(node_info++) =
 				(quadtree_node_reorder_info_t)
@@ -945,7 +1055,8 @@ quadtree_normalize(
 						.h = half_h
 					},
 					.parent_node_idx = new_node_idx,
-					.head_idx = 0
+					.head_idx = 0,
+					.depth = next_depth
 				};
 
 				*(node_info++) =
@@ -961,7 +1072,8 @@ quadtree_normalize(
 						.h = half_h
 					},
 					.parent_node_idx = new_node_idx,
-					.head_idx = 1
+					.head_idx = 1,
+					.depth = next_depth
 				};
 
 				*(node_info++) =
@@ -977,7 +1089,8 @@ quadtree_normalize(
 						.h = half_h
 					},
 					.parent_node_idx = new_node_idx,
-					.head_idx = 2
+					.head_idx = 2,
+					.depth = next_depth
 				};
 
 				*(node_info++) =
@@ -993,14 +1106,14 @@ quadtree_normalize(
 						.h = half_h
 					},
 					.parent_node_idx = new_node_idx,
-					.head_idx = 3
+					.head_idx = 3,
+					.depth = next_depth
 				};
-
-				new_node->count = -1;
 			}
 			else
 			{
 				new_node->position_flags = node->position_flags;
+				new_node->type = QUADTREE_NODE_TYPE_LEAF;
 
 				if(!node->head)
 				{
@@ -1075,6 +1188,8 @@ quadtree_update(
 	assert_not_null(qt);
 	assert_not_null(update_fn);
 
+	quadtree_normalize(qt);
+
 	qt->update_tick ^= 1;
 	uint32_t update_tick = qt->update_tick;
 
@@ -1090,7 +1205,7 @@ quadtree_update(
 	uint32_t node_removals_used = qt->node_removals_used;
 	uint32_t node_removals_size = qt->node_removals_size;
 
-	quadtree_node_info_t node_infos[QUADTREE_DFS_LENGTH];
+	quadtree_node_info_t node_infos[qt->dfs_length];
 	quadtree_node_info_t* node_info = node_infos;
 
 	*(node_info++) =
@@ -1105,15 +1220,9 @@ quadtree_update(
 		quadtree_node_info_t info = *(--node_info);
 		quadtree_node_t* node = nodes + info.node_idx;
 
-		if(node->count == -1)
+		if(node->type != QUADTREE_NODE_TYPE_LEAF)
 		{
-			quadtree_descend((
-				(rect_extent_t)
-				{
-					.min = {{ info.extent.x, info.extent.y }},
-					.max = {{ info.extent.x, info.extent.y }}
-				}
-				));
+			quadtree_descend_all();
 			continue;
 		}
 
@@ -1159,6 +1268,8 @@ quadtree_update(
 						reinsertion = reinsertions + reinsertion_idx;
 
 						reinsertion->entity_idx = entity_idx;
+
+						qt->normalized = false;
 					}
 				}
 			}
@@ -1193,6 +1304,8 @@ quadtree_update(
 				node_removal->node_idx = info.node_idx;
 				node_removal->node_entity_idx = idx;
 				node_removal->prev_node_entity_idx = prev_idx;
+
+				qt->normalized = false;
 			}
 
 			prev_idx = idx;
@@ -1221,6 +1334,8 @@ quadtree_query(
 	assert_not_null(qt);
 	assert_not_null(query_fn);
 
+	quadtree_normalize(qt);
+
 	++qt->query_tick;
 	uint32_t query_tick = qt->query_tick;
 
@@ -1228,7 +1343,7 @@ quadtree_query(
 	quadtree_node_entity_t* node_entities = qt->node_entities;
 	quadtree_entity_t* entities = qt->entities;
 
-	quadtree_node_info_t node_infos[QUADTREE_DFS_LENGTH];
+	quadtree_node_info_t node_infos[qt->dfs_length];
 	quadtree_node_info_t* node_info = node_infos;
 
 	*(node_info++) =
@@ -1243,7 +1358,7 @@ quadtree_query(
 		quadtree_node_info_t info = *(--node_info);
 		quadtree_node_t* node = nodes + info.node_idx;
 
-		if(node->count == -1)
+		if(node->type != QUADTREE_NODE_TYPE_LEAF)
 		{
 			quadtree_descend(extent);
 			continue;
@@ -1283,9 +1398,11 @@ quadtree_query_nodes(
 	assert_not_null(qt);
 	assert_not_null(node_query_fn);
 
+	quadtree_normalize(qt);
+
 	quadtree_node_t* nodes = qt->nodes;
 
-	quadtree_node_info_t node_infos[QUADTREE_DFS_LENGTH];
+	quadtree_node_info_t node_infos[qt->dfs_length];
 	quadtree_node_info_t* node_info = node_infos;
 
 	*(node_info++) =
@@ -1300,7 +1417,7 @@ quadtree_query_nodes(
 		quadtree_node_info_t info = *(--node_info);
 		quadtree_node_t* node = nodes + info.node_idx;
 
-		if(node->count == -1)
+		if(node->type != QUADTREE_NODE_TYPE_LEAF)
 		{
 			quadtree_descend(extent);
 			continue;
@@ -1425,7 +1542,7 @@ quadtree_collide(
 			}
 #endif
 
-			collide_fn(qt, &entity->data, &other_entity->data);
+			collide_fn(qt, entity_idx, &entity->data, other_entity_idx, &other_entity->data);
 
 			goto_skip:;
 
@@ -1457,4 +1574,72 @@ quadtree_collide(
 }
 
 
+uint32_t
+quadtree_depth(
+	quadtree_t* qt
+	)
+{
+	assert_not_null(qt);
+
+	quadtree_normalize(qt);
+
+	quadtree_node_t* nodes = qt->nodes;
+
+	uint32_t max_depth = 0;
+
+	typedef struct quadtree_node_depth_info
+	{
+		uint32_t node_idx;
+		uint32_t depth;
+	}
+	quadtree_node_depth_info;
+
+#undef quadtree_fill_node
+#define quadtree_fill_node(_node_idx, _extent, _depth)	\
+(quadtree_node_depth_info)								\
+{														\
+	.node_idx = _node_idx,								\
+	.depth = _depth										\
+}
+
+	quadtree_node_depth_info node_infos[qt->dfs_length];
+	quadtree_node_depth_info* node_info = node_infos;
+
+	*(node_info++) =
+	(quadtree_node_depth_info)
+	{
+		.node_idx = 0,
+		.depth = 1
+	};
+
+	do
+	{
+		quadtree_node_depth_info info = *(--node_info);
+		quadtree_node_t* node = nodes + info.node_idx;
+
+		if(node->type != QUADTREE_NODE_TYPE_LEAF)
+		{
+			quadtree_descend_extentless(info.depth + 1);
+			continue;
+		}
+
+		if(info.depth > max_depth)
+		{
+			max_depth = info.depth;
+		}
+	}
+	while(node_info != node_infos);
+
+#undef quadtree_fill_node
+#define quadtree_fill_node(...)			\
+quadtree_fill_node_default(__VA_ARGS__)
+
+	return max_depth;
+}
+
+
+#undef quadtree_descend_extentless
+#undef quadtree_descend_all
 #undef quadtree_descend
+#undef quadtree_fill_node
+#undef quadtree_fill_node_default

@@ -19,37 +19,30 @@
 #include <shared/macro.h>
 #include <shared/extent.h>
 
-/* Above or equal, if can, 1 node splits into 4 */
-#define QUADTREE_SPLIT_THRESHOLD 8
-
-/* Below or equal, if can, 4 nodes merge into 1 */
-#define QUADTREE_MERGE_THRESHOLD 7
-
 #define QUADTREE_DEDUPE_COLLISIONS 1
 
-/* Do not modify unless you know what you are doing. Use octree.min_size. */
-#define QUADTREE_MAX_DEPTH 20
 
-/* Do not modify */
-#define QUADTREE_DFS_LENGTH (QUADTREE_MAX_DEPTH * 3 + 1)
-
-
-typedef struct quadtree_node
+typedef enum quadtree_node_type
 {
-	int32_t count;
+	QUADTREE_NODE_TYPE_LEAF,
+	MACRO_ENUM_BITS(QUADTREE_NODE_TYPE)
+}
+quadtree_node_type_t;
 
-	union
+
+typedef union quadtree_node
+{
+	uint32_t next;
+
+	struct
 	{
-		uint32_t next;
-
-		struct
-		{
-			uint32_t head;
-			uint32_t position_flags;
-		};
-
-		uint32_t heads[4];
+		uint32_t head;
+		uint32_t position_flags;
+		uint32_t count;
+		quadtree_node_type_t type;
 	};
+
+	uint32_t heads[4];
 }
 quadtree_node_t;
 
@@ -73,6 +66,9 @@ quadtree_node_entity_t;
 
 
 	#define quadtree_entity_data quadtree_entity_data_t
+#endif
+
+#ifndef quadtree_get_entity_data_rect_extent
 	#define quadtree_get_entity_data_rect_extent(entity) (entity).rect_extent
 #endif
 
@@ -172,7 +168,9 @@ typedef void
 typedef void
 (*quadtree_collide_fn_t)(
 	const quadtree_t* qt,
+	uint32_t entity_a_idx,
 	quadtree_entity_data* entity_a,
+	uint32_t entity_b_idx,
 	quadtree_entity_data* entity_b
 	);
 
@@ -187,6 +185,13 @@ typedef quadtree_status_t
 
 struct quadtree
 {
+	uint32_t split_threshold;
+	uint32_t merge_threshold;
+	uint32_t max_depth;
+	uint32_t dfs_length;
+	uint32_t merge_ht_size;
+	float min_size;
+
 	quadtree_node_t* nodes;
 	quadtree_node_entity_t* node_entities;
 	quadtree_entity_t* entities;
@@ -197,6 +202,7 @@ struct quadtree
 	quadtree_node_removal_t* node_removals;
 	quadtree_insertion_t* insertions;
 	quadtree_reinsertion_t* reinsertions;
+	uint32_t* merge_ht;
 
 	uint32_t nodes_used;
 	uint32_t nodes_size;
@@ -227,10 +233,11 @@ struct quadtree
 	uint32_t query_tick;
 	uint8_t update_tick;
 
+	bool normalized;
+	bool merge_threshold_set;
+
 	rect_extent_t rect_extent;
 	half_extent_t half_extent;
-
-	float min_size;
 };
 
 
@@ -293,4 +300,10 @@ extern void
 quadtree_collide(
 	quadtree_t* qt,
 	quadtree_collide_fn_t collide_fn
+	);
+
+
+extern uint32_t
+quadtree_depth(
+	quadtree_t* qt
 	);
