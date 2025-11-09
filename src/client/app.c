@@ -21,7 +21,7 @@
 #include <shared/options.h>
 #include <shared/settings.h>
 #include <shared/alloc_ext.h>
-#include <client/window/graphics.h>
+#include <client/window/vulkan.h>
 
 #include <stdlib.h>
 #include <libgen.h>
@@ -48,7 +48,7 @@ struct app
 
 	window_manager_t manager;
 	window_t window;
-	graphics_t graphics;
+	vulkan_t vulkan;
 };
 
 
@@ -137,7 +137,18 @@ app_init(
 
 	global_options = options_init(argc, (void*) argv);
 
-	dir_create("settings");
+	hard_assert_true(dir_exists("textures"));
+	hard_assert_true(dir_exists("shaders"));
+
+	if(!dir_exists("cache"))
+	{
+		dir_create("cache");
+	}
+
+	if(!dir_exists("settings"))
+	{
+		dir_create("settings");
+	}
 
 	app->timers = time_timers_init();
 	app->settings = settings_init("settings/window.bin", app->timers);
@@ -207,7 +218,7 @@ app_init(
 	};
 	app->window_fullscreen_listener = event_target_add(&table->fullscreen_target, fullscreen_data);
 
-	app->graphics = graphics_init(app->window);
+	app->vulkan = vulkan_init(app->window);
 
 	return app;
 }

@@ -202,7 +202,8 @@ main(
 	tty_fd = open("/dev/tty", O_WRONLY);
 	assert_neq(tty_fd, -1);
 
-	int max_concurrent_tests = 4;
+	int num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+	int max_concurrent_tests = MACRO_MAX(1, num_cpus / 2);
 
 	for(int i = 1; i < argc; ++i)
 	{

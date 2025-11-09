@@ -14,8 +14,8 @@
  *  limitations under the License.
  */
 
-#include <shared/sync.h>
 #include <shared/debug.h>
+#include <shared/atomic.h>
 #include <shared/alloc_ext.h>
 #include <client/window/base.h>
 
@@ -23,7 +23,6 @@
 #include <SDL3/SDL_vulkan.h>
 
 #include <stdio.h>
-#include <stdatomic.h>
 
 
 #define ___(x) WINDOW_KEY_##x
@@ -541,6 +540,19 @@ window_free_vulkan_surface(
 }
 
 
+bool
+window_run_on_main_thread(
+	window_t window,
+	thread_data_t data,
+	bool wait
+	)
+{
+	assert_not_null(window);
+
+	return window_manager_run_on_main_thread(window->manager, data, wait);
+}
+
+
 private void
 window_process_event(
 	window_t window,
@@ -771,7 +783,7 @@ window_manager_init(
 	window_manager_t manager = alloc_malloc(manager, 1);
 	assert_not_null(manager);
 
-	atomic_init(&manager->running, true);
+	atomic_store_rel(&manager->running, true);
 
 	manager->window_head = NULL;
 	manager->window_count = 0;
@@ -910,13 +922,35 @@ window_manager_push_event(
 
 
 bool
+window_manager_run_on_main_thread(
+	window_manager_t manager,
+	thread_data_t data,
+	bool wait
+	)
+{
+	assert_not_null(manager);
+	assert_not_null(data.fn);
+
+	if(!window_manager_is_running(manager))
+	{
+		return false;
+	}
+
+	bool status = SDL_RunOnMainThread(data.fn, data.data, wait);
+	hard_assert_true(status, window_sdl_log_error());
+
+	return true;
+}
+
+
+bool
 window_manager_is_running(
 	window_manager_t manager
 	)
 {
 	assert_not_null(manager);
 
-	return atomic_load_explicit(&manager->running, memory_order_acquire);
+	return atomic_load_acq(&manager->running);
 }
 
 
@@ -927,7 +961,7 @@ window_manager_stop_running(
 {
 	assert_not_null(manager);
 
-	atomic_store_explicit(&manager->running, false, memory_order_release);
+	atomic_store_rel(&manager->running, false);
 }
 
 

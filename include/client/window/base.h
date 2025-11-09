@@ -20,6 +20,7 @@
 #include <shared/event.h>
 #include <shared/macro.h>
 #include <shared/extent.h>
+#include <shared/threads.h>
 
 
 typedef enum window_cursor : uint32_t
@@ -209,6 +210,14 @@ window_manager_push_event(
 	window_user_event_t type,
 	void* context,
 	void* data
+	);
+
+
+extern bool
+window_manager_run_on_main_thread(
+	window_manager_t manager,
+	thread_data_t data,
+	bool wait
 	);
 
 
@@ -520,4 +529,12 @@ extern void
 window_free_vulkan_surface(
 	void* instance,
 	void* surface
+	);
+
+
+extern bool
+window_run_on_main_thread(
+	window_t window,
+	thread_data_t data,
+	bool wait
 	);

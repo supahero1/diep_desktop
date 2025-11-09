@@ -75,8 +75,6 @@ def prop_headers(dest, headers):
 				prop_headers(dest, deps[header])
 
 def add_file(path):
-	if "client/tex/" in path or "client/font/" in path:
-		return False
 	if path in deps:
 		return True
 	try:

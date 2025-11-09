@@ -38,6 +38,18 @@ test_normal_pass__alloc_zero(
 
 
 void assert_used
+test_normal_pass__alloc_free_void(
+	void
+	)
+{
+	uint32_t* ptr = alloc_malloc(ptr, 16);
+	assert_not_null(ptr);
+
+	alloc_free((void*) ptr, 4 * 16);
+}
+
+
+void assert_used
 test_priority_pass__alloc_2048_sizes(
 	void
 	)

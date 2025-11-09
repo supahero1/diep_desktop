@@ -21,7 +21,7 @@
 #include <client/window/base.h>
 
 
-typedef struct graphics_draw_data
+typedef struct vulkan_draw_data
 {
 	pair_t       pos;
 	pair_t       size;
@@ -34,26 +34,52 @@ typedef struct graphics_draw_data
 	pair_t       tex_scale;
 	pair_t       tex_offset;
 }
-graphics_draw_data_t;
+vulkan_draw_data_t;
 
 
-typedef struct graphics_event_table
+typedef struct vulkan_draw_event_data
+{
+	float delta;
+	float fps;
+}
+vulkan_draw_event_data_t;
+
+typedef struct vulkan_event_table
 {
 	event_target_t draw_target;
 }
-graphics_event_table_t;
+vulkan_event_table_t;
 
-typedef struct graphics* graphics_t;
+typedef struct vulkan* vulkan_t;
 
 
-extern graphics_t
-graphics_init(
+extern vulkan_t
+vulkan_init(
 	window_t window
 	);
 
 
+extern vulkan_event_table_t*
+vulkan_get_event_table(
+	vulkan_t vk
+	);
+
+
 extern void
-graphics_add_draw_data(
-	graphics_t graphics,
-	graphics_draw_data_t* data
+vulkan_add_draw_data(
+	vulkan_t vk,
+	const vulkan_draw_data_t* data
+	);
+
+
+extern void
+vulkan_set_buffering(
+	vulkan_t vk,
+	uint32_t buffering
+	);
+
+
+extern float
+vulkan_get_fps(
+	vulkan_t vk
 	);
