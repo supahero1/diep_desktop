@@ -62,7 +62,8 @@ main()
 
 	vec3 rotated = rotation * vec3(inVertexPosition * inDimensions, 0.0) + vec3(inPosition.xy, 0.0);
 
-	gl_Position = vec4((scale * rotated).xy, 0.0, 1.0);
+	vec3 scaled = scale * rotated;
+	gl_Position = vec4(scaled.xy - vec2(1.0, 1.0), 0.0, 1.0);
 
 	outTexCoord = ((inTexCoords - vec2(0.5)) * inTexScale * 0.5) + inTexOffset;
 	outWhiteColor = inWhiteColor;

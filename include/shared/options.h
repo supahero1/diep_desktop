@@ -17,6 +17,7 @@
 #pragma once
 
 #include <shared/str.h>
+#include <shared/color.h>
 
 
 typedef struct options* options_t;
@@ -38,46 +39,23 @@ options_free(
 	);
 
 
-extern void
-options_set(
-	options_t options,
-	const char* key,
-	str_t value
-	);
-
-
-extern void
-options_set_default(
-	options_t options,
-	const char* key,
-	str_t value
-	);
-
-
-extern const str_t
-options_get(
-	options_t options,
-	const char* key
-	);
-
-
-extern int64_t
+extern bool
 options_get_i64(
 	options_t options,
 	const char* key,
 	int64_t min_value,
 	int64_t max_value,
-	int64_t default_value
+	int64_t* out_value
 	);
 
 
-extern float
+extern bool
 options_get_f32(
 	options_t options,
 	const char* key,
 	float min_value,
 	float max_value,
-	float default_value
+	float* out_value
 	);
 
 
@@ -85,15 +63,23 @@ extern bool
 options_get_boolean(
 	options_t options,
 	const char* key,
-	bool default_value
+	bool* out_value
 	);
 
 
-extern const str_t
+extern bool
 options_get_str(
 	options_t options,
 	const char* key,
-	const char* default_value
+	str_t* out_value
+	);
+
+
+extern bool
+options_get_color(
+	options_t options,
+	const char* key,
+	color_argb_t* out_value
 	);
 
 

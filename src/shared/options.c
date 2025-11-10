@@ -59,8 +59,7 @@ options_init(
 	options_t options = alloc_malloc(options, 1);
 	assert_not_null(options);
 
-	options->table = hash_table_init(16,
-		(void*) options_key_free_fn, (void*) options_value_free_fn);
+	options->table = hash_table_init(64, (void*) options_key_free_fn, (void*) options_value_free_fn);
 
 	const char* const* arg = argv + 1;
 	const char* const* arg_end = argv + argc;
@@ -105,102 +104,75 @@ options_free(
 }
 
 
-void
-options_set(
-	options_t options,
-	const char* key,
-	str_t value
-	)
-{
-	assert_not_null(options);
-	assert_not_null(key);
-
-	key = cstr_init(key);
-	hash_table_set(options->table, key, value);
-}
-
-
-void
-options_set_default(
-	options_t options,
-	const char* key,
-	str_t value
-	)
-{
-	assert_not_null(options);
-	assert_not_null(key);
-
-	key = cstr_init(key);
-	hash_table_add(options->table, key, value);
-}
-
-
-const str_t
-options_get(
-	options_t options,
-	const char* key
-	)
-{
-	assert_not_null(options);
-	assert_not_null(key);
-
-	return hash_table_get(options->table, key);
-}
-
-
-int64_t
+bool
 options_get_i64(
 	options_t options,
 	const char* key,
 	int64_t min_value,
 	int64_t max_value,
-	int64_t default_value
+	int64_t* out_value
 	)
 {
 	assert_not_null(options);
 	assert_not_null(key);
+	assert_not_null(out_value);
 
-	const str_t value = options_get(options, key);
+	const str_t value = hash_table_get(options->table, key);
 	if(value == NULL || str_is_empty(value))
 	{
-		return default_value;
+		return false;
 	}
 
-	int64_t result = strtoll(value->str, NULL, 10);
+	char* endptr;
+	int64_t result = strtoll(value->str, &endptr, 10);
+	if(endptr == value->str || *endptr != '\0')
+	{
+		return false;
+	}
+
 	if(result < min_value || result > max_value)
 	{
-		result = default_value;
+		return false;
 	}
 
-	return result;
+	*out_value = result;
+	return true;
 }
 
 
-float
+bool
 options_get_f32(
 	options_t options,
 	const char* key,
 	float min_value,
 	float max_value,
-	float default_value
+	float* out_value
 	)
 {
 	assert_not_null(options);
 	assert_not_null(key);
+	assert_not_null(out_value);
 
-	const str_t value = options_get(options, key);
+	const str_t value = hash_table_get(options->table, key);
 	if(value == NULL || str_is_empty(value))
 	{
-		return default_value;
+		return false;
 	}
 
-	float result = strtof(value->str, NULL);
+	char* endptr;
+	float result = strtof(value->str, &endptr);
+	if(endptr == value->str || *endptr != '\0')
+	{
+		return false;
+	}
+
 	if(result < min_value || result > max_value)
 	{
-		result = default_value;
+		return false;
 	}
 
-	return result;
+	*out_value = result;
+	return true;
 }
 
 
@@ -208,16 +180,17 @@ bool
 options_get_boolean(
 	options_t options,
 	const char* key,
-	bool default_value
+	bool* out_value
 	)
 {
 	assert_not_null(options);
 	assert_not_null(key);
+	assert_not_null(out_value);
 
-	const str_t value = options_get(options, key);
+	const str_t value = hash_table_get(options->table, key);
 	if(value == NULL || str_is_empty(value))
 	{
-		return default_value;
+		return false;
 	}
 
 	if(
@@ -226,31 +199,179 @@ options_get_boolean(
 		str_case_cmp_len(value, "1", 1)
 		)
 	{
+		*out_value = true;
 		return true;
 	}
 
-	return false;
+	*out_value = false;
+	return true;
 }
 
 
-const str_t
+bool
 options_get_str(
 	options_t options,
 	const char* key,
-	const char* default_value
+	str_t* out_value
 	)
 {
 	assert_not_null(options);
 	assert_not_null(key);
-	assert_not_null(default_value);
+	assert_not_null(out_value);
 
-	const str_t value = options_get(options, key);
-	if(value == NULL || str_is_empty(value))
+	if(!hash_table_has(options->table, key))
 	{
-		return str_init_copy_cstr(default_value);
+		return false;
 	}
 
-	return value;
+	const str_t value = hash_table_get(options->table, key);
+	*out_value = value;
+	return true;
+}
+
+
+private uint8_t
+hex_char_to_value(
+	char c
+	)
+{
+	if(c >= '0' && c <= '9')
+	{
+		return c - '0';
+	}
+
+	if(c >= 'a' && c <= 'f')
+	{
+		return c - 'a' + 10;
+	}
+
+	if(c >= 'A' && c <= 'F')
+	{
+		return c - 'A' + 10;
+	}
+
+	return 0;
+}
+
+
+bool
+options_get_color(
+	options_t options,
+	const char* key,
+	color_argb_t* out_value
+	)
+{
+	assert_not_null(options);
+	assert_not_null(key);
+	assert_not_null(out_value);
+
+	const str_t value = hash_table_get(options->table, key);
+	if(value == NULL || str_is_empty(value))
+	{
+		return false;
+	}
+
+	const char* hex = value->str;
+	uint64_t len = value->len;
+
+	if(hex[0] == '#')
+	{
+		hex++;
+		len--;
+	}
+
+	color_argb_t color = {0};
+
+
+	switch(len)
+	{
+
+	case 3:
+	{
+		uint8_t r = hex_char_to_value(hex[0]);
+		uint8_t g = hex_char_to_value(hex[1]);
+		uint8_t b = hex_char_to_value(hex[2]);
+
+		color.r = (r << 4) | r;
+		color.g = (g << 4) | g;
+		color.b = (b << 4) | b;
+		color.a = 255;
+		break;
+	}
+
+	case 4:
+	{
+		uint8_t r = hex_char_to_value(hex[0]);
+		uint8_t g = hex_char_to_value(hex[1]);
+		uint8_t b = hex_char_to_value(hex[2]);
+		uint8_t a = hex_char_to_value(hex[3]);
+
+		color.r = (r << 4) | r;
+		color.g = (g << 4) | g;
+		color.b = (b << 4) | b;
+		color.a = (a << 4) | a;
+		break;
+	}
+
+	case 5:
+	{
+		uint8_t r = hex_char_to_value(hex[0]);
+		uint8_t g = hex_char_to_value(hex[1]);
+		uint8_t b = hex_char_to_value(hex[2]);
+		uint8_t a1 = hex_char_to_value(hex[3]);
+		uint8_t a2 = hex_char_to_value(hex[4]);
+
+		color.r = (r << 4) | r;
+		color.g = (g << 4) | g;
+		color.b = (b << 4) | b;
+		color.a = (a1 << 4) | a2;
+		break;
+	}
+
+	case 6:
+	{
+		uint8_t r1 = hex_char_to_value(hex[0]);
+		uint8_t r2 = hex_char_to_value(hex[1]);
+		uint8_t g1 = hex_char_to_value(hex[2]);
+		uint8_t g2 = hex_char_to_value(hex[3]);
+		uint8_t b1 = hex_char_to_value(hex[4]);
+		uint8_t b2 = hex_char_to_value(hex[5]);
+
+		color.r = (r1 << 4) | r2;
+		color.g = (g1 << 4) | g2;
+		color.b = (b1 << 4) | b2;
+		color.a = 255;
+		break;
+	}
+
+	case 8:
+	{
+		uint8_t r1 = hex_char_to_value(hex[0]);
+		uint8_t r2 = hex_char_to_value(hex[1]);
+		uint8_t g1 = hex_char_to_value(hex[2]);
+		uint8_t g2 = hex_char_to_value(hex[3]);
+		uint8_t b1 = hex_char_to_value(hex[4]);
+		uint8_t b2 = hex_char_to_value(hex[5]);
+		uint8_t a1 = hex_char_to_value(hex[6]);
+		uint8_t a2 = hex_char_to_value(hex[7]);
+
+		color.r = (r1 << 4) | r2;
+		color.g = (g1 << 4) | g2;
+		color.b = (b1 << 4) | b2;
+		color.a = (a1 << 4) | a2;
+		break;
+	}
+
+	default:
+	{
+		return false;
+	}
+
+	}
+
+
+	*out_value = color;
+	return true;
 }
 
 

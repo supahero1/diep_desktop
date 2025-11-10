@@ -18,6 +18,7 @@
 #include <shared/hash.h>
 #include <shared/debug.h>
 #include <shared/threads.h>
+#include <shared/options.h>
 #include <shared/settings.h>
 #include <shared/alloc_ext.h>
 #include <shared/bit_buffer.h>
@@ -29,6 +30,7 @@ struct setting
 {
 	sync_mtx_t mtx;
 	setting_type_t type;
+	const char* name;
 	setting_value_t value;
 	setting_constraint_t constraint;
 	event_target_t* change_target;
@@ -521,6 +523,7 @@ settings_add_i64(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_I64,
+		.name = name,
 		.value.i64 = value,
 		.constraint.i64.min = min,
 		.constraint.i64.max = max,
@@ -563,6 +566,7 @@ settings_add_f32(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_F32,
+		.name = name,
 		.value.f32 = value,
 		.constraint.f32.min = min,
 		.constraint.f32.max = max,
@@ -599,6 +603,7 @@ settings_add_boolean(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_BOOLEAN,
+		.name = name,
 		.value.boolean = value,
 		.change_target = change_target
 	};
@@ -636,6 +641,7 @@ settings_add_str(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_STR,
+		.name = name,
 		.value.str = value,
 		.constraint.str.max_len = max_len,
 		.change_target = change_target
@@ -671,6 +677,7 @@ settings_add_color(
 	(setting_t)
 	{
 		.type = SETTING_TYPE_COLOR,
+		.name = name,
 		.value.color = value,
 		.change_target = change_target
 	};
@@ -912,6 +919,15 @@ setting_get_i64(
 {
 	assert_not_null(setting);
 
+	if(global_options)
+	{
+		int64_t options_value;
+		if(options_get_i64(global_options, setting->name, setting->constraint.i64.min, setting->constraint.i64.max, &options_value))
+		{
+			return options_value;
+		}
+	}
+
 	sync_mtx_lock(&setting->mtx);
 		int64_t value = setting->value.i64;
 	sync_mtx_unlock(&setting->mtx);
@@ -926,6 +942,15 @@ setting_get_f32(
 	)
 {
 	assert_not_null(setting);
+
+	if(global_options)
+	{
+		float options_value;
+		if(options_get_f32(global_options, setting->name, setting->constraint.f32.min, setting->constraint.f32.max, &options_value))
+		{
+			return options_value;
+		}
+	}
 
 	sync_mtx_lock(&setting->mtx);
 		float value = setting->value.f32;
@@ -942,6 +967,15 @@ setting_get_boolean(
 {
 	assert_not_null(setting);
 
+	if(global_options)
+	{
+		bool options_value;
+		if(options_get_boolean(global_options, setting->name, &options_value))
+		{
+			return options_value;
+		}
+	}
+
 	sync_mtx_lock(&setting->mtx);
 		bool value = setting->value.boolean;
 	sync_mtx_unlock(&setting->mtx);
@@ -957,6 +991,15 @@ setting_get_str(
 {
 	assert_not_null(setting);
 
+	if(global_options)
+	{
+		str_t options_value;
+		if(options_get_str(global_options, setting->name, &options_value) && (!options_value || options_value->len <= setting->constraint.str.max_len))
+		{
+			return options_value;
+		}
+	}
+
 	sync_mtx_lock(&setting->mtx);
 		str_t value = setting->value.str;
 	sync_mtx_unlock(&setting->mtx);
@@ -971,6 +1014,15 @@ setting_get_color(
 	)
 {
 	assert_not_null(setting);
+
+	if(global_options)
+	{
+		color_argb_t options_value;
+		if(options_get_color(global_options, setting->name, &options_value))
+		{
+			return options_value;
+		}
+	}
 
 	sync_mtx_lock(&setting->mtx);
 		color_argb_t value = setting->value.color;

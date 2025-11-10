@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 
-#include <shared/str.h>
 #include <shared/file.h>
-#include <shared/time.h>
 #include <shared/debug.h>
 #include <shared/atomic.h>
-#include <shared/threads.h>
-#include <client/tex/base.h>
+#include <shared/settings.h>
 #include <shared/alloc_ext.h>
 #include <client/window/dds.h>
 #include <client/window/volk.h>
@@ -28,16 +25,14 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 
 #define VK_MAX_IMAGES 8
-#define VK_MAX_FRAMES 2
 #define VK_MAX_EXTENSIONS 64
 #define VK_COMMANDS 4
 #define VK_STAGING_BUFFER_SIZE 1 * 1024 * 1024
 #define VK_INSTANCE_BUFFER_SIZE 1 * 1024 * 1024
 #define VK_DRAW_DATA_BUFFER_SIZE (VK_INSTANCE_BUFFER_SIZE / sizeof(vulkan_draw_data_t))
-#define VK_FPS_DECAY_FACTOR 0.5f
+#define VK_FPS_DECAY_FACTOR 0.9f
 
 
 typedef struct vk_barrier
@@ -125,19 +120,22 @@ vk_command_t;
 
 struct vulkan
 {
+	time_timers_t timers;
+
 	window_t window;
 	event_listener_t* resize_listener;
 
 	vulkan_event_table_t event_table;
 
-	struct
-	{
-		uint32_t buffering;
-		uint32_t max_msaa_samples;
-		bool sample_shading;
-		float min_sample_shading;
-	}
-	options;
+	settings_t settings;
+
+	setting_t* buffering_setting;
+	setting_t* max_msaa_samples_setting;
+	setting_t* sample_shading_setting;
+	setting_t* min_sample_shading_setting;
+
+	uint32_t buffering;
+	uint32_t max_msaa_samples;
 
 	struct VolkDeviceTable table;
 
@@ -196,11 +194,12 @@ struct vulkan
 	vk_image_t textures[TEX__COUNT];
 
 	thread_t thread;
-	_Atomic uint8_t should_run;
+	_Atomic bool should_run;
 
 	sync_mtx_t draw_mtx;
 	sync_mtx_t resize_mtx;
 	sync_cond_t resize_cond;
+	_Atomic bool resized;
 
 	float delta;
 	float fps;
@@ -261,16 +260,33 @@ vk_debug_callback(
 
 
 private void
-vk_init_options(
+vk_init_settings(
 	vulkan_t vk
 	)
 {
 	assert_not_null(vk);
 
-	vk->options.buffering = 2;
-	vk->options.max_msaa_samples = 8;
-	vk->options.sample_shading = true;
-	vk->options.min_sample_shading = 1.0f;
+	vk->settings = settings_init("settings/vulkan.bin", vk->timers);
+
+	vk->buffering_setting = settings_add_i64(vk->settings, "buffering", 2, 2, 3, NULL);
+	vk->max_msaa_samples_setting = settings_add_i64(vk->settings, "max_msaa_samples", 8, 1, 64, NULL);
+
+	settings_seal(vk->settings);
+	settings_load(vk->settings);
+
+	vk->buffering = setting_get_i64(vk->buffering_setting);
+	vk->max_msaa_samples = setting_get_i64(vk->max_msaa_samples_setting);
+}
+
+
+private void
+vk_free_settings(
+	vulkan_t vk
+	)
+{
+	assert_not_null(vk);
+
+	settings_free(vk->settings);
 }
 
 
@@ -588,7 +604,7 @@ vk_get_device_features(
 	VkPhysicalDeviceFeatures features;
 	vkGetPhysicalDeviceFeatures(device, &features);
 
-	if(vk->options.sample_shading && !features.sampleRateShading)
+	if(!features.sampleRateShading)
 	{
 		hard_assert_log();
 		return false;
@@ -1110,7 +1126,7 @@ vk_init_device(
 
 	vk->queue_id = best_device_score.queue_id;
 	vk->format = best_device_score.format;
-	vk->samples = MACRO_MIN(vk->options.max_msaa_samples, best_device_score.samples);
+	vk->samples = MACRO_MIN(vk->max_msaa_samples, best_device_score.samples);
 	vk->limits = best_device_score.limits;
 
 	vk->physical_device = best_device;
@@ -1129,7 +1145,7 @@ vk_init_device(
 
 	VkPhysicalDeviceFeatures device_features =
 	{
-		.sampleRateShading = vk->options.sample_shading,
+		.sampleRateShading = VK_TRUE,
 		.textureCompressionBC = VK_TRUE
 	};
 
@@ -1165,10 +1181,10 @@ vk_init_device(
 	}
 
 	vk->image_count = MACRO_CLAMP(
-		vk->options.buffering,
+		vk->buffering,
 		vk->surface_capabilities.minImageCount,
 		vk->surface_capabilities.maxImageCount
-	);
+		);
 	vk->transform = vk->surface_capabilities.currentTransform;
 
 
@@ -2367,8 +2383,8 @@ vk_init_pipeline(
 		.pNext = NULL,
 		.flags = 0,
 		.rasterizationSamples = vk->samples,
-		.sampleShadingEnable = vk->options.sample_shading,
-		.minSampleShading = vk->options.min_sample_shading,
+		.sampleShadingEnable = VK_TRUE,
+		.minSampleShading = 0.2f,
 		.pSampleMask = NULL,
 		.alphaToCoverageEnable = VK_FALSE,
 		.alphaToOneEnable = VK_FALSE
@@ -2567,10 +2583,10 @@ vk_init_barriers(
 {
 	assert_not_null(vk);
 
-	vk->barriers = alloc_calloc(vk->barriers, vk->options.buffering);
+	vk->barriers = alloc_calloc(vk->barriers, vk->buffering);
 	hard_assert_not_null(vk->barriers);
 
-	uint32_t command_buffer_count = vk->options.buffering * vk->image_count;
+	uint32_t command_buffer_count = vk->buffering * vk->image_count;
 	VkCommandBuffer command_buffers[command_buffer_count];
 	VkCommandBuffer* command_buffer = command_buffers;
 
@@ -2602,7 +2618,7 @@ vk_init_barriers(
 	};
 
 	vk_barrier_t* barrier = vk->barriers;
-	vk_barrier_t* barrier_end = barrier + vk->options.buffering;
+	vk_barrier_t* barrier_end = barrier + vk->buffering;
 
 	while(barrier < barrier_end)
 	{
@@ -2631,12 +2647,12 @@ vk_free_barriers(
 {
 	assert_not_null(vk);
 
-	uint32_t command_buffer_count = vk->options.buffering * vk->image_count;
+	uint32_t command_buffer_count = vk->buffering * vk->image_count;
 	VkCommandBuffer command_buffers[command_buffer_count];
 	VkCommandBuffer* command_buffer = command_buffers;
 
 	vk_barrier_t* barrier = vk->barriers;
-	vk_barrier_t* barrier_end = barrier + vk->options.buffering;
+	vk_barrier_t* barrier_end = barrier + vk->buffering;
 
 	while(barrier < barrier_end)
 	{
@@ -2653,7 +2669,7 @@ vk_free_barriers(
 
 	vk->table.vkFreeCommandBuffers(vk->device, vk->command_pool, command_buffer_count, command_buffers);
 
-	alloc_free(vk->barriers, vk->options.buffering);
+	alloc_free(vk->barriers, vk->buffering);
 }
 
 
@@ -2967,8 +2983,8 @@ vk_init_vertex(
 {
 	assert_not_null(vk);
 
-	vk_init_vertex_buffer(vk, sizeof(vk_vertex_input_t), &vk->vertex_input_buffer);
-	vk_copy_to_buffer(vk, &vk->vertex_input_buffer, vk_vertex_input, 1);
+	vk_init_vertex_buffer(vk, sizeof(vk_vertex_input), &vk->vertex_input_buffer);
+	vk_copy_to_buffer(vk, &vk->vertex_input_buffer, vk_vertex_input, MACRO_ARRAY_LEN(vk_vertex_input));
 
 	vk->draw_data = alloc_malloc(vk->draw_data, VK_DRAW_DATA_BUFFER_SIZE);
 	hard_assert_not_null(vk->draw_data);
@@ -3069,7 +3085,7 @@ vk_record_all_commands(
 	}
 
 	vk_barrier_t* barrier = vk->barriers;
-	vk_barrier_t* barrier_end = barrier + vk->options.buffering;
+	vk_barrier_t* barrier_end = barrier + vk->buffering;
 
 	while(barrier < barrier_end)
 	{
@@ -3115,26 +3131,6 @@ vk_recreate_swapchain(
 	vk_init_barriers(vk);
 
 	vk_record_all_commands(vk);
-}
-
-
-private int
-vk_compare_draw_data(
-	const vulkan_draw_data_t* a,
-	const vulkan_draw_data_t* b
-	)
-{
-	if(a->white_depth < b->white_depth)
-	{
-		return 1;
-	}
-
-	if(a->white_depth > b->white_depth)
-	{
-		return -1;
-	}
-
-	return 0;
 }
 
 
@@ -3199,7 +3195,7 @@ vk_draw(
 	if(last_time)
 	{
 		vk->delta = (float)(time - last_time) / time_ms_to_ns(1);
-		vk->fps = VK_FPS_DECAY_FACTOR * vk->fps + (1.0f - VK_FPS_DECAY_FACTOR) * vk->delta;
+		vk->fps = VK_FPS_DECAY_FACTOR * vk->fps + (1.0f - VK_FPS_DECAY_FACTOR) * (1000.0f / vk->delta);
 	}
 	last_time = time;
 
@@ -3208,12 +3204,11 @@ vk_draw(
 
 	vulkan_draw_event_data_t event_data =
 	{
+		.vulkan = vk,
 		.delta = vk->delta,
 		.fps = vk->fps
 	};
 	event_target_fire(&vk->event_table.draw_target, &event_data);
-
-	qsort(vk->draw_data, vk->draw_data_count, sizeof(vulkan_draw_data_t), (void*) vk_compare_draw_data);
 
 	vk_copy_to_buffer(vk, &frame->instance_input_buffer, vk->draw_data, vk->draw_data_count);
 
@@ -3281,8 +3276,14 @@ vk_draw(
 		return;
 	}
 
-	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+	bool resized = atomic_load_acq(&vk->resized);
+	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || resized)
 	{
+		if(resized)
+		{
+			atomic_store_rel(&vk->resized, false);
+		}
+
 		vk_recreate_swapchain(vk);
 	}
 	else
@@ -3290,7 +3291,7 @@ vk_draw(
 		hard_assert_eq(result, VK_SUCCESS);
 	}
 
-	if(++vk->barrier >= vk->barriers + vk->options.buffering)
+	if(++vk->barrier >= vk->barriers + vk->buffering)
 	{
 		vk->barrier = vk->barriers;
 	}
@@ -3320,7 +3321,7 @@ vk_init_thread(
 {
 	assert_not_null(vk);
 
-	atomic_init(&vk->should_run, 1);
+	atomic_init(&vk->should_run, true);
 
 	thread_data_t thread_data =
 	{
@@ -3338,7 +3339,7 @@ vk_free_thread(
 {
 	assert_not_null(vk);
 
-	atomic_store_rel(&vk->should_run, 0);
+	atomic_store_rel(&vk->should_run, false);
 
 	thread_join(vk->thread);
 	thread_free(&vk->thread);
@@ -3352,6 +3353,9 @@ vk_resize_fn(
 	)
 {
 	assert_not_null(vk);
+	assert_not_null(event_data);
+
+	atomic_store_rel(&vk->resized, true);
 
 	sync_mtx_lock(&vk->resize_mtx);
 		sync_cond_wake(&vk->resize_cond);
@@ -3366,8 +3370,9 @@ vk_init_fn(
 	)
 {
 	assert_not_null(vk);
+	assert_not_null(event_data);
 
-	vk_init_options(vk);
+	vk_init_settings(vk);
 	vk_init_instance(vk);
 	vk_init_surface(vk);
 	vk_init_device(vk);
@@ -3383,6 +3388,12 @@ vk_init_fn(
 
 	vk_record_all_commands(vk);
 	vk_init_thread(vk);
+
+	vulkan_init_event_data_t init_event_data =
+	{
+		.vulkan = vk
+	};
+	event_target_fire(&vk->event_table.init_target, &init_event_data);
 }
 
 
@@ -3409,6 +3420,7 @@ vk_free(
 	vk_free_device(vk);
 	vk_free_surface(vk);
 	vk_free_instance(vk);
+	vk_free_settings(vk);
 }
 
 
@@ -3420,9 +3432,17 @@ vk_free_fn(
 {
 	assert_not_null(vk);
 
+	vulkan_free_event_data_t free_event_data =
+	{
+		.vulkan = vk
+	};
+	event_target_fire(&vk->event_table.free_target, &free_event_data);
+
 	vk_free(vk);
 
 	event_target_free(&vk->event_table.draw_target);
+	event_target_free(&vk->event_table.free_target);
+	event_target_free(&vk->event_table.init_target);
 
 	sync_cond_free(&vk->resize_cond);
 	sync_mtx_free(&vk->resize_mtx);
@@ -3437,7 +3457,8 @@ vk_free_fn(
 
 vulkan_t
 vulkan_init(
-	window_t window
+	window_t window,
+	time_timers_t timers
 	)
 {
 	assert_not_null(window);
@@ -3445,7 +3466,11 @@ vulkan_init(
 	vulkan_t vk = alloc_calloc(vk, 1);
 	assert_not_null(vk);
 
+	event_target_init(&vk->event_table.init_target);
+	event_target_init(&vk->event_table.free_target);
 	event_target_init(&vk->event_table.draw_target);
+
+	vk->timers = timers;
 
 	vk->window = window;
 	window_event_table_t* table = window_get_event_table(window);
@@ -3474,6 +3499,7 @@ vulkan_init(
 	sync_mtx_init(&vk->draw_mtx);
 	sync_mtx_init(&vk->resize_mtx);
 	sync_cond_init(&vk->resize_cond);
+	atomic_store_rel(&vk->resized, false);
 
 	return vk;
 }
@@ -3515,9 +3541,13 @@ vulkan_set_buffering(
 
 	sync_mtx_lock(&vk->draw_mtx);
 
-	buffering = MACRO_MIN(buffering, vk->image_count);
+	buffering = MACRO_CLAMP(
+		buffering,
+		vk->surface_capabilities.minImageCount,
+		vk->surface_capabilities.maxImageCount
+		);
 
-	if(buffering == vk->options.buffering)
+	if(buffering == vk->buffering)
 	{
 		sync_mtx_unlock(&vk->draw_mtx);
 		return;
@@ -3531,7 +3561,7 @@ vulkan_set_buffering(
 	vk_device_wait_idle(vk);
 
 	vk_free_barriers(vk);
-	vk->options.buffering = buffering;
+	vk->buffering = buffering;
 	vk_init_barriers(vk);
 
 	vk_record_all_commands(vk);

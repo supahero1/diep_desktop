@@ -23,6 +23,7 @@
 #include <shared/alloc_ext.h>
 #include <client/window/vulkan.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
 #include <limits.h>
@@ -49,6 +50,8 @@ struct app
 	window_manager_t manager;
 	window_t window;
 	vulkan_t vulkan;
+
+	event_listener_t* vulkan_draw_listener;
 };
 
 
@@ -58,6 +61,9 @@ app_window_close_once_fn(
 	window_close_event_data_t* event_data
 	)
 {
+	assert_not_null(app);
+	assert_not_null(event_data);
+
 	app->window_close_once_listener = NULL;
 	window_close(event_data->window);
 }
@@ -69,6 +75,9 @@ app_window_free_once_fn(
 	window_free_event_data_t* event_data
 	)
 {
+	assert_not_null(app);
+	assert_not_null(event_data);
+
 	window_event_table_t* table = app->window_event_table;
 
 	event_target_del(&table->fullscreen_target, app->window_fullscreen_listener);
@@ -84,6 +93,9 @@ app_window_on_move_fn(
 	window_move_event_data_t* event_data
 	)
 {
+	assert_not_null(app);
+	assert_not_null(event_data);
+
 	settings_modify_f32(app->settings, app->window_pos_x, event_data->new_pos.x);
 	settings_modify_f32(app->settings, app->window_pos_y, event_data->new_pos.y);
 }
@@ -95,13 +107,11 @@ app_window_on_resize_fn(
 	window_resize_event_data_t* event_data
 	)
 {
+	assert_not_null(app);
+	assert_not_null(event_data);
+
 	settings_modify_f32(app->settings, app->window_w, event_data->new_size.w);
 	settings_modify_f32(app->settings, app->window_h, event_data->new_size.h);
-
-	if(event_data->new_size.w >= 1600.0f)
-	{
-		window_close(app->window);
-	}
 }
 
 
@@ -111,7 +121,64 @@ app_window_on_fullscreen_fn(
 	window_focus_event_data_t* event_data
 	)
 {
+	assert_not_null(app);
+	assert_not_null(event_data);
+
 	settings_modify_boolean(app->settings, app->window_fullscreen, true);
+}
+
+
+private void
+app_vulkan_on_free_fn(
+	app_t app,
+	vulkan_free_event_data_t* event_data
+	)
+{
+	assert_not_null(app);
+	assert_not_null(event_data);
+
+	vulkan_event_table_t* table = vulkan_get_event_table(event_data->vulkan);
+
+	event_target_del(&table->draw_target, app->vulkan_draw_listener);
+}
+
+
+private void
+app_vulkan_on_draw_fn(
+	app_t app,
+	vulkan_draw_event_data_t* event_data
+	)
+{
+	assert_not_null(app);
+	assert_not_null(event_data);
+
+	vulkan_t vk = event_data->vulkan;
+
+	float w = setting_get_f32(app->window_w);
+	float h = setting_get_f32(app->window_h);
+
+	vulkan_draw_data_t data =
+	{
+		.pos =
+		{
+			.x = w * 0.5f,
+			.y = h * 0.5f
+		},
+		.size =
+		{
+			.w = w * 0.9f,
+			.h = h * 0.9f
+		},
+		.white_color = { 255, 255, 255, 255 },
+		.white_depth = 0.5f,
+		.black_color = { 255, 255, 255, 255 },
+		.black_depth = 0.5f,
+		.tex = TEX_RECT,
+		.angle = 0.0f,
+		.tex_scale = {{ 1.0f, 1.0f }},
+		.tex_offset = {{ 0.5f, 0.5f }}
+	};
+	vulkan_add_draw_data(vk, &data);
 }
 
 
@@ -218,7 +285,22 @@ app_init(
 	};
 	app->window_fullscreen_listener = event_target_add(&table->fullscreen_target, fullscreen_data);
 
-	app->vulkan = vulkan_init(app->window);
+	app->vulkan = vulkan_init(app->window, app->timers);
+	vulkan_event_table_t* vulkan_table = vulkan_get_event_table(app->vulkan);
+
+	event_listener_data_t vulkan_free_data =
+	{
+		.fn = (void*) app_vulkan_on_free_fn,
+		.data = app
+	};
+	event_target_once(&vulkan_table->free_target, vulkan_free_data);
+
+	event_listener_data_t vulkan_draw_data =
+	{
+		.fn = (void*) app_vulkan_on_draw_fn,
+		.data = app
+	};
+	app->vulkan_draw_listener = event_target_add(&vulkan_table->draw_target, vulkan_draw_data);
 
 	return app;
 }

@@ -28,12 +28,14 @@ flags.extend([Split(freetype2_flags)[0]])
 
 release = int(ARGUMENTS["RELEASE"] if "RELEASE" in ARGUMENTS else os.environ.get("RELEASE", "0"))
 if release <= 0:
-	flags.extend(Split("-O0 -g3"))
+	flags.extend(Split("-O0 -g3 -no-pie -fno-pie"))
 	if os.name != "nt":
-		env.Append(LINKFLAGS=Split("-rdynamic"))
+		env.Append(LINKFLAGS=Split("-no-pie -fno-pie -rdynamic"))
 else:
 	if release >= 1:
 		flags.extend(Split("-O3 -DNDEBUG -flto"))
+		if os.name != "nt":
+			env.Append(LINKFLAGS=Split("-flto -fuse-linker-plugin"))
 	if release >= 2:
 		flags.extend(Split("-march=native"))
 

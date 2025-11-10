@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <shared/time.h>
 #include <shared/color.h>
 #include <client/tex/base.h>
 #include <client/window/base.h>
@@ -25,20 +26,35 @@ typedef struct vulkan_draw_data
 {
 	pair_t       pos;
 	pair_t       size;
-	float        angle;
 	color_argb_t white_color;
 	float        white_depth;
 	color_argb_t black_color;
 	float        black_depth;
 	tex_t        tex;
+	float        angle;
 	pair_t       tex_scale;
 	pair_t       tex_offset;
 }
 vulkan_draw_data_t;
 
 
+typedef struct vulkan* vulkan_t;
+
+typedef struct vulkan_init_event_data
+{
+	vulkan_t vulkan;
+}
+vulkan_init_event_data_t;
+
+typedef struct vulkan_free_event_data
+{
+	vulkan_t vulkan;
+}
+vulkan_free_event_data_t;
+
 typedef struct vulkan_draw_event_data
 {
+	vulkan_t vulkan;
 	float delta;
 	float fps;
 }
@@ -46,16 +62,17 @@ vulkan_draw_event_data_t;
 
 typedef struct vulkan_event_table
 {
+	event_target_t init_target;
+	event_target_t free_target;
 	event_target_t draw_target;
 }
 vulkan_event_table_t;
 
-typedef struct vulkan* vulkan_t;
-
 
 extern vulkan_t
 vulkan_init(
-	window_t window
+	window_t window,
+	time_timers_t timers
 	);
 
 

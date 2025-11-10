@@ -16,6 +16,7 @@
 
 #include <tests/base.h>
 #include <shared/debug.h>
+#include <shared/options.h>
 #include <shared/settings.h>
 
 #include <string.h>
@@ -678,4 +679,54 @@ test_normal_fail__setting_get_color_null(
 	)
 {
 	setting_get_color(NULL);
+}
+
+
+void assert_used
+test_normal_pass__settings_with_options_override(
+	void
+	)
+{
+	const char* argv[] =
+	{
+		"program",
+		"--test_i64=99",
+		"--test_f32=3.5",
+		"--test_bool=true",
+		"--test_str=cmdline",
+		"--test_color=FF0000"
+	};
+
+	options_t options = options_init(MACRO_ARRAY_LEN(argv), argv);
+	global_options = options;
+
+	settings_t settings = settings_init(TEST_FILENAME, NULL);
+
+	setting_t* i64_s = settings_add_i64(settings, "test_i64", 42, 0, 100, NULL);
+	assert_eq(setting_get_i64(i64_s), 99);
+
+	setting_t* f32_s = settings_add_f32(settings, "test_f32", 1.0f, 0.0f, 10.0f, NULL);
+	assert_eq(setting_get_f32(f32_s), 3.5f);
+
+	setting_t* bool_s = settings_add_boolean(settings, "test_bool", false, NULL);
+	assert_true(setting_get_boolean(bool_s));
+
+	str_t default_str = str_init_copy_cstr("default");
+	setting_t* str_s = settings_add_str(settings, "test_str", default_str, 100, NULL);
+	str_t str_val = setting_get_str(str_s);
+	assert_true(str_cmp_cstr(str_val, "cmdline"));
+
+	color_argb_t default_color = { .r = 0, .g = 0, .b = 0, .a = 255 };
+	setting_t* color_s = settings_add_color(settings, "test_color", default_color, NULL);
+	color_argb_t color_val = setting_get_color(color_s);
+	assert_eq(color_val.r, 255);
+	assert_eq(color_val.g, 0);
+	assert_eq(color_val.b, 0);
+	assert_eq(color_val.a, 255);
+
+	settings_seal(settings);
+	settings_free(settings);
+
+	global_options = NULL;
+	options_free(options);
 }
