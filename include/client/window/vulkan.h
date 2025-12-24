@@ -94,9 +94,3 @@ vulkan_set_buffering(
 	vulkan_t vk,
 	uint32_t buffering
 	);
-
-
-extern float
-vulkan_get_fps(
-	vulkan_t vk
-	);

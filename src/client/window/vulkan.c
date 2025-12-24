@@ -3568,14 +3568,3 @@ vulkan_set_buffering(
 
 	sync_mtx_unlock(&vk->draw_mtx);
 }
-
-
-float
-vulkan_get_fps(
-	vulkan_t vk
-	)
-{
-	assert_not_null(vk);
-
-	return vk->fps;
-}

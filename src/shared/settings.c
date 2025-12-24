@@ -17,8 +17,8 @@
 #include <shared/file.h>
 #include <shared/hash.h>
 #include <shared/debug.h>
-#include <shared/threads.h>
 #include <shared/options.h>
+#include <shared/threads.h>
 #include <shared/settings.h>
 #include <shared/alloc_ext.h>
 #include <shared/bit_buffer.h>

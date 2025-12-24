@@ -47,14 +47,6 @@ typedef union quadtree_node
 quadtree_node_t;
 
 
-typedef struct quadtree_node_entity
-{
-	uint32_t next;
-	uint32_t entity;
-}
-quadtree_node_entity_t;
-
-
 #ifndef quadtree_entity_data
 
 
@@ -73,6 +65,15 @@ quadtree_node_entity_t;
 #endif
 
 
+typedef enum quadtree_status : uint8_t
+{
+	QUADTREE_STATUS_CHANGED,
+	QUADTREE_STATUS_NOT_CHANGED,
+	MACRO_ENUM_BITS(QUADTREE_STATUS)
+}
+quadtree_status_t;
+
+
 typedef struct quadtree_entity
 {
 	union
@@ -81,9 +82,11 @@ typedef struct quadtree_entity
 		uint32_t next;
 	};
 
+	uint32_t in_nodes_minus_one;
 	uint32_t query_tick;
 	uint8_t update_tick;
-	bool fully_in_node;
+	uint8_t reinsertion_tick;
+	quadtree_status_t status;
 }
 quadtree_entity_t;
 
@@ -119,7 +122,7 @@ typedef struct quadtree_node_removal
 {
 	uint32_t node_idx;
 	uint32_t node_entity_idx;
-	uint32_t prev_node_entity_idx;
+	uint32_t entity_idx;
 }
 quadtree_node_removal_t;
 
@@ -138,49 +141,75 @@ typedef struct quadtree_reinsertion
 quadtree_reinsertion_t;
 
 
-typedef enum quadtree_status
+typedef struct quadtree_entity_info
 {
-	QUADTREE_STATUS_CHANGED,
-	QUADTREE_STATUS_NOT_CHANGED,
-	MACRO_ENUM_BITS(QUADTREE_STATUS)
+	uint32_t idx;
+	quadtree_entity_data* data;
 }
-quadtree_status_t;
+quadtree_entity_info_t;
 
 
 typedef struct quadtree quadtree_t;
 
 
-typedef void
+typedef quadtree_status_t
 (*quadtree_query_fn_t)(
 	quadtree_t* qt,
-	uint32_t entity_idx,
-	quadtree_entity_data* entity
+	quadtree_entity_info_t info,
+	void* user_data
 	);
 
 
-typedef void
+typedef quadtree_status_t
 (*quadtree_node_query_fn_t)(
 	quadtree_t* qt,
-	const quadtree_node_info_t* info
+	const quadtree_node_info_t* info,
+	void* user_data
 	);
 
 
 typedef void
 (*quadtree_collide_fn_t)(
 	const quadtree_t* qt,
-	uint32_t entity_a_idx,
-	quadtree_entity_data* entity_a,
-	uint32_t entity_b_idx,
-	quadtree_entity_data* entity_b
+	quadtree_entity_info_t info_a,
+	quadtree_entity_info_t info_b,
+	void* user_data
 	);
 
 
 typedef quadtree_status_t
 (*quadtree_update_fn_t)(
 	quadtree_t* qt,
-	uint32_t entity_idx,
-	quadtree_entity_data* entity
+	quadtree_entity_info_t info,
+	void* user_data
 	);
+
+
+typedef struct quadtree_node_entity
+{
+	uint32_t index:31;
+	uint32_t is_last:1;
+}
+quadtree_node_entity_t;
+
+
+typedef struct quadtree_node_entities
+{
+	uint32_t* next;
+	quadtree_node_entity_t* entities;
+	uint8_t* flags;
+}
+quadtree_node_entities_t;
+
+
+typedef enum quadtree_normalized : uint8_t
+{
+	QUADTREE_NORMALIZED				= 0,
+	QUADTREE_NOT_NORMALIZED_SOFT	= 1 << 0,
+	QUADTREE_NOT_NORMALIZED_HARD	= 1 << 1,
+	MACRO_ENUM_BITS_EXP(QUADTREE_NORMALIZED)
+}
+quadtree_normalized_t;
 
 
 struct quadtree
@@ -193,7 +222,7 @@ struct quadtree
 	float min_size;
 
 	quadtree_node_t* nodes;
-	quadtree_node_entity_t* node_entities;
+	quadtree_node_entities_t node_entities;
 	quadtree_entity_t* entities;
 #if QUADTREE_DEDUPE_COLLISIONS == 1
 	quadtree_ht_entry_t* ht_entries;
@@ -233,7 +262,7 @@ struct quadtree
 	uint32_t query_tick;
 	uint8_t update_tick;
 
-	bool normalized;
+	quadtree_normalized_t normalization;
 	bool merge_threshold_set;
 
 	rect_extent_t rect_extent;
@@ -276,34 +305,100 @@ quadtree_normalize(
 extern void
 quadtree_update(
 	quadtree_t* qt,
-	quadtree_update_fn_t update_fn
+	quadtree_update_fn_t update_fn,
+	void* user_data
 	);
 
 
 extern void
-quadtree_query(
+quadtree_query_rect(
 	quadtree_t* qt,
 	rect_extent_t extent,
-	quadtree_query_fn_t query_fn
+	quadtree_query_fn_t query_fn,
+	void* user_data
 	);
 
 
 extern void
-quadtree_query_nodes(
+quadtree_query_circle(
+	quadtree_t* qt,
+	float x,
+	float y,
+	float radius,
+	quadtree_query_fn_t query_fn,
+	void* user_data
+	);
+
+
+extern void
+quadtree_query_nodes_rect(
 	quadtree_t* qt,
 	rect_extent_t extent,
-	quadtree_node_query_fn_t node_query_fn
+	quadtree_node_query_fn_t node_query_fn,
+	void* user_data
+	);
+
+
+extern void
+quadtree_query_nodes_circle(
+	quadtree_t* qt,
+	float x,
+	float y,
+	float radius,
+	quadtree_node_query_fn_t node_query_fn,
+	void* user_data
 	);
 
 
 extern void
 quadtree_collide(
 	quadtree_t* qt,
-	quadtree_collide_fn_t collide_fn
+	quadtree_collide_fn_t collide_fn,
+	void* user_data
 	);
 
 
 extern uint32_t
 quadtree_depth(
+	quadtree_t* qt
+	);
+
+
+extern void
+quadtree_nearest_rect(
+	quadtree_t* qt,
+	rect_extent_t extent,
+	uint32_t max_results,
+	quadtree_query_fn_t query_fn,
+	void* user_data
+	);
+
+
+extern void
+quadtree_nearest_circle(
+	quadtree_t* qt,
+	float x,
+	float y,
+	float max_distance,
+	uint32_t max_results,
+	quadtree_query_fn_t query_fn,
+	void* user_data
+	);
+
+
+extern void
+quadtree_raycast(
+	quadtree_t* qt,
+	float x,
+	float y,
+	float dx,
+	float dy,
+	quadtree_query_fn_t query_fn,
+	void* user_data
+	);
+
+
+extern void
+quadtree_check(
 	quadtree_t* qt
 	);

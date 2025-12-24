@@ -21,7 +21,6 @@
 #include <tests/quadtree_dynamic.h>
 
 #include <math.h>
-#include <stdio.h>
 #include <string.h>
 
 #define MAX_ENTITIES 16
@@ -105,20 +104,18 @@ qt_test_insert(
 static void
 qt_test_collide_fn(
 	const quadtree_t* qt,
-	uint32_t a_idx,
-	qt_dyn_test_entity_data_t* a,
-	uint32_t b_idx,
-	qt_dyn_test_entity_data_t* b
+	quadtree_entity_info_t a,
+	quadtree_entity_info_t b,
+	void* user_data
 	)
 {
 	(void) qt;
-	(void) a_idx;
-	(void) b_idx;
+	(void) user_data;
 
-	float a_center_x = (a->rect_extent.min_x + a->rect_extent.max_x) * 0.5f;
-	float a_center_y = (a->rect_extent.min_y + a->rect_extent.max_y) * 0.5f;
-	float b_center_x = (b->rect_extent.min_x + b->rect_extent.max_x) * 0.5f;
-	float b_center_y = (b->rect_extent.min_y + b->rect_extent.max_y) * 0.5f;
+	float a_center_x = (a.data->rect_extent.min_x + a.data->rect_extent.max_x) * 0.5f;
+	float a_center_y = (a.data->rect_extent.min_y + a.data->rect_extent.max_y) * 0.5f;
+	float b_center_x = (b.data->rect_extent.min_x + b.data->rect_extent.max_x) * 0.5f;
+	float b_center_y = (b.data->rect_extent.min_y + b.data->rect_extent.max_y) * 0.5f;
 
 	float dx = a_center_x - b_center_x;
 	float dy = a_center_y - b_center_y;
@@ -128,15 +125,15 @@ qt_test_collide_fn(
 
 	if(abs_dx > abs_dy)
 	{
-		float temp = a->vx;
-		a->vx = b->vx;
-		b->vx = temp;
+		float temp = a.data->vx;
+		a.data->vx = b.data->vx;
+		b.data->vx = temp;
 	}
 	else
 	{
-		float temp = a->vy;
-		a->vy = b->vy;
-		b->vy = temp;
+		float temp = a.data->vy;
+		a.data->vy = b.data->vy;
+		b.data->vy = temp;
 	}
 }
 
@@ -146,24 +143,24 @@ qt_test_collide(
 	qt_test_t* test
 	)
 {
-	quadtree_collide(&test->qt, qt_test_collide_fn);
+	quadtree_collide(&test->qt, qt_test_collide_fn, NULL);
 }
 
 
 static quadtree_status_t
 qt_test_update_fn(
 	quadtree_t* qt,
-	uint32_t entity_idx,
-	qt_dyn_test_entity_data_t* data
+	quadtree_entity_info_t info,
+	void* user_data
 	)
 {
 	(void) qt;
-	(void) entity_idx;
+	(void) user_data;
 
-	data->rect_extent.min_x += data->vx;
-	data->rect_extent.max_x += data->vx;
-	data->rect_extent.min_y += data->vy;
-	data->rect_extent.max_y += data->vy;
+	info.data->rect_extent.min_x += info.data->vx;
+	info.data->rect_extent.max_x += info.data->vx;
+	info.data->rect_extent.min_y += info.data->vy;
+	info.data->rect_extent.max_y += info.data->vy;
 
 	return QUADTREE_STATUS_CHANGED;
 }
@@ -174,7 +171,7 @@ qt_test_update(
 	qt_test_t* test
 	)
 {
-	quadtree_update(&test->qt, qt_test_update_fn);
+	quadtree_update(&test->qt, qt_test_update_fn, NULL);
 }
 
 
@@ -196,16 +193,19 @@ qt_test_free(
 }
 
 
-static void
+static quadtree_status_t
 qt_test_query_fn(
 	quadtree_t* qt,
-	uint32_t entity_idx,
-	qt_dyn_test_entity_data_t* entity
+	quadtree_entity_info_t info,
+	void* user_data
 	)
 {
-	(void) entity;
+	(void) user_data;
+
 	qt_test_t* test = (qt_test_t*) qt;
-	test->queried[test->queried_count++] = entity_idx;
+	test->queried[test->queried_count++] = info.idx;
+
+	return QUADTREE_STATUS_NOT_CHANGED;
 }
 
 
@@ -220,7 +220,7 @@ qt_test_query(
 {
 	test->queried_count = 0;
 	memset(test->queried, 0, sizeof(test->queried));
-	quadtree_query(&test->qt, half_to_rect_extent((half_extent_t){ .x = x, .y = y, .w = w, .h = h }), qt_test_query_fn);
+	quadtree_query_rect(&test->qt, half_to_rect_extent((half_extent_t){ .x = x, .y = y, .w = w, .h = h }), qt_test_query_fn, NULL);
 }
 
 
@@ -431,6 +431,25 @@ test_normal_pass__quadtree_dynamic_removal_during_reinsertion(
 }
 
 
+static qt_dyn_test_entity_data_t*
+qt_test_find_entity(
+	qt_test_t* test,
+	uint32_t idx
+	)
+{
+	for(uint32_t i = 1; i < test->qt.entities_used; ++i)
+	{
+		qt_dyn_test_entity_data_t* data = &test->qt.entities[i].data;
+		if(data->idx == idx)
+		{
+			return data;
+		}
+	}
+	
+	return NULL;
+}
+
+
 void assert_used
 test_normal_pass__quadtree_dynamic_collision_bounce(
 	void
@@ -454,8 +473,8 @@ test_normal_pass__quadtree_dynamic_collision_bounce(
 
 	qt_test_normalize(&test);
 
-	qt_dyn_test_entity_data_t* e0 = &test.qt.entities[1].data;
-	qt_dyn_test_entity_data_t* e1 = &test.qt.entities[2].data;
+	qt_dyn_test_entity_data_t* e0 = qt_test_find_entity(&test, 0);
+	qt_dyn_test_entity_data_t* e1 = qt_test_find_entity(&test, 1);
 
 	float initial_vx0 = e0->vx;
 	float initial_vx1 = e1->vx;
@@ -466,6 +485,9 @@ test_normal_pass__quadtree_dynamic_collision_bounce(
 		qt_test_update(&test);
 		qt_test_normalize(&test);
 	}
+
+	e0 = qt_test_find_entity(&test, 0);
+	e1 = qt_test_find_entity(&test, 1);
 
 	float final_vx0 = e0->vx;
 	float final_vx1 = e1->vx;

@@ -161,8 +161,8 @@ app_vulkan_on_draw_fn(
 	{
 		.pos =
 		{
-			.x = w * 0.5f,
-			.y = h * 0.5f
+			.x = 0.0f,
+			.y = 0.0f
 		},
 		.size =
 		{

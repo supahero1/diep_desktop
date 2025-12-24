@@ -31,7 +31,7 @@ test_normal_pass__quadtree_init_free(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
 	quadtree_free(&qt);
 }
@@ -69,7 +69,7 @@ test_normal_fail__quadtree_insert_null_data(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
 	quadtree_insert(&qt, NULL);
 }
@@ -89,7 +89,7 @@ test_normal_fail__quadtree_remove_invalid_entity_idx_1(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
 	quadtree_remove(NULL, 0);
 }
@@ -100,7 +100,7 @@ test_normal_fail__quadtree_remove_invalid_entity_idx_2(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
 	quadtree_remove(NULL, 1);
 }
@@ -120,7 +120,7 @@ test_normal_fail__quadtree_update_null_qt(
 	void
 	)
 {
-	quadtree_update(NULL, TEST_PTR);
+	quadtree_update(NULL, TEST_PTR, NULL);
 }
 
 
@@ -129,49 +129,89 @@ test_normal_fail__quadtree_update_null_update_fn(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
-	quadtree_update(&qt, NULL);
+	quadtree_update(&qt, NULL, NULL);
 }
 
 
 void assert_used
-test_normal_fail__quadtree_query_null_qt(
+test_normal_fail__quadtree_query_rect_null_qt(
 	void
 	)
 {
-	quadtree_query(NULL, (rect_extent_t){0}, TEST_PTR);
+	quadtree_query_rect(NULL, (rect_extent_t){0}, TEST_PTR, NULL);
 }
 
 
 void assert_used
-test_normal_fail__quadtree_query_null_query_fn(
+test_normal_fail__quadtree_query_rect_null_query_fn(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
-	quadtree_query(&qt, (rect_extent_t){0}, NULL);
+	quadtree_query_rect(&qt, (rect_extent_t){0}, NULL, NULL);
 }
 
 
 void assert_used
-test_normal_fail__quadtree_query_nodes_null_qt(
+test_normal_fail__quadtree_query_circle_null_qt(
 	void
 	)
 {
-	quadtree_query_nodes(NULL, (rect_extent_t){0}, TEST_PTR);
+	quadtree_query_circle(NULL, 0.0f, 0.0f, 1.0f, TEST_PTR, NULL);
 }
 
 
 void assert_used
-test_normal_fail__quadtree_query_nodes_null_node_query_fn(
+test_normal_fail__quadtree_query_circle_null_query_fn(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
-	quadtree_query_nodes(&qt, (rect_extent_t){0}, NULL);
+	quadtree_query_circle(&qt, 0.0f, 0.0f, 1.0f, NULL, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_query_nodes_rect_null_qt(
+	void
+	)
+{
+	quadtree_query_nodes_rect(NULL, (rect_extent_t){0}, TEST_PTR, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_query_nodes_rect_null_node_query_fn(
+	void
+	)
+{
+	quadtree_t qt = {0};
+	quadtree_init(&qt);
+	quadtree_query_nodes_rect(&qt, (rect_extent_t){0}, NULL, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_query_nodes_circle_null_qt(
+	void
+	)
+{
+	quadtree_query_nodes_circle(NULL, 0.0f, 0.0f, 1.0f, TEST_PTR, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_query_nodes_circle_null_node_query_fn(
+	void
+	)
+{
+	quadtree_t qt = {0};
+	quadtree_init(&qt);
+	quadtree_query_nodes_circle(&qt, 0.0f, 0.0f, 1.0f, NULL, NULL);
 }
 
 
@@ -180,7 +220,7 @@ test_normal_fail__quadtree_collide_null_qt(
 	void
 	)
 {
-	quadtree_collide(NULL, TEST_PTR);
+	quadtree_collide(NULL, TEST_PTR, NULL);
 }
 
 
@@ -189,9 +229,69 @@ test_normal_fail__quadtree_collide_null_collide_fn(
 	void
 	)
 {
-	quadtree_t qt;
+	quadtree_t qt = {0};
 	quadtree_init(&qt);
-	quadtree_collide(&qt, NULL);
+	quadtree_collide(&qt, NULL, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_nearest_rect_null_qt(
+	void
+	)
+{
+	quadtree_nearest_rect(NULL, (rect_extent_t){0}, 1, TEST_PTR, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_nearest_rect_null_query_fn(
+	void
+	)
+{
+	quadtree_t qt = {0};
+	quadtree_init(&qt);
+	quadtree_nearest_rect(&qt, (rect_extent_t){0}, 1, NULL, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_nearest_circle_null_qt(
+	void
+	)
+{
+	quadtree_nearest_circle(NULL, 0.0f, 0.0f, 10.0f, 1, TEST_PTR, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_nearest_circle_null_query_fn(
+	void
+	)
+{
+	quadtree_t qt = {0};
+	quadtree_init(&qt);
+	quadtree_nearest_circle(&qt, 0.0f, 0.0f, 10.0f, 1, NULL, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_raycast_null_qt(
+	void
+	)
+{
+	quadtree_raycast(NULL, 0.0f, 0.0f, 1.0f, 0.0f, TEST_PTR, NULL);
+}
+
+
+void assert_used
+test_normal_fail__quadtree_raycast_null_query_fn(
+	void
+	)
+{
+	quadtree_t qt = {0};
+	quadtree_init(&qt);
+	quadtree_raycast(&qt, 0.0f, 0.0f, 1.0f, 0.0f, NULL, NULL);
 }
 
 
@@ -273,16 +373,16 @@ qt_test_insert(
 static quadtree_status_t
 qt_test_remove_update_fn(
 	quadtree_t* qt,
-	uint32_t entity_idx,
-	qt_test_entity_data_t* data
+	quadtree_entity_info_t info,
+	void* user_data
 	)
 {
-	(void) data;
+	(void) user_data;
 
 	qt_test_t* test = MACRO_CONTAINER_OF(qt, qt_test_t, qt);
-	if(data->idx == test->remove_idx)
+	if(info.data->idx == test->remove_idx)
 	{
-		quadtree_remove(qt, entity_idx);
+		quadtree_remove(qt, info.idx);
 	}
 
 	return QUADTREE_STATUS_NOT_CHANGED;
@@ -296,19 +396,21 @@ qt_test_remove(
 	)
 {
 	test->remove_idx = entity_idx;
-	quadtree_update(&test->qt, qt_test_remove_update_fn);
+	quadtree_update(&test->qt, qt_test_remove_update_fn, NULL);
 }
 
 
 static quadtree_status_t
 qt_test_update_fn(
 	quadtree_t* qt,
-	uint32_t entity_idx,
-	qt_test_entity_data_t* data
+	quadtree_entity_info_t info,
+	void* user_data
 	)
 {
+	(void) user_data;
+
 	qt_test_t* test = MACRO_CONTAINER_OF(qt, qt_test_t, qt);
-	++test->updated[data->idx];
+	++test->updated[info.data->idx];
 
 	return QUADTREE_STATUS_NOT_CHANGED;
 }
@@ -322,7 +424,7 @@ qt_test_update(
 	)
 {
 	memset(test->updated, 0, sizeof(test->updated));
-	quadtree_update(&test->qt, qt_test_update_fn);
+	quadtree_update(&test->qt, qt_test_update_fn, NULL);
 
 	for(uint32_t i = 0; i < MAX_ENTITIES; ++i)
 	{
@@ -349,15 +451,19 @@ qt_test_update(
 }
 
 
-static void
+static quadtree_status_t
 qt_test_query_fn(
 	quadtree_t* qt,
-	uint32_t entity_idx,
-	qt_test_entity_data_t* data
+	quadtree_entity_info_t info,
+	void* user_data
 	)
 {
+	(void) user_data;
+
 	qt_test_t* test = MACRO_CONTAINER_OF(qt, qt_test_t, qt);
-	++test->queried[data->idx];
+	++test->queried[info.data->idx];
+
+	return QUADTREE_STATUS_NOT_CHANGED;
 }
 
 
@@ -373,7 +479,7 @@ qt_test_query(
 	)
 {
 	memset(test->queried, 0, sizeof(test->queried));
-	quadtree_query(&test->qt, half_to_rect_extent((half_extent_t){ .x = x, .y = y, .w = w, .h = h }), qt_test_query_fn);
+	quadtree_query_rect(&test->qt, half_to_rect_extent((half_extent_t){ .x = x, .y = y, .w = w, .h = h }), qt_test_query_fn, NULL);
 
 	for(uint32_t i = 0; i < MAX_ENTITIES; ++i)
 	{
@@ -401,13 +507,56 @@ qt_test_query(
 
 
 static void
-qt_test_query_nodes_fn(
-	quadtree_t* qt,
-	const quadtree_node_info_t* info
+qt_test_query_circle(
+	qt_test_t* test,
+	float x,
+	float y,
+	float radius,
+	uint32_t* expected,
+	uint32_t expected_count
 	)
 {
+	memset(test->queried, 0, sizeof(test->queried));
+	quadtree_query_circle(&test->qt, x, y, radius, qt_test_query_fn, NULL);
+
+	for(uint32_t i = 0; i < MAX_ENTITIES; ++i)
+	{
+		bool should_be_found = false;
+
+		for(uint32_t j = 0; j < expected_count; ++j)
+		{
+			if(expected[j] == i)
+			{
+				should_be_found = true;
+				break;
+			}
+		}
+
+		if(should_be_found)
+		{
+			assert_eq(test->queried[i], 1, fprintf(stderr, "Expected to find entity %u\n", i););
+		}
+		else
+		{
+			assert_eq(test->queried[i], 0, fprintf(stderr, "Unexpectedly found entity %u\n", i););
+		}
+	}
+}
+
+
+static quadtree_status_t
+qt_test_query_nodes_fn(
+	quadtree_t* qt,
+	const quadtree_node_info_t* info,
+	void* user_data
+	)
+{
+	(void) user_data;
+
 	qt_test_t* test = MACRO_CONTAINER_OF(qt, qt_test_t, qt);
 	test->queried_nodes[test->queried_nodes_count++] = info->node_idx;
+
+	return QUADTREE_STATUS_NOT_CHANGED;
 }
 
 
@@ -424,7 +573,7 @@ qt_test_query_nodes(
 {
 	test->queried_nodes_count = 0;
 	memset(test->queried_nodes, 0, sizeof(test->queried_nodes));
-	quadtree_query_nodes(&test->qt, half_to_rect_extent((half_extent_t){ .x = x, .y = y, .w = w, .h = h }), qt_test_query_nodes_fn);
+	quadtree_query_nodes_rect(&test->qt, half_to_rect_extent((half_extent_t){ .x = x, .y = y, .w = w, .h = h }), qt_test_query_nodes_fn, NULL);
 
 	assert_eq(test->queried_nodes_count, expected_count, fprintf(stderr, "Expected %u nodes, got %u\n", expected_count, test->queried_nodes_count););
 
@@ -439,6 +588,7 @@ qt_test_query_nodes(
 				break;
 			}
 		}
+
 		assert_eq(found, true, fprintf(stderr, "Expected to find node %u\n", expected[i]););
 	}
 }
@@ -447,19 +597,17 @@ qt_test_query_nodes(
 static void
 qt_test_collide_fn(
 	const quadtree_t* qt,
-	uint32_t a_idx,
-	qt_test_entity_data_t* a,
-	uint32_t b_idx,
-	qt_test_entity_data_t* b
+	quadtree_entity_info_t a,
+	quadtree_entity_info_t b,
+	void* user_data
 	)
 {
-	(void) a;
-	(void) b;
+	(void) user_data;
 
 	qt_test_t* test = MACRO_CONTAINER_OF(qt, qt_test_t, qt);
 
-	++test->collided[a->idx][b->idx];
-	++test->collided[b->idx][a->idx];
+	++test->collided[a.data->idx][b.data->idx];
+	++test->collided[b.data->idx][a.data->idx];
 }
 
 
@@ -471,7 +619,7 @@ qt_test_collide(
 	)
 {
 	memset(test->collided, 0, sizeof(test->collided));
-	quadtree_collide(&test->qt, qt_test_collide_fn);
+	quadtree_collide(&test->qt, qt_test_collide_fn, NULL);
 
 	for(uint32_t i = 0; i < MAX_ENTITIES; ++i)
 	{
@@ -1065,16 +1213,394 @@ test_normal_pass__quadtree_cascading_merge_on_normalize(
 	uint32_t prev_depth = depth;
 	for(int i = 0; i < 10; ++i)
 	{
+		quadtree_normalize(&test.qt);
 		depth = quadtree_depth(&test.qt);
 		if(depth == 1)
 		{
 			break;
 		}
+		
 		assert_lt(depth, prev_depth, fprintf(stderr, "Depth failed to decrease on iteration %d (depth: %u)\n", i, depth););
 		prev_depth = depth;
 	}
 
 	assert_eq(depth, 1);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_no_cascading_merge_on_no_normalize(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t)
+		{
+			.split_threshold = 2,
+			.merge_threshold = 1,
+			.max_depth = 10,
+			.min_size = 0.1f,
+			.merge_threshold_set = true
+		}
+		);
+
+	qt_test_insert(&test, 0.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 0.0f, 0.0f, 1.0f, 1.0f);
+
+	uint32_t depth = quadtree_depth(&test.qt);
+	assert_eq(depth, 10);
+
+	qt_test_remove(&test, 0);
+	qt_test_remove(&test, 1);
+
+	uint32_t initial_depth = quadtree_depth(&test.qt);
+	assert_lt(initial_depth, 10);
+
+	for(int i = 0; i < 10; ++i)
+	{
+		depth = quadtree_depth(&test.qt);
+		assert_eq(depth, initial_depth, fprintf(stderr, "Depth changed without normalize on iteration %d (expected: %u, got: %u)\n", i, initial_depth, depth););
+	}
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_query_circle_one(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 0.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_query_circle(&test, 0.0f, 0.0f, 5.0f, (uint32_t[]){ 0 }, 1);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_query_circle_none(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 30.0f, 30.0f, 5.0f, 5.0f);
+	qt_test_query_circle(&test, -30.0f, -30.0f, 5.0f, NULL, 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_query_circle_partial(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 0.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 10.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 30.0f, 30.0f, 1.0f, 1.0f);
+	qt_test_query_circle(&test, 5.0f, 0.0f, 10.0f, (uint32_t[]){ 0, 1 }, 2);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_query_circle_on_boundary(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 10.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_query_circle(&test, 0.0f, 0.0f, 9.0f, (uint32_t[]){ 0 }, 1);
+	qt_test_query_circle(&test, 0.0f, 0.0f, 8.0f, NULL, 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_rect_one(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 10.0f, 10.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_rect(&test.qt, half_to_rect_extent((half_extent_t){ .x = 0.0f, .y = 0.0f, .w = 64.0f, .h = 64.0f }), 1, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_rect_order(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 30.0f, 30.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 5.0f, 5.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 15.0f, 15.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_rect(&test.qt, half_to_rect_extent((half_extent_t){ .x = 0.0f, .y = 0.0f, .w = 64.0f, .h = 64.0f }), 1, qt_test_query_fn, NULL);
+	assert_eq(test.queried[1], 1);
+	assert_eq(test.queried[0], 0);
+	assert_eq(test.queried[2], 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_rect_max_results(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 5.0f, 5.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 10.0f, 10.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 15.0f, 15.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_rect(&test.qt, half_to_rect_extent((half_extent_t){ .x = 0.0f, .y = 0.0f, .w = 64.0f, .h = 64.0f }), 2, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+	assert_eq(test.queried[1], 1);
+	assert_eq(test.queried[2], 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_rect_zero_results(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 5.0f, 5.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_rect(&test.qt, half_to_rect_extent((half_extent_t){ .x = 0.0f, .y = 0.0f, .w = 64.0f, .h = 64.0f }), 0, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_circle_one(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 10.0f, 0.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_circle(&test.qt, 0.0f, 0.0f, 100.0f, 1, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_circle_order(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 30.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 10.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 20.0f, 0.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_circle(&test.qt, 0.0f, 0.0f, 100.0f, 1, qt_test_query_fn, NULL);
+	assert_eq(test.queried[1], 1);
+	assert_eq(test.queried[0], 0);
+	assert_eq(test.queried[2], 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_circle_max_results(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 10.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 20.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 30.0f, 0.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_circle(&test.qt, 0.0f, 0.0f, 100.0f, 2, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+	assert_eq(test.queried[1], 1);
+	assert_eq(test.queried[2], 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_nearest_circle_max_distance(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 10.0f, 0.0f, 1.0f, 1.0f);
+	qt_test_insert(&test, 30.0f, 0.0f, 1.0f, 1.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_nearest_circle(&test.qt, 0.0f, 0.0f, 15.0f, 10, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+	assert_eq(test.queried[1], 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_raycast_hit_one(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 20.0f, 0.0f, 5.0f, 5.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_raycast(&test.qt, 0.0f, 0.0f, 50.0f, 0.0f, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_raycast_miss(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 20.0f, 20.0f, 5.0f, 5.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_raycast(&test.qt, 0.0f, 0.0f, 50.0f, 0.0f, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 0);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_raycast_length(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 30.0f, 0.0f, 5.0f, 5.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_raycast(&test.qt, 0.0f, 0.0f, 20.0f, 0.0f, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 0);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_raycast(&test.qt, 0.0f, 0.0f, 40.0f, 0.0f, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+
+	qt_test_free(&test);
+}
+
+
+void assert_used
+test_normal_pass__quadtree_raycast_multiple(
+	void
+	)
+{
+	qt_test_t test = qt_test_init(
+		0.0f, 0.0f, 64.0f, 64.0f,
+		(qt_test_opts_t){}
+		);
+
+	qt_test_insert(&test, 10.0f, 0.0f, 3.0f, 3.0f);
+	qt_test_insert(&test, 25.0f, 0.0f, 3.0f, 3.0f);
+	qt_test_insert(&test, 40.0f, 0.0f, 3.0f, 3.0f);
+
+	memset(test.queried, 0, sizeof(test.queried));
+	quadtree_raycast(&test.qt, 0.0f, 0.0f, 50.0f, 0.0f, qt_test_query_fn, NULL);
+	assert_eq(test.queried[0], 1);
+	assert_eq(test.queried[1], 1);
+	assert_eq(test.queried[2], 1);
 
 	qt_test_free(&test);
 }

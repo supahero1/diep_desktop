@@ -56,6 +56,11 @@ cstr_resize_len(
 {
 	assert_ptr(cstr, old_len);
 
+	if(!cstr && !old_len)
+	{
+		return cstr_alloc(new_len);
+	}
+
 	cstr = alloc_remalloc(cstr, old_len + 1, new_len + 1);
 	assert_not_null(cstr);
 

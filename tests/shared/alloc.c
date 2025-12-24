@@ -440,3 +440,332 @@ test_normal_pass__alloc_reuse_spot_calloc(
 
 	alloc_free(ptr, 4);
 }
+
+
+void assert_used
+test_normal_pass__alloc_custom_handle_size_3_align_2(
+	void
+	)
+{
+	alloc_handle_t handle = {0};
+	alloc_create_handle(
+		&(alloc_handle_info_t)
+		{
+			.alloc_size = 3,
+			.block_size = 4096,
+			.alignment = 2
+		},
+		&handle
+		);
+
+	uint8_t* ptrs[8];
+
+	for(int i = 0; i < 8; ++i)
+	{
+		ptrs[i] = alloc_alloc_h(&handle, 3, 0);
+		assert_not_null(ptrs[i]);
+		ptrs[i][0] = 0xAA ^ i;
+		ptrs[i][1] = 0xBB ^ i;
+		ptrs[i][2] = 0xCC ^ i;
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		assert_eq(ptrs[i][0], (uint8_t)(0xAA ^ i));
+		assert_eq(ptrs[i][1], (uint8_t)(0xBB ^ i));
+		assert_eq(ptrs[i][2], (uint8_t)(0xCC ^ i));
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		alloc_free_h(&handle, ptrs[i], 3);
+	}
+
+	alloc_free_handle(&handle);
+}
+
+
+void assert_used
+test_normal_pass__alloc_custom_handle_size_3_align_4(
+	void
+	)
+{
+	alloc_handle_t handle = {0};
+	alloc_create_handle(
+		&(alloc_handle_info_t)
+		{
+			.alloc_size = 3,
+			.block_size = 4096,
+			.alignment = 4
+		},
+		&handle
+		);
+
+	uint8_t* ptrs[8];
+
+	for(int i = 0; i < 8; ++i)
+	{
+		ptrs[i] = alloc_alloc_h(&handle, 3, 0);
+		assert_not_null(ptrs[i]);
+		ptrs[i][0] = 0x11 ^ i;
+		ptrs[i][1] = 0x22 ^ i;
+		ptrs[i][2] = 0x33 ^ i;
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		assert_eq(ptrs[i][0], (uint8_t)(0x11 ^ i));
+		assert_eq(ptrs[i][1], (uint8_t)(0x22 ^ i));
+		assert_eq(ptrs[i][2], (uint8_t)(0x33 ^ i));
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		alloc_free_h(&handle, ptrs[i], 3);
+	}
+
+	alloc_free_handle(&handle);
+}
+
+
+void assert_used
+test_normal_pass__alloc_custom_handle_size_3_align_8(
+	void
+	)
+{
+	alloc_handle_t handle = {0};
+	alloc_create_handle(
+		&(alloc_handle_info_t)
+		{
+			.alloc_size = 3,
+			.block_size = 4096,
+			.alignment = 8
+		},
+		&handle
+		);
+
+	uint8_t* ptrs[8];
+
+	for(int i = 0; i < 8; ++i)
+	{
+		ptrs[i] = alloc_alloc_h(&handle, 3, 0);
+		assert_not_null(ptrs[i]);
+		ptrs[i][0] = 0x44 ^ i;
+		ptrs[i][1] = 0x55 ^ i;
+		ptrs[i][2] = 0x66 ^ i;
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		assert_eq(ptrs[i][0], (uint8_t)(0x44 ^ i));
+		assert_eq(ptrs[i][1], (uint8_t)(0x55 ^ i));
+		assert_eq(ptrs[i][2], (uint8_t)(0x66 ^ i));
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		alloc_free_h(&handle, ptrs[i], 3);
+	}
+
+	alloc_free_handle(&handle);
+}
+
+
+void assert_used
+test_normal_pass__alloc_custom_handle_size_3_align_16(
+	void
+	)
+{
+	alloc_handle_t handle = {0};
+	alloc_create_handle(
+		&(alloc_handle_info_t)
+		{
+			.alloc_size = 3,
+			.block_size = 4096,
+			.alignment = 16
+		},
+		&handle
+		);
+
+	uint8_t* ptrs[8];
+
+	for(int i = 0; i < 8; ++i)
+	{
+		ptrs[i] = alloc_alloc_h(&handle, 3, 0);
+		assert_not_null(ptrs[i]);
+		ptrs[i][0] = 0x77 ^ i;
+		ptrs[i][1] = 0x88 ^ i;
+		ptrs[i][2] = 0x99 ^ i;
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		assert_eq(ptrs[i][0], (uint8_t)(0x77 ^ i));
+		assert_eq(ptrs[i][1], (uint8_t)(0x88 ^ i));
+		assert_eq(ptrs[i][2], (uint8_t)(0x99 ^ i));
+	}
+
+	for(int i = 0; i < 8; ++i)
+	{
+		alloc_free_h(&handle, ptrs[i], 3);
+	}
+
+	alloc_free_handle(&handle);
+}
+
+
+void assert_used
+test_normal_pass__alloc_custom_handle_size_3_reuse(
+	void
+	)
+{
+	alloc_handle_t handle = {0};
+	alloc_create_handle(
+		&(alloc_handle_info_t)
+		{
+			.alloc_size = 3,
+			.block_size = 4096,
+			.alignment = 4
+		},
+		&handle
+		);
+
+	uint8_t* ptr1 = alloc_alloc_h(&handle, 3, 0);
+	assert_not_null(ptr1);
+	ptr1[0] = 0xDE;
+	ptr1[1] = 0xAD;
+	ptr1[2] = 0xBE;
+
+	uint8_t* ptr2 = alloc_alloc_h(&handle, 3, 0);
+	assert_not_null(ptr2);
+	ptr2[0] = 0xCA;
+	ptr2[1] = 0xFE;
+	ptr2[2] = 0xBA;
+
+	assert_eq(ptr1[0], 0xDE);
+	assert_eq(ptr1[1], 0xAD);
+	assert_eq(ptr1[2], 0xBE);
+
+	alloc_free_h(&handle, ptr1, 3);
+
+	uint8_t* ptr3 = alloc_alloc_h(&handle, 3, 0);
+	assert_not_null(ptr3);
+	ptr3[0] = 0x12;
+	ptr3[1] = 0x34;
+	ptr3[2] = 0x56;
+
+	assert_eq(ptr2[0], 0xCA);
+	assert_eq(ptr2[1], 0xFE);
+	assert_eq(ptr2[2], 0xBA);
+
+	assert_eq(ptr3[0], 0x12);
+	assert_eq(ptr3[1], 0x34);
+	assert_eq(ptr3[2], 0x56);
+
+	alloc_free_h(&handle, ptr2, 3);
+	alloc_free_h(&handle, ptr3, 3);
+
+	alloc_free_handle(&handle);
+}
+
+
+void assert_used
+test_normal_pass__alloc_custom_handle_size_3_calloc(
+	void
+	)
+{
+	alloc_handle_t handle = {0};
+	alloc_create_handle(
+		&(alloc_handle_info_t)
+		{
+			.alloc_size = 3,
+			.block_size = 4096,
+			.alignment = 4
+		},
+		&handle
+		);
+
+	uint8_t* ptr = alloc_alloc_h(&handle, 3, 1);
+	assert_not_null(ptr);
+	assert_eq(ptr[0], 0);
+	assert_eq(ptr[1], 0);
+	assert_eq(ptr[2], 0);
+
+	alloc_free_h(&handle, ptr, 3);
+
+	alloc_free_handle(&handle);
+}
+
+
+void assert_used
+test_normal_pass__alloc_custom_handle_fill_block(
+	void
+	)
+{
+	alloc_t page_size = alloc_get_page_size();
+	uint32_t count = page_size / 4;
+
+	alloc_handle_t handle = {0};
+	alloc_create_handle(
+		&(alloc_handle_info_t)
+		{
+			.alloc_size = 4,
+			.block_size = page_size,
+			.alignment = 4
+		},
+		&handle
+		);
+
+	uint32_t** ptrs = alloc_malloc(ptrs, count);
+	assert_not_null(ptrs);
+
+	for(uint32_t i = 0; i < count; ++i)
+	{
+		ptrs[i] = alloc_alloc_h(&handle, 4, 0);
+		assert_not_null(ptrs[i]);
+		*ptrs[i] = 0xDEAD0000 | i;
+	}
+
+	for(uint32_t i = 0; i < count; ++i)
+	{
+		assert_eq(*ptrs[i], 0xDEAD0000 | i);
+	}
+
+	uint32_t half = count / 2;
+	for(uint32_t i = count; i > half; --i)
+	{
+		alloc_free_h(&handle, ptrs[i - 1], 4);
+		ptrs[i - 1] = NULL;
+	}
+
+	for(uint32_t i = 0; i < half; ++i)
+	{
+		assert_eq(*ptrs[i], 0xDEAD0000 | i);
+	}
+
+	for(uint32_t i = half; i < count; ++i)
+	{
+		ptrs[i] = alloc_alloc_h(&handle, 4, 0);
+		assert_not_null(ptrs[i]);
+		*ptrs[i] = 0xBEEF0000 | i;
+	}
+
+	for(uint32_t i = 0; i < half; ++i)
+	{
+		assert_eq(*ptrs[i], 0xDEAD0000 | i);
+	}
+
+	for(uint32_t i = half; i < count; ++i)
+	{
+		assert_eq(*ptrs[i], 0xBEEF0000 | i);
+	}
+
+	for(uint32_t i = 0; i < count; ++i)
+	{
+		alloc_free_h(&handle, ptrs[i], 4);
+	}
+
+	alloc_free(ptrs, count);
+
+	alloc_free_handle(&handle);
+}

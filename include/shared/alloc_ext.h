@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <shared/alloc.h>
-
-#ifndef _inline_
-	#define _inline_ __attribute__((always_inline)) inline
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+#include <shared/alloc.h>
 
 
 _inline_ _pure_func_ _opaque_ alloc_handle_t*
@@ -263,12 +263,12 @@ alloc_handle_get_flags_u(
 })
 
 
-#define alloc_alloc_u(ptr, size, zero)							\
-({																\
-	alloc_t _size = sizeof(*ptr) * (size);						\
-	int _zero = (zero);											\
-																\
-	alloc_alloc_uh(alloc_get_handle_u(_size), _size, _zero);	\
+#define alloc_alloc_u(ptr, size, zero)						\
+({															\
+	alloc_t _size = sizeof(*ptr) * (size);					\
+	int _zero = (zero);										\
+															\
+	alloc_alloc_uh(alloc_get_handle(_size), _size, _zero);	\
 })
 
 
@@ -306,7 +306,7 @@ alloc_handle_get_flags_u(
 	__typeof__(ptr) _ptr = (ptr);							\
 	alloc_t _size = sizeof(*_ptr) * (size);					\
 															\
-	alloc_free_uh(alloc_get_handle_u(_size), _ptr, _size);	\
+	alloc_free_uh(alloc_get_handle(_size), _ptr, _size);	\
 })
 
 
@@ -339,7 +339,7 @@ alloc_handle_get_flags_u(
 	alloc_t _new_size = sizeof(*_ptr) * (new_size);								\
 	int _zero = (zero);															\
 																				\
-	allow_realloc_uh(															\
+	alloc_realloc_uh(															\
 		alloc_get_handle_s(_old_state, _old_size),								\
 		_ptr,																	\
 		_old_size,																\
@@ -375,11 +375,11 @@ alloc_handle_get_flags_u(
 	alloc_t _new_size = sizeof(*_ptr) * (new_size);		\
 	int _zero = (zero);									\
 														\
-	allow_realloc_uh(									\
-		alloc_get_handle_u(_old_size),					\
+	alloc_realloc_uh(									\
+		alloc_get_handle(_old_size),					\
 		_ptr,											\
 		_old_size,										\
-		alloc_get_handle_u(_new_size),					\
+		alloc_get_handle(_new_size),					\
 		_new_size,										\
 		_zero											\
 	);													\
@@ -448,3 +448,8 @@ alloc_realloc(ptr, old_size, new_size, 1)
 
 #define alloc_recalloc_u(ptr, old_size, new_size)	\
 alloc_realloc_u(ptr, old_size, new_size, 1)
+
+
+#ifdef __cplusplus
+}
+#endif
