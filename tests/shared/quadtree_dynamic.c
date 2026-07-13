@@ -44,7 +44,6 @@ typedef struct qt_test_opts
 	uint32_t merge_threshold;
 	uint32_t max_depth;
 	uint32_t dfs_length;
-	uint32_t merge_ht_size;
 	float min_size;
 
 	bool merge_threshold_set;
@@ -67,7 +66,6 @@ qt_test_init(
 	test.qt.merge_threshold = opts.merge_threshold;
 	test.qt.max_depth = opts.max_depth;
 	test.qt.dfs_length = opts.dfs_length;
-	test.qt.merge_ht_size = opts.merge_ht_size;
 	test.qt.min_size = opts.min_size;
 
 	test.qt.merge_threshold_set = opts.merge_threshold_set;
@@ -239,7 +237,6 @@ test_normal_pass__quadtree_dynamic_init_free(
 			.split_threshold = 4,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}
@@ -261,7 +258,6 @@ test_normal_pass__quadtree_dynamic_reinsertion_step_on_boundary(
 			.split_threshold = 1,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}
@@ -302,7 +298,6 @@ test_normal_pass__quadtree_dynamic_reinsertion_step_off_boundary(
 			.split_threshold = 1,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}
@@ -335,7 +330,6 @@ test_normal_pass__quadtree_dynamic_reinsertion_step_on_boundary_outside(
 			.split_threshold = 1,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}
@@ -377,7 +371,6 @@ test_normal_pass__quadtree_dynamic_reinsertion_step_off_boundary_outside(
 			.split_threshold = 1,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}
@@ -411,7 +404,6 @@ test_normal_pass__quadtree_dynamic_removal_during_reinsertion(
 			.split_threshold = 2,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}
@@ -465,7 +457,6 @@ test_normal_pass__quadtree_dynamic_collision_bounce(
 			.split_threshold = 2,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}
@@ -516,7 +507,6 @@ test_normal_pass__quadtree_dynamic_rapid_cross_tree_movement(
 			.split_threshold = 1,
 			.max_depth = 8,
 			.dfs_length = 32,
-			.merge_ht_size = 64,
 			.min_size = 1.0f,
 			.merge_threshold_set = false
 		}

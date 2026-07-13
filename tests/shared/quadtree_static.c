@@ -317,7 +317,6 @@ typedef struct qt_test_opts
 	uint32_t merge_threshold;
 	uint32_t max_depth;
 	uint32_t dfs_length;
-	uint32_t merge_ht_size;
 	float min_size;
 
 	bool merge_threshold_set;
@@ -340,7 +339,6 @@ qt_test_init(
 	test.qt.merge_threshold = opts.merge_threshold;
 	test.qt.max_depth = opts.max_depth;
 	test.qt.dfs_length = opts.dfs_length;
-	test.qt.merge_ht_size = opts.merge_ht_size;
 	test.qt.min_size = opts.min_size;
 
 	test.qt.merge_threshold_set = opts.merge_threshold_set;
