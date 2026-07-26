@@ -240,13 +240,6 @@ const char* vk_device_extensions[] =
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-const char* vk_device_layers[] =
-{
-#ifndef NDEBUG
-	"VK_LAYER_KHRONOS_validation",
-#endif
-};
-
 
 const vk_vertex_input_t vk_vertex_input[] =
 {
@@ -756,78 +749,6 @@ vk_get_device_extensions(
 
 
 bool
-vk_get_device_layers(
-	vulkan_t vk,
-	VkPhysicalDevice device,
-	vk_device_score_t* device_score
-	)
-{
-	if(MACRO_ARRAY_LEN(vk_device_layers) == 0)
-	{
-		return true;
-	}
-
-	uint32_t available_device_layer_count = 0;
-	VkResult result = vkEnumerateDeviceLayerProperties(device, &available_device_layer_count, NULL);
-	if(result != VK_SUCCESS || available_device_layer_count == 0)
-	{
-		hard_assert_log();
-		return false;
-	}
-
-	VkLayerProperties available_device_layers[available_device_layer_count];
-	result = vkEnumerateDeviceLayerProperties(device, &available_device_layer_count, available_device_layers);
-	if(result != VK_SUCCESS)
-	{
-		hard_assert_log();
-		return false;
-	}
-
-	puts("\nVK available device layers:");
-
-	for(uint32_t i = 0; i < available_device_layer_count; ++i)
-	{
-		printf("- %s\n", available_device_layers[i].layerName);
-	}
-
-	puts("");
-
-	const char* const* device_layer = vk_device_layers;
-	const char* const* device_layer_end = device_layer + MACRO_ARRAY_LEN(vk_device_layers);
-
-	while(device_layer < device_layer_end)
-	{
-		bool found = false;
-		const char* layer_name = *(device_layer++);
-
-		VkLayerProperties* layer = available_device_layers;
-		VkLayerProperties* layer_end = layer + available_device_layer_count;
-
-		while(layer < layer_end)
-		{
-			if(strcmp(layer_name, layer->layerName) == 0)
-			{
-				found = true;
-				break;
-			}
-
-			layer++;
-		}
-
-		if(!found)
-		{
-			printf("VK device layer %s not found\n", layer_name);
-			return false;
-		}
-
-		printf("+ %s\n", layer_name);
-	}
-
-	return true;
-}
-
-
-bool
 vk_get_device_swapchain(
 	vulkan_t vk,
 	VkPhysicalDevice device,
@@ -958,11 +879,6 @@ vk_get_device_score(
 	vk_device_score_t device_score = {0};
 
 	if(!vk_get_device_extensions(vk, device, &device_score))
-	{
-		goto goto_err;
-	}
-
-	if(!vk_get_device_layers(vk, device, &device_score))
 	{
 		goto goto_err;
 	}
@@ -1171,8 +1087,8 @@ vk_init_device(
 		.flags = 0,
 		.queueCreateInfoCount = 1,
 		.pQueueCreateInfos = &device_queue_info,
-		.enabledLayerCount = MACRO_ARRAY_LEN(vk_device_layers),
-		.ppEnabledLayerNames = vk_device_layers,
+		.enabledLayerCount = 0,
+		.ppEnabledLayerNames = NULL,
 		.enabledExtensionCount = MACRO_ARRAY_LEN(vk_device_extensions),
 		.ppEnabledExtensionNames = vk_device_extensions,
 		.pEnabledFeatures = &device_features
